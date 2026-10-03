@@ -1,0 +1,17 @@
+{
+  "name": "Drift & Bloom",
+  "short_name": "Drift & Bloom",
+  "description": "Hop your spirit across a moonlit pond, collect blooms and reach the lotus before the clock runs out.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#040e18",
+  "theme_color": "#040e18",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Drift & Bloom</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='9' r='6' fill='%235DCAA5'/%3E%3C/svg%3E">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #040e18; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: system-ui, sans-serif; }
+#app { width: 390px; height: 844px; flex-shrink: 0; transform-origin: center center; background: #071828; position: relative; overflow: hidden; color: #fff; }
+.screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; padding: 32px 20px; }
+.screen.active { display: flex; animation: scrFade .25s ease; }
+@keyframes scrFade { from { opacity: 0; } to { opacity: 1; } }
+
+h1 { font-size: 42px; font-weight: bold; color: #9FE1CB; text-align: center; margin-top: 80px; }
+h2 { font-size: 22px; color: #5DCAA5; text-align: center; margin-bottom: 24px; }
+.subtitle { color: rgba(245,210,100,0.9); font-size: 26px; font-weight: bold; margin-top: 6px; }
+.tagline { color: rgba(160,220,200,0.6); font-size: 14px; margin-top: 12px; }
+
+button {
+  background: rgba(93,202,165,0.85);
+  color: #071828;
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 14px 40px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+button:active { opacity: 0.75; }
+.btn-back {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: transparent;
+  color: rgba(120,180,160,0.65);
+  font-size: 15px;
+  font-weight: normal;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.btn-back:active { background: rgba(255,255,255,0.06); }
+#begin-btn {
+  position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
+  background: rgba(7,24,40,0.88); color: #5DCAA5; border: 2px solid #5DCAA5;
+  border-radius: 16px; font-size: 20px; font-weight: bold; padding: 16px 56px;
+  cursor: pointer; letter-spacing: 2px; z-index: 2; margin: 0;
+}
+#begin-btn:active { background: rgba(93,202,165,0.15); opacity: 1; }
+
+/* Character grid */
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  overflow-y: auto;
+  max-height: 680px;
+}
+.char-card {
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(93,202,165,0.2);
+  border-radius: 12px;
+  padding: 14px 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.char-card:active { background: rgba(93,202,165,0.15); }
+.char-card.selected {
+  border-color: rgba(93,202,165,0.8);
+  background: rgba(93,202,165,0.1);
+}
+.char-name { font-size: 16px; font-weight: bold; color: #9FE1CB; font-family: Georgia, serif; letter-spacing: 0.5px; }
+.char-tag { font-size: 10.5px; color: rgba(160,200,185,0.6); margin-top: 3px; line-height: 1.3; padding: 0 4px; min-height: 27px; }
+.char-card canvas { border-radius: 9px; }
+.char-card.selected { box-shadow: 0 0 18px rgba(93,202,165,0.25); }
+
+/* Stage map: one stage (10 levels) at a time, as lily pads on a winding path */
+#map-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#stage-map { position: absolute; left: 0; top: 0; width: 390px; height: 844px; z-index: 1; }
+#stage-map svg { position: absolute; inset: 0; pointer-events: none; }
+#stage-head { position: absolute; top: 76px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 14px; z-index: 2; text-align: center; }
+#level-title { min-width: 210px; cursor: default; user-select: none; }
+#stage-num { font: 700 12px system-ui, sans-serif; letter-spacing: 4px; color: rgba(160,230,210,0.75); }
+#stage-name { font: 700 26px Georgia, serif; color: #9FE1CB; text-shadow: 0 0 18px rgba(93,202,165,0.45); margin-top: 2px; }
+#stage-stars { font: 600 13px system-ui, sans-serif; color: #FFD740; margin-top: 4px; }
+.stage-arrow { background: rgba(7,24,40,0.72); border: 1.5px solid rgba(93,202,165,0.5); color: #9FE1CB; width: 42px; height: 42px; border-radius: 50%; padding: 0; margin: 0; font-size: 26px; line-height: 36px; }
+.stage-arrow:disabled { opacity: 0.22; cursor: default; }
+#stage-hint { position: absolute; left: 22px; right: 22px; bottom: 22px; text-align: center; font-size: 13px; line-height: 1.35; color: rgba(205,238,228,0.88); z-index: 2; background: rgba(4,16,28,0.72); border: 1px solid rgba(93,202,165,0.25); border-radius: 12px; padding: 9px 12px; }
+.lv-node { position: absolute; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; padding: 0; border: 2px solid rgba(160,240,200,0.55);
+  background: radial-gradient(circle at 38% 30%, #74d494, #2c8a55 45%, #164d32 100%); color: #eafff4; font: 800 20px Georgia, serif; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.45), inset 0 -6px 10px rgba(0,0,0,0.25); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  animation: nodeIn .45s cubic-bezier(.2,1.6,.4,1) both; }
+.lv-node .st { font: 10px system-ui, sans-serif; color: #FFD740; letter-spacing: 1px; margin-top: 1px; text-shadow: none; }
+.lv-node.done { border-color: rgba(255,215,64,0.85); }
+.lv-node.next { animation: nodeIn .45s cubic-bezier(.2,1.6,.4,1) both, nodePulse 1.6s ease-in-out .7s infinite; }
+.lv-node.boss { width: 80px; height: 80px; margin: -40px 0 0 -40px; font-size: 24px;
+  background: radial-gradient(circle at 40% 30%, #ffc0d6, #e85a8a 45%, #7a1f45 100%); border-color: rgba(255,205,228,0.85); }
+.lv-node.locked { background: radial-gradient(circle at 40% 30%, #3a4a55, #1b2630 70%); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.35); font-size: 17px; }
+@keyframes nodeIn { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes nodePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(140,255,215,0.6), 0 6px 14px rgba(0,0,0,0.45); } 50% { box-shadow: 0 0 0 14px rgba(140,255,215,0), 0 6px 14px rgba(0,0,0,0.45); } }
+#stage-banner { position: absolute; left: 30px; right: 30px; top: 330px; z-index: 4; text-align: center; pointer-events: none; padding: 16px 10px;
+  background: rgba(4,16,28,0.88); border: 1.5px solid rgba(255,215,90,0.6); border-radius: 16px; box-shadow: 0 0 40px rgba(255,200,90,0.25);
+  font: 700 26px Georgia, serif; color: #ffe28a; animation: bannerIn 2.8s ease forwards; }
+#stage-banner small { display: block; font: 13px system-ui, sans-serif; color: rgba(210,240,230,0.85); margin-top: 6px; }
+@keyframes bannerIn { 0% { opacity: 0; transform: scale(0.7); } 15% { opacity: 1; transform: scale(1.05); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+</style>
+<!-- web app: installable from Safari / Chrome, plays offline -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drift &amp; Bloom">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#040e18">
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
+}
+</script>
+</head>
+<body>
+<div id="app">
+
+  <!-- Screen 1: Begin -->
+  <div id="s-begin" class="screen active" style="padding:0;">
+    <canvas id="begin-bg" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <button id="begin-btn" onclick="goTo('s-charselect')">Begin</button>
+  </div>
+
+  <!-- Screen 2: Character Select -->
+  <div id="s-charselect" class="screen">
+    <button class="btn-back" onclick="goTo('s-begin')">← Back</button>
+    <h2>Choose Your Spirit</h2>
+    <div class="char-grid" id="char-grid"></div>
+  </div>
+
+  <!-- Screen 3: Level Select -->
+  <div id="s-levelselect" class="screen" style="padding:0;">
+    <canvas id="map-bg" width="390" height="844"></canvas>
+    <div id="stage-map"></div>
+    <button class="btn-back" onclick="goTo('s-charselect')" style="z-index:3">← Back</button>
+    <div id="stage-head">
+      <button id="stage-prev" class="stage-arrow" aria-label="Previous stage">‹</button>
+      <div id="level-title"><div id="stage-num">STAGE 1</div><div id="stage-name">The Still Pond</div><div id="stage-stars">★ 0 / 30</div></div>
+      <button id="stage-next" class="stage-arrow" aria-label="Next stage">›</button>
+    </div>
+    <div id="stage-hint"></div>
+  </div>
+
+  <!-- Screen 4: Gameplay -->
+  <div id="s-gameplay" class="screen" style="padding:0;">
+    <canvas id="game-cv" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <button class="btn-back" onclick="goTo('s-levelselect');gActive=false;" style="position:absolute;top:20px;left:20px;z-index:2;">← Back</button>
+  </div>
+
+</div>
+
+<!-- Shared drawing modules (CHARACTER AGENT). Loaded before the game script so
+     drawSpirit / drawEnemy / drawNightSky etc. are the single global source. -->
+<script src="workspace/character/spirit_draw.js"></script>
+<script src="workspace/character/scene_draw.js"></script>
+<script>
+'use strict';
+
+// Roster used for the select-screen cards (labels + colors). Drawing is done by
+// the shared module's drawSpirit(); these ids must match SPIRIT_CHARS keys.
+const CHARS = [
+  { id:'spirit', name:'Spirit', tag:'Drifts like water, calm and pure',       col:'#5DCAA5', dark:'#071828' },
+  { id:'ember',  name:'Ember',  tag:'Burns bright, fierce and fearless',       col:'#FF7A35', dark:'#1A0800' },
+  { id:'luna',   name:'Luna',   tag:'Dances among stars, dreams of sky',       col:'#9B72FF', dark:'#0A0520' },
+  { id:'moss',   name:'Moss',   tag:'Roots run deep, ancient and wise',        col:'#C8A84B', dark:'#0D0A04' },
+  { id:'storm',  name:'Storm',  tag:'Thunderclouds given living form',         col:'#00EEFF', dark:'#040E18' },
+  { id:'kira',   name:'Kira',   tag:'Ice-cold, razor-sharp, impossible grace', col:'#AAE8FF', dark:'#04101A' },
+  { id:'blaze',  name:'Blaze',  tag:'Born from the core, fists of pure magma', col:'#FF5500', dark:'#180400' },
+  { id:'zephyr', name:'Zephyr', tag:'Rides the gale, weightless and free',     col:'#80FFD0', dark:'#041808' },
+  { id:'void',   name:'Void',   tag:'Silence between stars, shadow made alive',col:'#CC44FF', dark:'#08040E' },
+  { id:'aurora', name:'Aurora', tag:'First light of dawn, warmth and wonder',  col:'#FFDC60', dark:'#181008' },
+];
+
+let selectedChar = localStorage.getItem('selected_character') || 'spirit';
+let selectedLevel = 1;
+
+// ── Display: fit the 390×844 phone layout to any window, and render every
+// canvas at the real screen resolution (devicePixelRatio × fit scale) so the
+// characters stay crisp instead of being upscaled.
+const APP_W = 390, APP_H = 844;
+let DPR = 1;
+function fitApp() {
+  const s = Math.min(innerWidth / APP_W, innerHeight / APP_H, 1.6);
+  document.getElementById('app').style.transform = `scale(${s})`;
+  DPR = Math.min(3, Math.max(1, (window.devicePixelRatio || 1) * s));
+}
+fitApp();
+addEventListener('resize', fitApp);
+// resize a canvas's backing store when DPR changes; returns the 2D context
+// with its transform set so drawing code keeps using CSS-pixel coordinates
+function hiDPI(canvas, w, h) {
+  const bw = Math.round(w * DPR), bh = Math.round(h * DPR);
+  if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
+  const c = canvas.getContext('2d');
+  c.setTransform(bw / w, 0, 0, bh / h, 0, 0);
+  return c;
+}
+
+// ── Stage data (StageLoader) ────────────────────────────────────────────────
+// 100 stage configs. Built procedurally from the schema's progression curve so
+// the game always works (even opened via file://, where fetch() is blocked).
+// If assets/levels/stages.json can be fetched (served over http, or whatever the
+// LEVELS AGENT ships), it overlays the procedural defaults. We read BOTH the
+// schema field names (enemies/notes) and the current file's names
+// (enemy_types/note) so it can't break whichever naming LEVELS settles on.
+const STAGES = {};
+const MILESTONES = new Set([10,20,30,40,50,60,70,80,90,100]);
+
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+function proceduralStage(n){
+  // speed curve
+  let speed;
+  if (n<=5) speed = 0.8;
+  else if (n<=20) speed = 1.0;
+  else if (n<=40) speed = 1.0 + (n-20)/20*0.3;       // 1.0 → 1.3
+  else if (n<=55) speed = 1.3 + (n-40)/15*0.3;       // 1.3 → 1.6
+  else if (n<=70) speed = 1.6 + (n-55)/15*0.2;       // 1.6 → 1.8
+  else if (n<=85) speed = 1.8 + (n-70)/15*0.2;       // 1.8 → 2.0
+  else            speed = 2.0 + (n-85)/15*0.4;       // 2.0 → 2.4
+  // pad lifetime (null = permanent)
+  let life = null;
+  if (n>=11 && n<=30) life = 10 - (n-11)/19*2;        // 10 → 8
+  else if (n<=55) life = 8 - (n-30)/25*3;             // 8 → 5
+  else if (n<=85) life = 5 - (n-55)/30*1;             // 5 → 4
+  else if (n>85) life = 4 - (n-85)/15*0.6;            // 4 → 3.4
+  // pad drift
+  const drift = n>=41 ? clamp((n-41)/59*0.5,0,0.5) : 0;
+  // enemies by introduction schedule
+  const types = [];
+  const pool = [];
+  if (n>=21) pool.push('croc');
+  if (n>=31) pool.push('shooting_star');
+  if (n>=41) pool.push('snake');
+  if (n>=56) pool.push('saucer');
+  if (n>=71) pool.push('dragon');
+  const isMile = MILESTONES.has(n);
+  const isBreather = MILESTONES.has(n-1) || [25,45,63,78,93].includes(n); // calmer beat after each milestone + a few mid-game lulls
+  if (pool.length && !isBreather){
+    // introduce one type at its first stage, then scale count with depth
+    let count = isMile ? Math.min(pool.length, 3) : clamp(Math.floor((n-15)/22)+1, 1, 3);
+    // a freshly-introduced type appears solo first
+    if ([21,31,41,56,71].includes(n)) { types.push(pool[pool.length-1]); }
+    else { for (let i=0;i<count;i++) types.push(pool[(i*3+n)%pool.length]); }
+  }
+  const hazards = (n>=11 && !isBreather) ? ['edge_danger'] : [];
+  return {
+    stage:n, speed_multiplier:+speed.toFixed(2), pad_lifetime: life?+life.toFixed(1):null,
+    pad_drift_speed:+drift.toFixed(2), enemy_types:types, hazards,
+    lives: n<=5?99:3, blooms: clamp(Math.round(2+n/11),1,12),
+    note: isMile?'Milestone':isBreather?'Breather':''
+  };
+}
+
+function buildProceduralStages(){ for(let n=1;n<=100;n++) STAGES[n]=proceduralStage(n); }
+
+// Normalize whatever shape the JSON uses into the engine's stage object.
+function normalizeStage(n, raw){
+  const base = STAGES[n] || proceduralStage(n);
+  if (!raw || typeof raw!=='object') return base;
+  // enemy types: support enemies[] (objects or strings) or enemy_types[] (strings)
+  let types = base.enemy_types;
+  if (Array.isArray(raw.enemy_types)) types = raw.enemy_types.slice();
+  else if (Array.isArray(raw.enemies)) types = raw.enemies.map(e => typeof e==='string'?e:(e&&e.type)).filter(Boolean);
+  return {
+    stage:n,
+    speed_multiplier: raw.speed_multiplier ?? base.speed_multiplier,
+    pad_lifetime: (raw.pad_lifetime!==undefined ? raw.pad_lifetime : base.pad_lifetime),
+    pad_drift_speed: raw.pad_drift_speed ?? base.pad_drift_speed,
+    enemy_types: types,
+    hazards: Array.isArray(raw.hazards)?raw.hazards:base.hazards,
+    lives: raw.lives ?? base.lives,
+    blooms: raw.blooms ?? base.blooms,
+    note: raw.notes ?? raw.note ?? base.note
+  };
+}
+
+function loadStageOverrides(){
+  // Best-effort: works when served over http. Silently keeps procedural on file://.
+  fetch('assets/levels/stages.json').then(r=>r.ok?r.json():null).then(data=>{
+    if(!data) return;
+    const list = Array.isArray(data) ? data : (Array.isArray(data.stages)?data.stages:null);
+    if(list){
+      list.forEach(s=>{ const n=s.stage||s.level; if(n>=1&&n<=100) STAGES[n]=normalizeStage(n,s); });
+    } else if (typeof data==='object'){
+      Object.keys(data).forEach(k=>{ const n=+k; if(n>=1&&n<=100) STAGES[n]=normalizeStage(n,data[k]); });
+    }
+    console.log('[StageLoader] stages.json overlay applied');
+  }).catch(()=>{ /* file:// or missing — procedural stands */ });
+}
+
+buildProceduralStages();
+loadStageOverrides();
+
+// ── Navigation (with rebuilds + soft fade) ──────────────────────────────────
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(screenId);
+  // restart the fade-in animation
+  el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+  if (screenId==='s-charselect') buildCharGrid();
+  if (screenId==='s-levelselect') buildLevelGrid();
+}
+
+// ── Screen 2 — Character Select ─────────────────────────────────────────────
+function buildCharGrid() {
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = '';
+  if (window._cLoops) window._cLoops.forEach(id => cancelAnimationFrame(id));
+  window._cLoops = [];
+  for (let ci = 0; ci < CHARS.length; ci++) {
+    const c = CHARS[ci];
+    const isSel = c.id === selectedChar;
+    const card = document.createElement('div');
+    card.className = 'char-card' + (isSel ? ' selected' : '');
+    card.style.borderColor = isSel ? c.col : '';
+    card.style.padding = '6px 4px 8px';
+    const cv = document.createElement('canvas');
+    cv.style.cssText = 'display:block;width:100%;aspect-ratio:160/150;';
+    const nm = document.createElement('div');
+    nm.className = 'char-name';
+    nm.style.color = c.col;
+    nm.textContent = c.name;
+    const tg = document.createElement('div');
+    tg.className = 'char-tag';
+    tg.textContent = c.tag;
+    card.appendChild(cv); card.appendChild(nm); card.appendChild(tg);
+    card.onclick = () => selectChar(c.id);
+    grid.appendChild(card);
+    (function(idx, canvas) {
+      const CW = 160, CH = 150;
+      let lt = Math.random() * 6.28, last = performance.now();
+      // hovering over a moonlit strip of water; the selected spirit celebrates
+      function frame(now) {
+        lt += Math.min(0.05, (now - last) / 1000); last = now;
+        const cx2 = hiDPI(canvas, CW, CH);
+        const bg = cx2.createLinearGradient(0, 0, 0, CH);
+        bg.addColorStop(0, CHARS[idx].dark); bg.addColorStop(0.7, '#071a28'); bg.addColorStop(1, '#0b2a3a');
+        cx2.fillStyle = bg; cx2.fillRect(0, 0, CW, CH);
+        for (let i = 0; i < 4; i++) {
+          const wy = CH * 0.8 + i * 7, wx = ((lt * (12 + i * 5) + i * 37) % (CW + 60)) - 30;
+          cx2.fillStyle = `rgba(150,220,210,${0.07 - i * 0.012})`;
+          cx2.fillRect(wx, wy, 26 - i * 4, 1);
+        }
+        const st = CHARS[idx].id === selectedChar ? 'CELEBRATING' : 'IDLE';
+        drawSpirit(cx2, CW / 2, CH * 0.8, lt, st, CHARS[idx].id, { scale: 1.3 });
+        window._cLoops[idx] = requestAnimationFrame(frame);
+      }
+      window._cLoops[idx] = requestAnimationFrame(frame);
+    })(ci, cv);
+  }
+}
+
+function selectChar(id) {
+  selectedChar = id;
+  localStorage.setItem('selected_character', id);
+  goTo('s-levelselect');
+}
+
+// ── Screen 3 — Level Select ─────────────────────────────────────────────────
+// TESTING: every stage open. Set to false to restore clear-N-to-unlock-N+1.
+const UNLOCK_ALL = true;
+function isUnlocked(n){
+  if (UNLOCK_ALL) return true;
+  if (localStorage.getItem('dab_debug')==='1') return true;
+  if (n===1) return true;
+  const p = getProgress();
+  return (p[n-1]||0) >= 1;
+}
+
+// Ten stages of ten levels. The map shows one stage at a time; the next
+// stage opens once its predecessor's 10th level is cleared.
+const STAGE_INFO = [
+  ['The Still Pond',    'Learn to hop. The clock gets shorter every level — can you beat it?'],
+  ['Fading Waters',     'New: pads that crumble when you land, and currents that carry pads away.'],
+  ['Croc Waters',       'New: crocodiles lurk beside the pads.'],
+  ['Falling Sky',       'New: shooting stars crash into the pond.'],
+  ['Serpent Reeds',     'New: water snakes swim across your path.'],
+  ['Saucer Skies',      'New: a flying saucer raids the pond to steal pads.'],
+  ['Stolen Stars',      'Saucers and falling stars, together.'],
+  ["Dragon's Reach",    'New: the dragon breathes fire on your pad.'],
+  ['Ember Lake',        'Every hazard at once — and faster.'],
+  ['The Bloom Eternal', 'The final pond. Reach the last lotus.'],
+];
+const stageOf = n => Math.floor((n - 1) / 10) + 1;
+const levelInStage = n => (n - 1) % 10 + 1;
+const stageUnlocked = s => s === 1 || isUnlocked((s - 1) * 10 + 1);
+function stageStars(s){ const p = getProgress(); let t = 0; for (let i = 1; i <= 10; i++) t += p[(s - 1) * 10 + i] || 0; return t; }
+function defaultStage(){
+  const p = getProgress();
+  for (let n = 1; n <= 100; n++) if (isUnlocked(n) && !(p[n] > 0)) return stageOf(n);
+  return 10;
+}
+let viewStage = +(localStorage.getItem('dab_stage_view') || 0) || defaultStage();
+
+function buildLevelGrid() {
+  const s = viewStage = clamp(viewStage, 1, 10);
+  const info = STAGE_INFO[s - 1], progress = getProgress();
+  document.getElementById('stage-num').textContent = `STAGE ${s}` + (UNLOCK_ALL ? ' · TEST MODE' : '');
+  document.getElementById('stage-name').textContent = info[0];
+  document.getElementById('stage-stars').textContent = `★ ${stageStars(s)} / 30`;
+  const nextOpen = s < 10 && stageUnlocked(s + 1);
+  document.getElementById('stage-hint').textContent = info[1] + (s < 10 && !nextOpen ? `  ·  Clear level 10 to open Stage ${s + 1}.` : '');
+  document.getElementById('stage-prev').disabled = s <= 1;
+  document.getElementById('stage-next').disabled = !nextOpen;
+  const map = document.getElementById('stage-map');
+  map.innerHTML = '';
+  // winding path from level 1 (bottom) up to the lotus level 10 (top)
+  const pts = [];
+  const XS = [195, 290, 238, 135, 82, 160, 268, 305, 215, 120];
+  for (let i = 0; i < 10; i++) pts.push({ x: XS[i], y: 730 - i * 58 });
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < 9; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(9, i + 2)];
+    d += ` C${p1.x + (p2.x - p0.x) / 6},${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6},${p2.y - (p3.y - p1.y) / 6} ${p2.x},${p2.y}`;
+  }
+  map.innerHTML = `<svg viewBox="0 0 390 844" width="390" height="844"><path d="${d}" fill="none" stroke="rgba(160,240,210,0.35)" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/></svg>`;
+  let nextMarked = false;
+  pts.forEach((pt, i) => {
+    const n = (s - 1) * 10 + i + 1, unlocked = isUnlocked(n), st = progress[n] || 0;
+    const b = document.createElement('button');
+    b.className = 'lv-node' + (i === 9 ? ' boss' : '');
+    if (!unlocked) b.classList.add('locked');
+    else if (st > 0) b.classList.add('done');
+    else if (!nextMarked) { b.classList.add('next'); nextMarked = true; }
+    b.style.left = pt.x + 'px'; b.style.top = pt.y + 'px';
+    b.style.animationDelay = (i * 0.07) + 's' + (b.classList.contains('next') ? `, ${0.7 + i * 0.07}s` : '');
+    b.innerHTML = unlocked ? `${i + 1}<span class="st">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</span>` : '🔒';
+    if (unlocked) b.onclick = () => startLevel(n);
+    map.appendChild(b);
+  });
+  // arriving from a stage-clear celebration: announce the newly opened stage
+  if (+localStorage.getItem('dab_stage_intro') === s) {
+    localStorage.removeItem('dab_stage_intro');
+    const bn = document.createElement('div');
+    bn.id = 'stage-banner';
+    bn.innerHTML = `Stage ${s} unlocked!<small>${info[0]} — ${info[1]}</small>`;
+    map.appendChild(bn);
+  }
+}
+function showStage(s){ viewStage = s; localStorage.setItem('dab_stage_view', s); buildLevelGrid(); }
+document.getElementById('stage-prev').addEventListener('click', () => showStage(viewStage - 1));
+document.getElementById('stage-next').addEventListener('click', () => showStage(viewStage + 1));
+
+// triple-tap the stage title to toggle debug (unlock everything for testing)
+;(function(){
+  let taps=0,timer=null;
+  document.getElementById('level-title').addEventListener('click',()=>{
+    taps++; clearTimeout(timer); timer=setTimeout(()=>taps=0,500);
+    if(taps>=3){ taps=0;
+      const on = localStorage.getItem('dab_debug')==='1';
+      localStorage.setItem('dab_debug', on?'0':'1');
+      buildLevelGrid();
+    }
+  });
+})();
+
+// animated moonlit pond behind the stage map
+;(function(){
+  const cv = document.getElementById('map-bg'), scr = document.getElementById('s-levelselect');
+  let t = 0;
+  function frame(){
+    requestAnimationFrame(frame);
+    if (!scr.classList.contains('active')) return;
+    t += 0.016;
+    const c = hiDPI(cv, 390, 844);
+    drawNightSky(c, 390, 844, t);
+    drawWaterSurface(c, 390, 844, t, 0.2);
+    drawShoreline(c, 390, 844, t, 0.2);
+    drawFireflies(c, 390, 844, t, 10);
+    drawReeds(c, 390, 844, t);
+  }
+  requestAnimationFrame(frame);
+})();
+
+function startLevel(n) {
+  selectedLevel = n;
+  viewStage = stageOf(n); localStorage.setItem('dab_stage_view', viewStage);
+  goTo('s-gameplay');
+  initGameplay(n);
+}
+
+// ── localStorage helpers ────────────────────────────────────────────────────
+function getProgress() {
+  try { return JSON.parse(localStorage.getItem('dab_stars') || '{}'); } catch { return {}; }
+}
+
+// ── Begin Screen Canvas ─────────────────────────────────────────────────────
+;(function(){
+  const cv=document.getElementById('begin-bg');let cx=cv.getContext('2d');
+  const W=390,H=844,TAU=6.2832,WY=H*.65;
+  const stars=Array.from({length:75},()=>({x:Math.random()*W,y:Math.random()*WY,r:Math.random()*1.6+.3,ph:Math.random()*TAU,sp:Math.random()*1.5+.5}));
+  const flies=Array.from({length:16},()=>({x:Math.random()*W,y:WY*.15+Math.random()*WY*.7,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.22,ph:Math.random()*TAU,gs:1+Math.random()*1.4,r:1.6+Math.random()*1.2,g:Math.random()<.7?'93,230,160':'210,245,175'}));
+  let t=0,shoot={on:false,t:0,x:0,y:0,vx:0,vy:0},st=0;
+
+  function frame(){
+    t+=.016;st+=.016;
+    cx=hiDPI(cv,W,H);
+    // shared night sky + moon + stars, then the title-screen water band on top
+    drawNightSky(cx,W,H,t);
+    flies.forEach(f=>{f.x+=f.vx+Math.sin(t*.5+f.ph)*.25;f.y+=f.vy+Math.cos(t*.4+f.ph)*.18;if(f.x<0)f.x=W;if(f.x>W)f.x=0;if(f.y<18)f.vy=Math.abs(f.vy);if(f.y>WY*.95)f.vy=-Math.abs(f.vy);const gl=.4+.6*Math.sin(t*f.gs+f.ph);const g=cx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r*9);g.addColorStop(0,`rgba(${f.g},${gl})`);g.addColorStop(1,`rgba(${f.g},0)`);cx.fillStyle=g;cx.fillRect(f.x-f.r*9,f.y-f.r*9,f.r*18,f.r*18);cx.beginPath();cx.arc(f.x,f.y,f.r*(gl+.3),0,TAU);cx.fillStyle=`rgba(255,255,255,${.85*gl})`;cx.fill();});
+    drawWaterSurface(cx,W,H,t,WY/H);
+    drawShoreline(cx,W,H,t,WY/H);
+    drawReeds(cx,W,H,t);
+    // hero spirit drifting above the water
+    drawSpirit(cx,W/2,WY-40,t,'IDLE',selectedChar,{scale:1.35});
+    cx.save();cx.textAlign='center';cx.shadowColor='rgba(93,202,165,.55)';cx.shadowBlur=22;
+    cx.font='bold 62px Georgia,serif';cx.fillStyle='#9FE1CB';cx.fillText('Drift',W/2,WY-200);
+    cx.font='bold 40px Georgia,serif';cx.fillStyle='rgba(245,210,100,.92)';cx.fillText('& Bloom',W/2,WY-148);
+    cx.shadowBlur=0;cx.font='15px system-ui,sans-serif';cx.fillStyle='rgba(160,220,200,.52)';cx.fillText('guide your spirit home',W/2,WY-112);
+    cx.restore();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+// ── Gameplay Canvas ─────────────────────────────────────────────────────────
+// HOP ACROSS THE POND. Lily pads already float on the water; tap a pad within
+// reach to jump onto it, pick up the blooms on the way, and land on the lotus.
+// Stage config (stages.json) turns up the difficulty: pads fade (sink and
+// resurface), currents carry pads toward the edges, and enemies arrive —
+// croc, shooting star, snake, saucer, dragon. Mechanics follow the original
+// prototype in workspace/gameplay/concept.html.
+let gActive = false;
+;(function(){
+  const cv=document.getElementById('game-cv');let cx=cv.getContext('2d');
+  const W=390,H=844,TAU=6.2832,WY=H*0.35,YF=WY/H;
+  const JUMP_R=165;                         // max hop distance, px
+  const DRAGON_SRC='assets/sprites/dragon_sheet.png';
+  // banner shown the first time a mechanic appears
+  const INTRO={
+    1:['Hop to the lotus','Tap a lily pad within reach to jump onto it. Reach the pink lotus!'],
+    3:['Collect the blooms','Golden blooms sit on some pads. Hop onto them for extra stars.'],
+    11:['Fading pads','Some pads crumble once you land on them and sink for good. Fall in and you restart — with every pad restored.'],
+    16:['Currents','The current carries pads toward the edge. Don\'t ride one off the screen!'],
+    21:['Crocodile!','When its eyes surface beside your pad, hop away before it snaps.'],
+    31:['Falling stars','A glowing circle marks where a star will land. Get out of it!'],
+    41:['Snakes','Snakes swim across the pond. Don\'t be on their path.'],
+    56:['Saucers','A saucer beams pads away. If the beam is on your pad, move!'],
+    71:['The dragon','When the dragon locks its target on you, jump before it breathes fire.'],
+    86:['Everything at once','Every hazard in the pond. Good luck, little spirit.'],
+  };
+
+  function seeded(seed){ let a=seed>>>0; return ()=>{ a=(a+0x6d2b79f5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return((t^(t>>>14))>>>0)/4294967296; }; }
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const depth=y=>clamp((y-WY)/(H-WY),0,1);          // 0 at the horizon, 1 at the bottom edge
+  const padR=y=>21+15*depth(y);
+  const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
+
+  let pads=[],enemies=[],parts=[],floaters=[],path=[];
+  let cfg=null,levelN=1,charId='spirit',spd=1;
+  let sT=0,won=false,winT=0,failed=false,lives=3,maxLives=3,invuln=0,shake=0,starsShown=0,hits=0;
+  let bloomsTotal=0,bloomsGot=0,respawnT=0,introT=0,introTxt=null;
+  let timeLimit=60,timeLeft=60,failReason='lives',timeDrop=0,startedN=0,toastT=0;
+  let hover={x:-99,y:-99};
+  const sp={x:0,y:0,pad:null,jumping:false,jt:0,dur:0.5,from:{x:0,y:0},to:null,hidden:false,state:'IDLE',stateT:0,vx:0,vy:0};
+
+  function hexRgb(h){const n=parseInt(h.slice(1),16);return`${n>>16},${n>>8&255},${n&255}`;}
+  function charRgb(){const c=CHARS.find(c=>c.id===charId)||CHARS[0];return hexRgb(c.col);}
+  // particles: 'glow' (additive soft sparks), 'star' (twinkling 4-point), 'drop' (water droplets)
+  function burst(x,y,col,n,s,kind){ if(parts.length>220)return; for(let i=0;i<n;i++){const a=Math.random()*TAU,v=s*(0.4+Math.random()*0.8);parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-0.4,life:1,col,r:1.5+Math.random()*2.2,kind:kind||'glow',rot:Math.random()*TAU});} }
+  function ripple(x,y,col){ parts.push({ring:true,x,y,life:1,col,r0:8}); }
+  function splash(x,y,big){
+    const n=big?22:10;
+    for(let i=0;i<n;i++){const a=(Math.random()-0.5)*2.4-Math.PI/2,v=(big?2.6:1.6)*(0.5+Math.random());parts.push({x:x+(Math.random()-0.5)*10,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-(big?1.2:0.6),life:1,col:'205,238,255',r:0.9+Math.random()*1.3,kind:'drop'});}
+    ripple(x,y,'170,225,245'); if(big){ripple(x,y+2,'150,215,240');parts.push({ring:true,x,y,life:1.3,col:'200,240,255',r0:3});}
+  }
+  const dotCache={};
+  function dotSprite(col){ if(dotCache[col])return dotCache[col]; const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,`rgba(${col},1)`);gr.addColorStop(0.35,`rgba(${col},0.5)`);gr.addColorStop(1,`rgba(${col},0)`);g.fillStyle=gr;g.fillRect(0,0,32,32);return dotCache[col]=c; }
+  function floatText(x,y,txt,col){ floaters.push({x,y,txt,col,life:1}); }
+
+  // ── Pond layout: a guaranteed route of hops from the start pad to the lotus,
+  // plus side pads (reachable detours) that carry most of the blooms.
+  function buildPond(n){
+    const R=seeded(n*7919+13);
+    pads=[];
+    const mk=(x,y,kind)=>({x,y,bx:x,by:y,r:kind==='start'?40:kind==='goal'?34:padR(y),ph:R()*TAU,kind,
+      st:'up',stT:0,upT:0,bloom:false,flash:0,lane:0,vx:0,lift:0});
+    const start=mk(W*0.5,H-84,'start');
+    const goal=mk(W*(0.26+R()*0.48),WY+66,'goal');
+    pads.push(start);
+    path=[start];
+    let cur=start,side=R()<0.5?-1:1,guard=0;
+    while(dist(cur.x,cur.y,goal.x,goal.y)>JUMP_R*0.8&&guard++<14){
+      const head=Math.atan2(goal.y-cur.y,goal.x-cur.x)+side*(0.35+R()*0.5); side=-side;
+      const L=JUMP_R*(0.58+R()*0.2);
+      const p=mk(clamp(cur.x+Math.cos(head)*L,46,W-46),clamp(cur.y+Math.sin(head)*L,WY+62,H-64),'path');
+      p.r=padR(p.y); pads.push(p); path.push(p); cur=p;
+    }
+    pads.push(goal); path.push(goal);
+    // side pads: spaced out, each reachable from something already on the pond
+    const want=5+Math.min(7,Math.floor(n/10))+Math.max(0,(cfg.blooms||3)-3);
+    let tries=0;
+    while(pads.filter(p=>p.kind==='side').length<want&&tries++<600){
+      const x=40+R()*(W-80),y=WY+52+R()*(H-WY-110);
+      if(pads.some(p=>dist(p.x,p.y,x,y)<p.r+padR(y)+26))continue;
+      if(!pads.some(p=>p.kind!=='goal'&&dist(p.x,p.y,x,y)<JUMP_R*0.85))continue;
+      pads.push(mk(x,y,'side'));
+    }
+    // blooms: mostly on detour pads, then along the route
+    const cand=[...pads.filter(p=>p.kind==='side').sort(()=>R()-0.5),...path.filter(p=>p.kind==='path')];
+    bloomsTotal=Math.min(cfg.blooms||3,cand.length);
+    for(let i=0;i<bloomsTotal;i++)cand[i].bloom=true;
+    bloomsGot=0;
+    // fading pads: a hidden subset (looks like any other pad) that crumbles
+    // once you land on it and stays sunk until the pond resets; the rest are
+    // safe to hop back and forth on. Currents: alternate lane direction.
+    const life=cfg.pad_lifetime;
+    const fadeFrac=life!=null?clamp(0.3+(n-11)/89*0.35,0.3,0.65):0;
+    const currents=(cfg.hazards||[]).includes('edge_danger')&&cfg.pad_drift_speed>0;
+    pads.forEach(p=>{
+      p.fades=false; p.fading=false; p.fadeT=0; p.fadeDur=1;
+      if(p.kind==='start'||p.kind==='goal')return;
+      p.fades=R()<fadeFrac;
+      if(currents){ p.lane=Math.floor((p.y-WY)/95)%2?1:-1; p.vx=p.lane*(10+cfg.pad_drift_speed*95); }
+    });
+  }
+
+  const padUp=p=>p&&(p.st==='up'||p.st==='rise');
+  function sinkPad(p,downFor){
+    if(!p||p.kind==='start'||p.kind==='goal')return;
+    p.st='down'; p.stT=downFor; burst(p.x,p.y,'120,200,160',8,2); ripple(p.x,p.y,'140,220,200');
+  }
+
+  window.initGameplay=function(n){
+    levelN=n;
+    cfg=STAGES[n]||{speed_multiplier:1,pad_lifetime:null,pad_drift_speed:0,enemy_types:[],hazards:[],lives:3,blooms:3,note:''};
+    spd=Math.max(0.6,cfg.speed_multiplier||1);
+    charId=localStorage.getItem('selected_character')||'spirit';
+    buildPond(n);
+    sp.pad=pads[0];sp.jumping=false;sp.hidden=false;sp.state='IDLE';sp.stateT=0;sp.vx=0;sp.vy=0;sp.to=null;
+    placeOnPad();
+    won=false;winT=0;failed=false;starsShown=0;hits=0;parts=[];floaters=[];invuln=0;shake=0;respawnT=0;sT=0;
+    maxLives=lives=cfg.lives||3;
+    enemies=spawnEnemies(cfg);
+    introTxt=INTRO[n]||null; introT=introTxt?4.2:0;
+    // level clock: every stage starts roomy and gets shorter each level
+    // (10 levels per stage), but never below what the route + blooms need
+    const hops=path.length-1, lvl=(n-1)%10, stg=Math.floor((n-1)/10);
+    // (later stages get a little extra for waiting out their hazards)
+    const need=(hops*1.6+2)*1.3+bloomsTotal*1.2;
+    const lim=lerp(44,22,lvl/9)+stg*1.3;
+    const prevLimit=startedN===n-1?timeLimit:null;
+    timeLimit=Math.round(clamp(Math.max(lim,need),14,90));
+    timeDrop=prevLimit!=null&&lvl>0?prevLimit-timeLimit:0;
+    startedN=n; toastT=introTxt?0:2.4;
+    timeLeft=timeLimit; failReason='lives';
+    gActive=true;
+  };
+
+  function placeOnPad(){ const p=sp.pad; if(!p)return; sp.x=p.x; sp.y=p.y+Math.sin(sT*1.3+p.ph)*1.5-3; }
+
+  // ── Enemies ─────────────────────────────────────────────────────────────
+  function spawnEnemies(cfg){
+    return (cfg.enemy_types||[]).map((type,i)=>({type,st:'wait',t:2.2+i*1.9+Math.random(),x:-200,y:0,dir:1,a:0,pad:null,tx:0,ty:0,power:0,bt:0}));
+  }
+  const standing=()=>!sp.jumping&&!sp.hidden&&sp.pad;
+  function pickTargetPad(biasSelf){
+    if(standing()&&sp.pad.kind!=='goal'&&Math.random()<biasSelf)return sp.pad;
+    const pool=pads.filter(p=>padUp(p)&&p.kind!=='goal'&&p.kind!=='start'&&dist(p.x,p.y,sp.x,sp.y)<220);
+    return pool.length?pool[Math.floor(Math.random()*pool.length)]:(standing()&&sp.pad.kind!=='goal'?sp.pad:null);
+  }
+
+  function hurt(reason,wet){
+    if(invuln>0||won||failed||respawnT>0)return;
+    lives--;hits++;invuln=1.7;shake=0.45;
+    burst(sp.x,sp.y,'255,90,90',14,3);
+    floatText(sp.x,sp.y-48,reason,'255,170,160');
+    if(wet)splash(sp.x,sp.y+4,true);
+    if(lives<=0){failed=true;failReason='lives';sp.hidden=true;return;}
+    // every hit sends the spirit back to the start pad and restores the pond
+    sp.hidden=true;respawnT=0.9;
+  }
+  // put every pad back as the stage began (crumbled pads resurface, currents
+  // rewind) and give the enemies a moment before they come back
+  function resetPond(){
+    for(const p of pads){
+      p.x=p.bx;p.y=p.by;p.fading=false;p.fadeT=0;p.lift=0;p.abducted=false;
+      if(p.st!=='up'){p.st='rise';p.stT=0.35;}
+    }
+    enemies.forEach((e,i)=>{
+      // flyers already on screen head off gracefully instead of vanishing
+      if((e.type==='saucer'||e.type==='dragon')&&e.st!=='wait'){ e.st='leave'; e.pad=null; e.power=0; if(e.pad)e.pad.lift=0; return; }
+      e.st='wait';e.t=1.6+i*0.9;e.pad=null;e.power=0;e.a=0; if(e.type==='snake'||e.type==='dragon'||e.type==='saucer')e.x=-300;
+    });
+  }
+  function respawn(){
+    resetPond();
+    sp.pad=pads[0];
+    sp.hidden=false;sp.jumping=false;sp.state='IDLE';invuln=1.7;placeOnPad();
+    ripple(sp.x,sp.y,charRgb());
+    floatText(sp.x,sp.y-52,'Back to the start','160,230,210');
+  }
+
+  function updateEnemies(dt){
+    for(const e of enemies){
+      e.t-=dt;
+      switch(e.type){
+        case 'croc':{
+          if(e.st==='wait'&&e.t<=0){ e.pad=pickTargetPad(0.7); if(!e.pad){e.t=1;break;} e.dir=Math.random()<0.5?1:-1; e.st='telegraph'; e.t=Math.max(0.8,1.6/Math.sqrt(spd)); }
+          if(e.pad){ e.x=e.pad.x+e.dir*(e.st==='charge'?30:42); e.y=e.pad.y+6; }
+          if(e.st==='telegraph'){ e.a=Math.min(1,e.a+dt*3); if(e.t<=0){e.st='charge';e.t=0.5;shake=Math.max(shake,0.15);} }
+          else if(e.st==='charge'){ if(standing()&&sp.pad===e.pad)hurt('Snapped by a croc!',false); if(e.t<=0){e.st='sink';e.t=0.6;} }
+          else if(e.st==='sink'){ e.a=Math.max(0,e.a-dt*2); if(e.t<=0){e.st='wait';e.t=rnd(3.5,6.5)/spd;e.pad=null;} }
+          break;
+        }
+        case 'snake':{
+          if(e.st==='wait'&&e.t<=0){ e.dir=Math.random()<0.5?1:-1; e.x=e.dir>0?-120:W+120; e.y=clamp(sp.y+rnd(-60,60),WY+70,H-110); e.st='swim'; }
+          if(e.st==='swim'){
+            e.x+=e.dir*48*spd*dt;
+            if(standing()){
+              for(let u=0;u<=1;u+=0.1){
+                const bx=e.x-e.dir*(-2+u*96), by=e.y+Math.sin(sT*4-u*6)*6.5*(0.35+0.65*u);
+                if(dist(bx,by,sp.x,sp.y+3)<21){hurt('Bitten by a snake!',false);break;}
+              }
+            }
+            if((e.dir>0&&e.x>W+140)||(e.dir<0&&e.x<-140)){e.st='wait';e.t=rnd(2.5,5)/spd;}
+          }
+          break;
+        }
+        case 'dragon':{
+          if(e.st==='wait'&&e.t<=0){ e.dir=Math.random()<0.5?1:-1; e.x=e.dir>0?-140:W+140; e.baseY=148+rnd(-16,16); e.dive=0; e.st='fly'; }
+          const v=e.st==='aim'||e.st==='fire'?26:76*Math.sqrt(spd);
+          if(e.st!=='wait')e.x+=e.dir*v*dt;
+          // glide through mid-air on a gentle swell; dip toward the target to breathe
+          e.dive=lerp(e.dive||0,e.st==='aim'||e.st==='fire'?1:0,1-Math.exp(-dt*2.5));
+          e.y=(e.baseY||148)+Math.sin(sT*0.8+(e.baseY||0))*4+e.dive*20;
+          // only breathe on a pad that is ahead of the jaws, so the fire goes forward-down
+          if(e.st==='fly'&&e.x>80&&e.x<W-80&&standing()&&sp.pad.kind!=='goal'){ const ahead=(sp.pad.x-e.x)*e.dir; if(ahead>30&&ahead<230){ e.pad=sp.pad; e.st='aim'; e.t=Math.max(0.75,1.25/Math.sqrt(spd)); } }
+          if(e.pad&&(e.st==='aim'||e.st==='fire')){ e.tx=e.pad.x; e.ty=e.pad.y; }
+          if(e.st==='aim'&&e.t<=0){ e.st='fire'; e.t=1.25; e.bt=0; }
+          if(e.st==='fire'){
+            e.bt+=dt; e.power=Math.min(1,e.bt/0.25,Math.max(0,e.t)/0.25);
+            if(e.bt>0.3&&standing()&&dist(sp.x,sp.y,e.tx,e.ty)<34)hurt('Scorched by dragon fire!',false);
+            if(e.t<=0){ e.st='leave'; e.power=0; if(e.pad&&e.pad!==sp.pad)sinkPad(e.pad,2.6); e.pad=null; }
+          }
+          if((e.st==='leave'||e.st==='fly')&&(e.x<-170||e.x>W+170)){ e.st='wait'; e.t=rnd(5,8)/spd; }
+          break;
+        }
+        case 'saucer':{
+          // raid pattern: off-screen -> swoops in -> locks its beam on a pad ->
+          // snatches it -> zooms away -> returns after a while
+          const HOVER=WY-72;
+          if(e.st==='wait'){
+            e.x=-300;
+            if(e.t<=0){ e.pad=pickTargetPad(0.45); if(!e.pad){e.t=1;break;}
+              e.dir=Math.random()<0.5?1:-1; e.x=e.dir>0?-60:W+60; e.y=HOVER-95; e.sx=e.x; e.sy=e.y; e.st='enter'; e.u=0; }
+          }
+          else if(e.st==='enter'){
+            // curve in from high up the side, easing into a hover over the target pad
+            e.u=Math.min(1,e.u+dt*0.85*Math.sqrt(spd));
+            const k=1-Math.pow(1-e.u,3), tx=e.pad.x;
+            const nx=e.sx+(tx-e.sx)*k, ny=e.sy+(HOVER-e.sy)*Math.sin(k*Math.PI/2);
+            e.vx=(nx-e.x)/Math.max(dt,1e-3); e.x=nx; e.y=ny;
+            if(!padUp(e.pad)){ e.st='leave'; }
+            else if(e.u>=1){ e.st='lock'; e.t=Math.max(0.8,1.3/Math.sqrt(spd)); e.vx=0; }
+          }
+          else if(e.st==='lock'){
+            e.x+=(e.pad.x-e.x)*Math.min(1,dt*4); e.y=HOVER+Math.sin(sT*3)*1.5;
+            if(!padUp(e.pad)){ e.st='leave'; } else if(e.t<=0){ e.st='abduct'; e.t=0.7; }
+          }
+          else if(e.st==='abduct'){
+            e.pad.lift=Math.min(1,e.pad.lift+dt*1.6);
+            if(standing()&&sp.pad===e.pad)hurt('Beamed away!',true);
+            if(e.t<=0){ const p=e.pad; p.lift=0; sinkPad(p,4.5); p.abducted=true; e.st='leave'; e.pad=null; e.vx=0; }
+          }
+          else if(e.st==='leave'){
+            // accelerate off the far side and up, then vanish until the next raid
+            e.vx=(e.vx||0)+e.dir*420*dt; e.x+=e.vx*dt; e.y-=70*dt;
+            if(e.x<-90||e.x>W+90||e.y<-60){ e.st='wait'; e.t=rnd(5,9)/spd; e.pad=null; }
+          }
+          break;
+        }
+        case 'shooting_star':{
+          if(e.st==='wait'&&e.t<=0){ const p=pickTargetPad(0.6); e.tx=p?p.x:sp.x; e.ty=p?p.y:sp.y; e.dir=Math.random()<0.5?1:-1; e.st='warn'; e.t=Math.max(0.9,1.5/Math.sqrt(spd)); e.T=e.t; }
+          if(e.st==='warn'&&e.t<=0){
+            e.st='impact'; e.t=0.35;
+            for(const p of pads)if(dist(p.x,p.y,e.tx,e.ty)<48)sinkPad(p,3.5);
+            if(!sp.jumping&&!sp.hidden&&dist(sp.x,sp.y,e.tx,e.ty)<46)hurt('Hit by a falling star!',!padUp(sp.pad));
+            burst(e.tx,e.ty,'255,210,140',18,3.4);ripple(e.tx,e.ty,'255,210,140');shake=Math.max(shake,0.3);
+          } else if(e.st==='impact'&&e.t<=0){ e.st='wait'; e.t=rnd(3,5.5)/spd; }
+          break;
+        }
+      }
+    }
+  }
+
+  // ── Pads: fading cycle + currents ───────────────────────────────────────
+  function updatePads(dt){
+    const life=cfg.pad_lifetime, drift=cfg.pad_drift_speed||0;
+    const currents=(cfg.hazards||[]).includes('edge_danger')&&drift>0;
+    for(const p of pads){
+      p.flash=Math.max(0,p.flash-dt*3);
+      if(p.kind==='start'||p.kind==='goal')continue;
+      // movement
+      if(currents){
+        p.x+=p.vx*spd*dt;
+        if(p.x>W+p.r+20)p.x=-p.r-20; else if(p.x<-p.r-20)p.x=W+p.r+20;
+      } else if(drift>0){
+        p.x=p.bx+Math.sin(sT*0.55*spd+p.ph)*(14+drift*110);
+        p.y=p.by+Math.cos(sT*0.4*spd+p.ph)*4;
+      }
+      // enemy-sunk pads resurface; crumbled fading pads stay down until a reset
+      if(p.st==='down'){ if(p.stT!==Infinity){ p.stT-=dt; if(p.stT<=0){p.st='rise';p.stT=0.35;p.abducted=false;ripple(p.x,p.y,'140,220,200');} } continue; }
+      if(p.st==='rise'){ p.stT-=dt; if(p.stT<=0)p.st='up'; continue; }
+      if(p.fading){
+        p.fadeT-=dt;
+        if(p.fadeT<=0){
+          const onIt=standing()&&sp.pad===p;
+          p.fading=false; sinkPad(p,Infinity);
+          if(onIt)hurt('The pad sank!',true);
+        }
+      }
+    }
+    // riding a pad off the edge
+    if(currents&&standing()&&sp.pad.kind!=='start'&&(sp.pad.x<8||sp.pad.x>W-8))hurt('Carried off the edge!',true);
+  }
+
+  // ── Spirit ──────────────────────────────────────────────────────────────
+  function tryJump(p){
+    if(!p||p===sp.pad||!padUp(p))return false;
+    if(dist(sp.x,sp.y,p.x,p.y)>JUMP_R){ p.flash=1; floatText(p.x,p.y-28,'Too far','255,190,150'); return false; }
+    sp.jumping=true;sp.jt=0;sp.from={x:sp.x,y:sp.y};sp.to=p;sp.pad=null;
+    sp.dur=clamp(0.5/Math.sqrt(spd),0.3,0.55);sp.state='MOVING';
+    burst(sp.x,sp.y+4,'150,220,190',6,1.6);
+    return true;
+  }
+  function updateSpirit(dt){
+    if(respawnT>0){respawnT-=dt;if(respawnT<=0&&!failed)respawn();return;}
+    if(sp.hidden)return;
+    const px=sp.x,py=sp.y;
+    if(sp.jumping){
+      sp.jt=Math.min(1,sp.jt+dt/sp.dur);
+      const tp=sp.to, tx=tp.x, ty=tp.y+Math.sin(sT*1.3+tp.ph)*1.5-3;
+      const u=sp.jt, m=1-u, d=dist(sp.from.x,sp.from.y,tx,ty);
+      const ctlx=(sp.from.x+tx)/2, ctly=Math.min(sp.from.y,ty)-40-d*0.28;
+      sp.x=m*m*sp.from.x+2*m*u*ctlx+u*u*tx; sp.y=m*m*sp.from.y+2*m*u*ctly+u*u*ty;
+      if(sp.jt>=1){
+        sp.jumping=false;
+        if(padUp(tp)){
+          sp.pad=tp; sp.state='IDLE';
+          ripple(tp.x,tp.y,charRgb()); splash(tp.x,tp.y+2,false);
+          // a fading pad gives itself away only now: it starts to crumble
+          if(tp.fades&&!tp.fading&&tp.st==='up'){ tp.fading=true; tp.fadeT=tp.fadeDur=Math.max(0.9,cfg.pad_lifetime||3); burst(tp.x,tp.y,'170,150,80',8,1.8); }
+          if(tp.bloom){ tp.bloom=false; bloomsGot++; sp.state='COLLECTING'; sp.stateT=0.6; burst(tp.x,tp.y-12,'255,220,110',14,2.8); burst(tp.x,tp.y-12,'255,245,200',8,2.2,'star'); ripple(tp.x,tp.y,'245,210,100'); floatText(tp.x,tp.y-40,'+ bloom','245,215,120'); }
+          if(tp.kind==='goal'){ won=true; winT=0; saveProgress(levelN); burst(tp.x,tp.y-10,'255,138,178',26,3.2); }
+        } else hurt('Fell into the water!',true);
+      }
+    } else if(sp.pad){
+      placeOnPad();
+      if(sp.stateT>0){sp.stateT-=dt;if(sp.stateT<=0&&!won)sp.state='IDLE';}
+    }
+    if(won)sp.state='CELEBRATING';
+    sp.vx=sp.x-px; sp.vy=sp.y-py;
+  }
+
+  function update(dt){
+    sT+=dt;
+    if(invuln>0)invuln=Math.max(0,invuln-dt);
+    if(shake>0)shake=Math.max(0,shake-dt*1.6);
+    if(introT>0)introT=Math.max(0,introT-dt);
+    if(toastT>0)toastT=Math.max(0,toastT-dt);
+    for(let i=parts.length-1;i>=0;i--){const pt=parts[i];pt.life-=dt*(pt.ring?1.6:pt.kind==='drop'?1.7:1.4);if(pt.life<=0){parts.splice(i,1);continue;}if(!pt.ring){pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=pt.kind==='drop'?0.2:0.1;pt.vx*=0.96;pt.vy*=pt.kind==='drop'?0.99:0.96;pt.rot=(pt.rot||0)+dt*4;}}
+    for(let i=floaters.length-1;i>=0;i--){const f=floaters[i];f.life-=dt*0.8;f.y-=dt*18;if(f.life<=0)floaters.splice(i,1);}
+    if(failed)return;
+    if(!won&&introT<=0){
+      timeLeft-=dt;
+      if(timeLeft<=0){timeLeft=0;failed=true;failReason='time';shake=0.3;return;}
+    }
+    if(!won){ updatePads(dt); updateEnemies(dt); }
+    updateSpirit(dt);
+  }
+
+  // ── Drawing ─────────────────────────────────────────────────────────────
+  function drawPad(p){
+    const k=p.kind==='start'||p.kind==='goal'?1:0.7+0.3*depth(p.y);
+    if(p.st==='down'){
+      // submerged: faint shape under the surface + rings
+      cx.save();cx.globalAlpha=0.12;drawLilyPad(cx,p.x,p.y+3,sT,{r:p.r*0.9,phase:p.ph,ripples:true});cx.restore();
+      return;
+    }
+    let sc=1,alpha=1,yOff=0,xOff=0;
+    if(p.st==='rise')sc=1-p.stT/0.35*0.5;
+    // crumbling (only after you've landed on a fading pad): wither, shrink, tremble
+    const fadeK=p.fading?1-clamp(p.fadeT/p.fadeDur,0,1):0;
+    if(fadeK>0){ alpha=1-fadeK*0.5; sc*=1-fadeK*0.14; xOff=Math.sin(sT*38)*fadeK*1.4; }
+    if(p.lift>0){ yOff=-p.lift*60; sc=1-p.lift*0.45; alpha*=1-p.lift*0.5; }
+    cx.save();cx.translate(p.x+xOff,p.y+yOff);cx.scale(sc,sc);cx.globalAlpha=alpha;
+    drawLilyPad(cx,0,0,sT,{r:p.r,phase:p.ph,ripples:p.lift===0});
+    if(fadeK>0){
+      cx.beginPath();cx.ellipse(0,0,p.r,p.r*0.38,0,0,TAU);cx.fillStyle=`rgba(150,122,52,${(0.2+fadeK*0.4).toFixed(3)})`;cx.fill();
+      cx.strokeStyle=`rgba(40,26,10,${(0.35+fadeK*0.4).toFixed(3)})`;cx.lineWidth=0.9;
+      for(let i=0;i<5;i++){const a=i*1.37+p.ph;cx.beginPath();cx.moveTo(0,0);cx.lineTo(Math.cos(a)*p.r*(0.4+fadeK*0.5),Math.sin(a)*p.r*0.38*(0.4+fadeK*0.5));cx.stroke();}
+    }
+    cx.restore();
+    if(fadeK>0){ // time left before it goes under
+      cx.beginPath();cx.ellipse(p.x,p.y,p.r+6,(p.r+6)*0.42,0,-Math.PI/2,-Math.PI/2+TAU*(1-fadeK));
+      cx.strokeStyle=`rgba(255,${Math.round(210-90*fadeK)},80,0.9)`;cx.lineWidth=2.2;cx.stroke();
+    }
+    // edge danger flash
+    if((cfg.hazards||[]).includes('edge_danger')&&p.kind!=='start'&&p.kind!=='goal'&&(p.x<55||p.x>W-55)){
+      cx.beginPath();cx.ellipse(p.x,p.y,p.r+4,(p.r+4)*0.42,0,0,TAU);
+      cx.strokeStyle=`rgba(255,80,60,${0.35+0.35*Math.sin(sT*10)})`;cx.lineWidth=2;cx.stroke();
+    }
+    if(p.flash>0){cx.beginPath();cx.ellipse(p.x,p.y,p.r+5,(p.r+5)*0.42,0,0,TAU);cx.strokeStyle=`rgba(255,110,90,${p.flash})`;cx.lineWidth=2;cx.stroke();}
+    if(p.bloom){ cx.save();cx.translate(p.x,p.y-8*k);cx.scale(k,k);drawBloom(cx,0,0,sT+p.ph);cx.restore(); }
+    if(p.kind==='goal')drawLotusGoal(cx,p.x,p.y-4,sT);
+  }
+
+  function drawReach(){
+    if(sp.jumping||sp.hidden||won||failed)return;
+    let hov=null,hd=1e9;
+    for(const p of pads){
+      if(p===sp.pad||!padUp(p))continue;
+      const d=dist(sp.x,sp.y,p.x,p.y);
+      if(d>JUMP_R)continue;
+      cx.beginPath();cx.ellipse(p.x,p.y,p.r+5,(p.r+5)*0.42,0,0,TAU);
+      cx.strokeStyle=`rgba(140,240,210,${0.3+0.1*Math.sin(sT*3+p.ph)})`;cx.lineWidth=1.6;cx.stroke();
+      const hdist=Math.hypot((hover.x-p.x)/(p.r+14),(hover.y-p.y)/((p.r+14)*0.6));
+      if(hdist<1&&hdist<hd){hd=hdist;hov=p;}
+    }
+    if(hov){ // dashed jump arc preview (mouse)
+      const d=dist(sp.x,sp.y,hov.x,hov.y), cmx=(sp.x+hov.x)/2, cmy=Math.min(sp.y,hov.y)-40-d*0.28;
+      cx.save();cx.setLineDash([4,5]);cx.lineDashOffset=-sT*16;
+      cx.beginPath();cx.moveTo(sp.x,sp.y);cx.quadraticCurveTo(cmx,cmy,hov.x,hov.y);
+      cx.strokeStyle='rgba(150,240,215,0.45)';cx.lineWidth=1.6;cx.stroke();
+      cx.beginPath();cx.ellipse(hov.x,hov.y,hov.r+7,(hov.r+7)*0.42,0,0,TAU);cx.strokeStyle='rgba(160,255,225,0.8)';cx.lineWidth=2;cx.stroke();
+      cx.restore();
+    }
+    // tutorial pointer: the next pad on the route
+    if(levelN<=3&&sp.pad){
+      const i=path.indexOf(sp.pad);
+      const nx=i>=0?path[i+1]:null;
+      if(nx&&padUp(nx)){
+        const b=Math.abs(Math.sin(sT*3))*8;
+        cx.save();cx.translate(nx.x+14,nx.y+14+b);
+        cx.fillStyle='rgba(255,255,255,0.9)';cx.strokeStyle='rgba(7,24,40,0.8)';cx.lineWidth=1.2;
+        cx.beginPath();cx.moveTo(0,0);cx.lineTo(7,15);cx.lineTo(3,14);cx.lineTo(6,22);cx.lineTo(3,23);cx.lineTo(0,15);cx.lineTo(-3,18);cx.closePath();cx.fill();cx.stroke();
+        cx.restore();
+        cx.beginPath();cx.ellipse(nx.x,nx.y,nx.r+9+b*0.5,(nx.r+9+b*0.5)*0.42,0,0,TAU);cx.strokeStyle='rgba(255,255,255,0.55)';cx.lineWidth=1.5;cx.stroke();
+      }
+    }
+  }
+
+  function drawEnemiesWater(){
+    for(const e of enemies){
+      if(e.type==='croc'&&e.pad&&e.st!=='wait'){
+        if(e.st==='telegraph'){ // warning ring on the targeted pad
+          cx.save();cx.setLineDash([6,5]);cx.lineDashOffset=-sT*20;
+          cx.beginPath();cx.ellipse(e.pad.x,e.pad.y,e.pad.r+9,(e.pad.r+9)*0.42,0,0,TAU);
+          cx.strokeStyle=`rgba(255,90,60,${0.45+0.35*Math.sin(sT*16)})`;cx.lineWidth=2.2;cx.stroke();cx.restore();
+        }
+        cx.save();cx.globalAlpha=e.a;
+        const k=0.75+0.35*depth(e.y);
+        cx.translate(e.x,e.y);cx.scale(k,k);
+        drawEnemy(cx,0,0,sT,'croc',{flip:e.dir<0,state:e.st==='charge'?'charge':e.st==='telegraph'?'telegraph':'lurk'});
+        cx.restore();
+      }
+      if(e.type==='snake'&&e.st==='swim'){
+        const k=0.75+0.35*depth(e.y);
+        cx.save();cx.translate(e.x,e.y);cx.scale(k,k);drawEnemy(cx,0,0,sT,'snake',{flip:e.dir>0});cx.restore();
+      }
+    }
+  }
+
+  function drawEnemiesSky(){
+    for(const e of enemies){
+      if(e.type==='shooting_star'&&e.st==='warn'){
+        const p=1-e.t/e.T;
+        cx.save();cx.translate(e.tx,e.ty);
+        cx.beginPath();cx.ellipse(0,0,48,20,0,0,TAU);cx.fillStyle=`rgba(255,150,80,${0.08+p*0.14})`;cx.fill();
+        cx.strokeStyle=`rgba(255,120,80,${0.45+0.4*Math.sin(sT*16)})`;cx.lineWidth=2;
+        cx.beginPath();cx.ellipse(0,0,48*(1-p*0.3),20*(1-p*0.3),0,0,TAU);cx.stroke();
+        cx.beginPath();cx.ellipse(0,0,48*p,20*p,0,0,TAU);cx.strokeStyle='rgba(255,190,120,0.6)';cx.stroke();
+        cx.restore();
+        const fx=e.tx-e.dir*230*(1-p),fy=e.ty-300*(1-p);
+        drawEnemy(cx,fx,fy,sT,'shooting_star',{angle:Math.atan2(e.ty-fy,e.tx-fx)});
+      }
+      if(e.type==='saucer'&&e.st!=='wait'){
+        const beam=e.st==='lock'||e.st==='abduct';
+        if(beam&&e.pad){ cx.save();cx.beginPath();cx.ellipse(e.pad.x,e.pad.y,e.pad.r+8,(e.pad.r+8)*0.42,0,0,TAU);cx.strokeStyle=`rgba(120,255,230,${0.5+0.3*Math.sin(sT*14)})`;cx.lineWidth=2;cx.stroke();cx.restore(); }
+        // bank into its flight direction; faint speed streaks while racing in or out
+        const bank=clamp((e.vx||0)/900,-0.35,0.35);
+        const fast=Math.abs(e.vx||0)>120;
+        if(fast){ cx.save(); for(let i=0;i<3;i++){ const ly=e.y-4+i*5; cx.beginPath(); cx.moveTo(e.x-Math.sign(e.vx)*26,ly); cx.lineTo(e.x-Math.sign(e.vx)*(56+i*14),ly); cx.strokeStyle=`rgba(170,255,235,${0.28-i*0.07})`; cx.lineWidth=1.2; cx.stroke(); } cx.restore(); }
+        cx.save();cx.translate(e.x,e.y);cx.rotate(bank);
+        drawEnemy(cx,0,0,sT,'saucer',{beam,beamLength:e.pad?e.pad.y-e.y-8:80});
+        cx.restore();
+      }
+      if(e.type==='dragon'&&e.st!=='wait'){
+        const opts={src:DRAGON_SRC,scale:0.5,flip:e.dir>0,fireBlend:e.st==='fire'?e.power:e.st==='aim'?0.3:0};
+        // the nose tips down a little toward the target while diving to breathe
+        const dy=0;
+        const tilt=e.dir*(e.dive||0)*0.12, ct=Math.cos(tilt), st2=Math.sin(tilt);
+        if(e.st==='aim'){ // lock-on reticle
+          const f=clamp(e.t/1.25,0,1);
+          cx.save();cx.translate(e.tx,e.ty);cx.rotate(sT*2);
+          cx.strokeStyle=`rgba(255,90,40,${0.6+0.3*Math.sin(sT*18)})`;cx.lineWidth=2;
+          const rr=22+f*18;cx.beginPath();cx.arc(0,0,rr,0,TAU);cx.stroke();
+          for(let i=0;i<4;i++){cx.rotate(Math.PI/2);cx.beginPath();cx.moveTo(rr-6,0);cx.lineTo(rr+6,0);cx.stroke();}
+          cx.restore();
+        }
+        if(e.st==='fire'&&e.power>0){
+          const m=getDragonMouth(0,0,sT,opts);
+          drawDragonFlame(cx,e.x+m.mouthX*ct-m.mouthY*st2,e.y+dy+m.mouthX*st2+m.mouthY*ct,e.tx,e.ty,sT,e.power,Math.min(1,e.bt/0.35));
+        }
+        cx.save();cx.translate(e.x,e.y+dy);cx.rotate(tilt);
+        drawEnemy(cx,0,0,sT,'dragon',opts);cx.restore();
+      }
+    }
+  }
+
+  function drawParticles(){
+    for(const pt of parts){
+      const L=Math.min(1,pt.life);
+      if(pt.ring){const r=pt.r0+(1-L)*46;cx.beginPath();cx.ellipse(pt.x,pt.y,r,r*0.42,0,0,TAU);cx.strokeStyle=`rgba(${pt.col},${L*0.6})`;cx.lineWidth=2*L+0.5;cx.stroke();}
+      else if(pt.kind==='drop'){cx.beginPath();cx.ellipse(pt.x,pt.y,pt.r,pt.r*1.35,Math.atan2(pt.vy,pt.vx)+Math.PI/2,0,TAU);cx.fillStyle=`rgba(${pt.col},${L*0.85})`;cx.fill();}
+      else if(pt.kind==='star'){const sz=(2+pt.r)*(0.5+L);cx.save();cx.globalCompositeOperation='lighter';cx.translate(pt.x,pt.y);cx.rotate(pt.rot);cx.fillStyle=`rgba(${pt.col},${L})`;cx.beginPath();cx.moveTo(0,-sz);cx.lineTo(sz*0.25,-sz*0.25);cx.lineTo(sz,0);cx.lineTo(sz*0.25,sz*0.25);cx.lineTo(0,sz);cx.lineTo(-sz*0.25,sz*0.25);cx.lineTo(-sz,0);cx.lineTo(-sz*0.25,-sz*0.25);cx.closePath();cx.fill();cx.restore();}
+      else{const g=pt.r*3.2*(0.5+L*0.5);cx.save();cx.globalCompositeOperation='lighter';cx.globalAlpha=L;cx.drawImage(dotSprite(pt.col),pt.x-g,pt.y-g,g*2,g*2);cx.restore();}
+    }
+    cx.save();cx.textAlign='center';cx.font='bold 14px system-ui,sans-serif';
+    for(const f of floaters){cx.fillStyle=`rgba(${f.col},${Math.min(1,f.life*1.5)})`;cx.shadowColor='rgba(0,0,0,0.6)';cx.shadowBlur=6;cx.fillText(f.txt,f.x,f.y);}
+    cx.restore();
+  }
+
+  function drawHUD(){
+    cx.save();
+    cx.fillStyle='rgba(2,12,24,.6)';cx.beginPath();cx.roundRect(98,14,170,34,10);cx.fill();
+    cx.font='bold 14px system-ui,sans-serif';cx.fillStyle='rgba(93,202,165,.9)';cx.textAlign='left';
+    cx.fillText(`Stage ${stageOf(levelN)}`,110,37);
+    cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(180,230,212,.7)';cx.fillText(`${levelInStage(levelN)}/10`,168,37);
+    cx.font='bold 14px system-ui,sans-serif';cx.fillStyle='rgba(245,210,100,.85)';cx.textAlign='right';cx.fillText(`✿ ${bloomsGot}/${bloomsTotal}`,256,37);
+    cx.textAlign='right';
+    if(maxLives>5){ cx.font='bold 16px system-ui';cx.fillStyle='rgba(255,90,110,.95)';cx.fillText(`♥ ${lives}`,W-14,37); }
+    else { for(let i=0;i<maxLives;i++){const hx=W-24-i*22;cx.font='16px system-ui';cx.fillStyle=i<lives?'rgba(255,90,110,.95)':'rgba(255,90,110,.22)';cx.textAlign='center';cx.fillText('♥',hx,37);} }
+    // stage timer (pauses while an intro banner is showing)
+    const tl=Math.ceil(timeLeft), low=timeLeft<10&&!won;
+    const tp=low?1+0.08*Math.max(0,Math.sin(sT*10)):1;
+    cx.save();cx.translate(W/2+38,62);cx.scale(tp,tp);
+    cx.fillStyle=low?'rgba(60,8,12,.75)':'rgba(2,12,24,.6)';cx.beginPath();cx.roundRect(-44,-13,88,26,9);cx.fill();
+    // ring showing time remaining
+    cx.beginPath();cx.arc(-28,0,7,-Math.PI/2,-Math.PI/2+TAU*clamp(timeLeft/timeLimit,0,1));
+    cx.strokeStyle=low?'rgba(255,110,100,.95)':'rgba(140,235,205,.85)';cx.lineWidth=2.2;cx.stroke();
+    cx.font='bold 14px system-ui,sans-serif';cx.textAlign='left';cx.fillStyle=low?'rgba(255,150,140,1)':'rgba(200,240,228,.92)';
+    cx.fillText(`${Math.floor(tl/60)}:${String(tl%60).padStart(2,'0')}`,-15,5);
+    cx.restore();
+    cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(160,220,200,.55)';cx.textAlign='center';
+    cx.fillText(levelN<=5?'tap a glowing lily pad to hop':'hop across to the lotus',W/2,H-18);
+    cx.restore();
+  }
+
+  function drawIntro(){
+    if(introT<=0||!introTxt)return;
+    const a=Math.min(1,introT/0.5,(4.2-introT)/0.3);
+    cx.save();cx.globalAlpha=Math.max(0,a);
+    cx.fillStyle='rgba(4,16,28,0.86)';cx.beginPath();cx.roundRect(28,WY+8,W-56,92,16);cx.fill();
+    cx.strokeStyle='rgba(93,202,165,0.45)';cx.lineWidth=1.2;cx.stroke();
+    cx.textAlign='center';cx.font='bold 21px Georgia,serif';cx.fillStyle='#9FE1CB';cx.fillText(introTxt[0],W/2,WY+42);
+    cx.font='13.5px system-ui,sans-serif';cx.fillStyle='rgba(200,235,225,0.85)';
+    wrapText(introTxt[1],W/2,WY+66,W-90,18);
+    cx.restore();
+  }
+  function drawToast(){
+    if(toastT<=0||won||failed)return;
+    const a=Math.min(1,(2.4-toastT)/0.25,toastT/0.5), y=WY-70-(1-Math.min(1,(2.4-toastT)/0.3))*14;
+    cx.save();cx.globalAlpha=Math.max(0,a);cx.textAlign='center';
+    cx.font='bold 12px system-ui,sans-serif';cx.fillStyle='rgba(160,230,205,.9)';
+    cx.fillText(`STAGE ${stageOf(levelN)}  ·  LEVEL ${levelInStage(levelN)} OF 10`,W/2,y);
+    cx.shadowColor='rgba(0,0,0,.6)';cx.shadowBlur=10;
+    cx.font='bold 34px Georgia,serif';cx.fillStyle='#E8FFF6';cx.fillText(`⏱ ${timeLimit}s`,W/2,y+38);
+    cx.shadowBlur=0;
+    if(timeDrop>0){cx.font='bold 13px system-ui,sans-serif';cx.fillStyle='rgba(255,150,130,.95)';cx.fillText(`${timeDrop}s less than last level`,W/2,y+60);}
+    else if(levelInStage(levelN)===1){cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(200,235,225,.75)';cx.fillText('the clock gets shorter every level',W/2,y+60);}
+    cx.restore();
+  }
+  function wrapText(txt,x,y,maxW,lh){
+    const words=txt.split(' ');let line='';
+    for(const w of words){const test=line?line+' '+w:w;if(cx.measureText(test).width>maxW&&line){cx.fillText(line,x,y);line=w;y+=lh;}else line=test;}
+    if(line)cx.fillText(line,x,y);
+  }
+
+  function starCount(){ return 1+(bloomsGot>=bloomsTotal?1:0)+(hits===0?1:0); }
+
+  function drawWin(dt){
+    winT+=dt;
+    cx.save();cx.fillStyle=`rgba(2,12,24,${Math.min(.82,winT*1.2)})`;cx.fillRect(0,0,W,H);
+    const ph=Math.min(1,winT*.8);
+    cx.textAlign='center';cx.shadowColor='rgba(93,202,165,.6)';cx.shadowBlur=28;
+    cx.font='bold 44px Georgia,serif';cx.fillStyle=`rgba(160,255,220,${ph})`;cx.fillText(`Level ${levelInStage(levelN)} Complete!`,W/2,H/2-86);
+    cx.shadowBlur=0;
+    const stars=starCount();
+    const want=Math.min(stars,Math.floor(winT/0.4));
+    if(want>starsShown){starsShown=want;burst(W/2-44+(starsShown-1)*44,H/2-26,'255,215,64',12,3);}
+    cx.font='52px system-ui';
+    for(let i=0;i<3;i++){cx.fillStyle=i<starsShown?'rgba(255,215,64,1)':`rgba(255,215,64,${0.12*ph})`;cx.fillText(i<starsShown?'★':'☆',W/2-44+i*44,H/2-12);}
+    cx.font='12.5px system-ui';cx.fillStyle=`rgba(190,230,215,${ph*0.75})`;
+    cx.fillText(`reached the lotus · blooms ${bloomsGot}/${bloomsTotal} · ${hits?hits+' hit'+(hits>1?'s':''):'no hits'}`,W/2,H/2+18);
+    if(ph>.6){
+      cx.fillStyle=`rgba(93,202,165,${(ph-.6)/.4*.85})`;cx.beginPath();cx.roundRect(W/2-100,H/2+50,200,52,14);cx.fill();
+      cx.font='bold 19px system-ui,sans-serif';cx.fillStyle='#071828';cx.fillText(`Level ${levelInStage(levelN)+1} of 10  ›`,W/2,H/2+82);
+      cx.fillStyle=`rgba(255,255,255,${(ph-.6)/.4*.15})`;cx.beginPath();cx.roundRect(W/2-70,H/2+118,140,40,12);cx.fill();
+      cx.font='15px system-ui,sans-serif';cx.fillStyle=`rgba(160,220,200,${(ph-.6)/.4*.7})`;cx.fillText('Menu',W/2,H/2+143);
+    }
+    cx.restore();
+  }
+
+  // ── Stage cleared (every 10th level) ────────────────────────────────────
+  const easeOutBack=t=>{t=clamp(t,0,1);const c=1.70158;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
+  const FW=['255,215,64','255,138,178','120,230,200','170,190,255','255,180,110'];
+  let fwT=0;
+  function drawStageClear(dt){
+    winT+=dt;
+    const s=stageOf(levelN), last=s>=10, nxt=STAGE_INFO[s]||null;
+    // fireworks over the pond for the first few seconds, then an occasional one
+    fwT-=dt;
+    if(fwT<=0){ fwT=winT<3.5?0.28+Math.random()*0.2:0.9+Math.random()*0.8;
+      const x=60+Math.random()*(W-120), y=90+Math.random()*260, c=FW[Math.floor(Math.random()*FW.length)];
+      burst(x,y,c,22,3.4); burst(x,y,'255,250,230',6,2.2,'star'); }
+    cx.save();
+    const g=cx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,`rgba(4,10,26,${Math.min(.8,winT*1.1)})`);g.addColorStop(1,`rgba(2,20,26,${Math.min(.9,winT*1.2)})`);
+    cx.fillStyle=g;cx.fillRect(0,0,W,H);
+    drawParticles();
+    // spirit celebrates in a soft spotlight
+    const sy=318+Math.sin(sT*2.2)*6, sa=clamp((winT-0.3)/0.5,0,1);
+    const halo=cx.createRadialGradient(W/2,sy,4,W/2,sy,120);halo.addColorStop(0,`rgba(${charRgb()},${0.32*sa})`);halo.addColorStop(1,`rgba(${charRgb()},0)`);
+    cx.fillStyle=halo;cx.fillRect(W/2-120,sy-120,240,240);
+    cx.globalAlpha=sa;drawLilyPad(cx,W/2,sy+42,sT,{r:52,phase:0.4,ripples:true});
+    drawSpirit(cx,W/2,sy+26,sT,'CELEBRATING',charId,{scale:1.9});
+    cx.globalAlpha=1;
+    // title
+    cx.textAlign='center';
+    const k1=easeOutBack((winT-0.15)/0.55), k2=easeOutBack((winT-0.45)/0.6);
+    if(winT>0.15){cx.save();cx.translate(W/2,128);cx.scale(k1,k1);cx.font='bold 16px system-ui,sans-serif';cx.fillStyle='rgba(160,240,215,.9)';
+      cx.fillText(last?'ALL 10 STAGES':`STAGE ${s}  ·  ${STAGE_INFO[s-1][0].toUpperCase()}`,0,0);cx.restore();}
+    if(winT>0.45){cx.save();cx.translate(W/2,188);cx.scale(k2,k2);cx.shadowColor='rgba(255,210,120,.7)';cx.shadowBlur=30;
+      cx.font='bold 56px Georgia,serif';cx.fillStyle='#FFF1C8';cx.fillText('CLEARED!',0,0);cx.restore();}
+    // star total counts up
+    const tot=stageStars(s), shown=Math.round(tot*clamp((winT-1)/1.1,0,1));
+    if(winT>1){cx.font='bold 26px system-ui,sans-serif';cx.fillStyle='rgba(255,215,64,1)';cx.fillText(`★ ${shown} / 30`,W/2,428);
+      cx.font='12.5px system-ui,sans-serif';cx.fillStyle='rgba(190,230,215,.7)';cx.fillText(last?'every lotus reached':'stars earned this stage',W/2,450);}
+    // what's next: slides up after the celebration
+    const c=clamp((winT-2)/0.6,0,1), ce=1-Math.pow(1-c,3);
+    if(c>0){
+      const cy=486+(1-ce)*60;
+      cx.globalAlpha=ce;
+      cx.fillStyle='rgba(8,30,40,.92)';cx.beginPath();cx.roundRect(34,cy,W-68,112,16);cx.fill();
+      cx.strokeStyle='rgba(120,230,200,.45)';cx.lineWidth=1.3;cx.stroke();
+      if(last){
+        cx.font='bold 20px Georgia,serif';cx.fillStyle='#9FE1CB';cx.fillText('The Bloom Eternal is yours',W/2,cy+44);
+        cx.font='13.5px system-ui,sans-serif';cx.fillStyle='rgba(200,235,225,.85)';wrapText('Every pond crossed, every lotus reached. Replay any level for three stars.',W/2,cy+70,W-110,18);
+      } else {
+        cx.font='bold 11.5px system-ui,sans-serif';cx.fillStyle='rgba(255,190,120,.95)';cx.fillText(`NEXT  ·  STAGE ${s+1}`,W/2,cy+26);
+        cx.font='bold 22px Georgia,serif';cx.fillStyle='#9FE1CB';cx.fillText(nxt[0],W/2,cy+54);
+        cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(200,235,225,.85)';wrapText(nxt[1],W/2,cy+78,W-110,17);
+      }
+      if(c>=1){
+        const pulse=1+0.03*Math.sin(sT*5);
+        cx.save();cx.translate(W/2,652);cx.scale(pulse,pulse);
+        cx.fillStyle='rgba(93,202,165,.92)';cx.beginPath();cx.roundRect(-115,-26,230,52,14);cx.fill();
+        cx.font='bold 19px system-ui,sans-serif';cx.fillStyle='#071828';cx.fillText(last?'Back to the map':`Enter Stage ${s+1}  ›`,0,7);
+        cx.restore();
+        if(!last){cx.fillStyle='rgba(255,255,255,.13)';cx.beginPath();cx.roundRect(W/2-70,696,140,40,12);cx.fill();
+          cx.font='15px system-ui,sans-serif';cx.fillStyle='rgba(160,220,200,.75)';cx.fillText('Menu',W/2,721);}
+      }
+    }
+    cx.restore();
+  }
+
+  function drawFail(){
+    cx.save();cx.fillStyle='rgba(20,4,8,.78)';cx.fillRect(0,0,W,H);
+    cx.textAlign='center';cx.shadowColor='rgba(255,90,90,.5)';cx.shadowBlur=24;
+    const timeUp=failReason==='time';
+    cx.font='bold 44px Georgia,serif';cx.fillStyle='rgba(255,150,150,.95)';cx.fillText(timeUp?"Time's Up!":'Spirit Faded',W/2,H/2-30);
+    cx.shadowBlur=0;cx.font='15px system-ui';cx.fillStyle='rgba(220,180,180,.6)';
+    cx.fillText(timeUp?'reach the lotus before the clock runs out':'the lotus still waits…',W/2,H/2+2);
+    cx.fillStyle='rgba(93,202,165,.85)';cx.beginPath();cx.roundRect(W/2-100,H/2+44,200,52,14);cx.fill();
+    cx.font='bold 19px system-ui';cx.fillStyle='#071828';cx.fillText('Try Again',W/2,H/2+76);
+    cx.fillStyle='rgba(255,255,255,.13)';cx.beginPath();cx.roundRect(W/2-70,H/2+112,140,40,12);cx.fill();
+    cx.font='15px system-ui';cx.fillStyle='rgba(200,220,210,.7)';cx.fillText('Menu',W/2,H/2+137);
+    cx.restore();
+  }
+
+  // ── Input ───────────────────────────────────────────────────────────────
+  function cvPos(e){
+    const r=cv.getBoundingClientRect();
+    const cl=e.touches?e.touches[0]:e;
+    return{x:(cl.clientX-r.left)*(W/r.width),y:(cl.clientY-r.top)*(H/r.height)};
+  }
+  function padAt(x,y){
+    let best=null,bd=1e9;
+    for(const p of pads){
+      if(!padUp(p))continue;
+      const d=Math.hypot((x-p.x)/(p.r+16),(y-p.y)/((p.r+16)*0.62));
+      if(d<1&&d<bd){bd=d;best=p;}
+    }
+    return best;
+  }
+  function onTap(e){
+    e.preventDefault();
+    if(!gActive)return;
+    const{x,y}=cvPos(e);
+    if(won&&levelN%10===0){
+      if(winT<2.6)return;
+      const s=stageOf(levelN);
+      const toMap=st=>{ viewStage=st; localStorage.setItem('dab_stage_view',st); gActive=false; goTo('s-levelselect'); };
+      if(y>626&&y<678&&x>W/2-115&&x<W/2+115){ if(s<10){localStorage.setItem('dab_stage_intro',s+1);toMap(s+1);} else toMap(s); }
+      else if(s<10&&y>696&&y<736&&x>W/2-70&&x<W/2+70){ toMap(s); }
+      return;
+    }
+    if(won){
+      if(winT>0.8&&y>H/2+50&&y<H/2+102&&x>W/2-100&&x<W/2+100){ if(levelN<100)startLevel(levelN+1); else{gActive=false;goTo('s-levelselect');} }
+      else if(winT>0.8&&y>H/2+118&&y<H/2+158){ gActive=false;goTo('s-levelselect'); }
+      return;
+    }
+    if(failed){
+      if(y>H/2+44&&y<H/2+96&&x>W/2-100&&x<W/2+100){ initGameplay(levelN); }
+      else if(y>H/2+112&&y<H/2+152){ gActive=false;goTo('s-levelselect'); }
+      return;
+    }
+    if(introT>0.6){ introT=0.5; }
+    if(sp.jumping||sp.hidden)return;
+    const p=padAt(x,y);
+    if(p)tryJump(p);
+  }
+  cv.addEventListener('mousedown',onTap);
+  cv.addEventListener('touchstart',onTap,{passive:false});
+  cv.addEventListener('mousemove',e=>{const p=cvPos(e);hover=p;});
+  cv.addEventListener('mouseleave',()=>{hover={x:-99,y:-99};});
+  // read-only snapshot for automated playtests (no effect on play)
+  window.__dabDebug=()=>({level:levelN,hops:path.length-1,won,failed,failReason,timeLeft,timeLimit,lives,hits,bloomsGot,bloomsTotal,jumping:sp.jumping,hidden:sp.hidden,
+    sx:sp.x,sy:sp.y,padIndex:pads.indexOf(sp.pad),jumpR:JUMP_R,
+    pads:pads.map(p=>({x:p.x,y:p.y,r:p.r,kind:p.kind,st:p.st,bloom:p.bloom,up:padUp(p),fades:p.fades,fading:p.fading})),
+    threats:enemies.map(e=>({type:e.type,st:e.st,pad:pads.indexOf(e.pad),tx:e.tx,ty:e.ty}))});
+
+  function saveProgress(n){
+    const stars=starCount();
+    const p=getProgress();if((p[n]||0)<stars)p[n]=stars;localStorage.setItem('dab_stars',JSON.stringify(p));
+  }
+
+  let last2=0;
+  function gLoop(ts){
+    const dt=Math.min((ts-last2)/1000,.05);last2=ts;
+    cx=hiDPI(cv,W,H);
+    if(gActive)update(dt);
+    cx.save();
+    if(shake>0){const m=shake*9;cx.translate((Math.random()-.5)*m,(Math.random()-.5)*m);}
+    drawNightSky(cx,W,H,sT);
+    drawWaterSurface(cx,W,H,sT,YF);
+    drawShoreline(cx,W,H,sT,YF);
+    drawFog(cx,W,H,sT,0.9);
+    if(gActive){
+      const order=pads.slice().sort((a,b)=>a.y-b.y);
+      for(const p of order)drawPad(p);
+      drawReach();
+      drawEnemiesWater();
+      if(!sp.hidden&&!(invuln>0&&Math.floor(sT*16)%2===0)){
+        const k=0.78+0.32*depth(sp.y);
+        drawSpirit(cx,sp.x,sp.y,sT,sp.state,charId,{vx:sp.vx*2,vy:sp.vy*2,scale:k});
+      }
+      drawFireflies(cx,W,H,sT,9);
+      drawReeds(cx,W,H,sT);
+      drawEnemiesSky();
+      drawParticles();
+      drawHUD();
+      drawIntro();
+      drawToast();
+    }
+    cx.restore();
+    if(invuln>0){const a=Math.min(0.45,invuln*0.5);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,40,40,0)');vg.addColorStop(1,`rgba(255,30,30,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
+    if(gActive&&won){ if(levelN%10===0)drawStageClear(dt||0.016); else drawWin(dt||0.016); }
+    if(gActive&&failed)drawFail();
+    requestAnimationFrame(gLoop);
+  }
+  requestAnimationFrame(ts=>{last2=ts;requestAnimationFrame(gLoop);});
+})();
+
+// ── Init ────────────────────────────────────────────────────────────────────
+buildCharGrid();
+buildLevelGrid();
+</script>
+</body>
+</html>

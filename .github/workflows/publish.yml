@@ -1,0 +1,62 @@
+name: Publish web app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # only what the game needs; tools/ and the README stay out of the site
+      - name: Assemble the site
+        run: |
+          mkdir _site
+          cp -r index.html sw.js manifest.webmanifest icons workspace assets _site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # what it looks like in Safari on an iPhone (screenshots in the run's artifacts)
+  iphone-safari:
+    needs: deploy
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Open the live site in iPhone Safari
+        run: bash tools/safari_check.sh "${{ needs.deploy.outputs.url }}"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-safari
+          path: safari/
+          if-no-files-found: ignore
