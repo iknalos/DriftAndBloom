@@ -9,7 +9,7 @@ fading pads, currents, crocodiles, falling stars, snakes, saucers, the dragon.
 
 ## Put it on your phone like an app
 
-- **iPhone:** open the link in **Safari**, tap **Share**, then **Add to Home Screen**.
+- **iPhone:** open the link in **Safari** and tap **Share**, which is inside the **⋯** menu next to the address bar on iOS 26. Then tap **Add to Home Screen**.
 - **Android:** open the link in **Chrome**, tap **⋮**, then **Add to Home screen** or
   **Install app**.
 
