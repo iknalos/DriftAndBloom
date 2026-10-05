@@ -25,7 +25,8 @@ xcrun simctl bootstatus "$UDID" -b
 # Pages can take a moment to serve a fresh deploy everywhere
 for _ in $(seq 30); do curl -fsS -o /dev/null "$URL" && break; sleep 5; done
 
-xcrun simctl openurl "$UDID" "$URL"
+# a freshly booted simulator sometimes times out launching Safari: retry
+for i in 1 2 3; do xcrun simctl openurl "$UDID" "$URL" && break; echo "openurl timed out (try $i), retrying"; sleep 15; done
 sleep 25
 xcrun simctl io "$UDID" screenshot "$OUT/1-safari.png"
 sleep 10
