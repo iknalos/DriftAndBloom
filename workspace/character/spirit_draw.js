@@ -507,6 +507,7 @@ function drawBurnFx(ctx, x, y, t, intensity, opts) {
 //   opts.vx/vy  — current velocity in px/frame; drives lean, eye-look
 //                 direction, stretch and the motion trail
 //   opts.scale  — render scale (1 = ~60 px tall body, ~96 px incl. glow)
+//   opts.land   — standing on land (side worlds): no water glow / ripple ring
 //   (x, y) is the contact point on the water; the body sits ~16 px above it.
 //
 // SPIRIT_CHARS — exported roster table {id: {name, tag, col, ...}} for UIs.
@@ -1441,6 +1442,7 @@ function _ambient(ctx, S) {
   const { ch, T } = S;
   switch (ch.id) {
     case 'spirit': {                                   // water ring
+      if (S.land) break;
       const rp = _fract(T * 0.55 + 0.3);
       ctx.beginPath(); ctx.ellipse(0, 4, 14 + rp * 22, 3.6 + rp * 6, 0, 0, _TAU);
       ctx.strokeStyle = `rgba(150,240,215,${((1 - rp) * 0.4).toFixed(3)})`; ctx.lineWidth = 1.1; ctx.stroke();
@@ -1576,15 +1578,18 @@ function drawSpirit(ctx, x, y, t, state, characterId, opts) {
   const S = {
     t, T, state, ch, vx, vy, spd, speed, blink, wink,
     lookX: moving ? _clamp(vx * 0.9, -2.2, 2.2) : Math.sin(T * 0.45) * 1.1,
-    lookY: moving ? _clamp(vy * 0.8, -1.4, 1.6) : Math.sin(T * 0.31) * 0.45
+    lookY: moving ? _clamp(vy * 0.8, -1.4, 1.6) : Math.sin(T * 0.31) * 0.45,
+    land: !!opts.land
   };
 
   ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
   // glow pooled on the water beneath
   const breathe = state === 'IDLE' ? 0.3 + Math.sin(T * 1.6) * 0.07 : state === 'COLLECTING' ? 0.5 : 0.36;
-  ctx.save(); ctx.scale(1, 0.24);
-  _glow(ctx, 0, 18, 30, ch.col, breathe * 0.9);
-  ctx.restore();
+  if (!opts.land) {
+    ctx.save(); ctx.scale(1, 0.24);
+    _glow(ctx, 0, 18, 30, ch.col, breathe * 0.9);
+    ctx.restore();
+  }
 
   const bob = state === 'IDLE' ? Math.sin(T * 1.4) * 2.6 : Math.sin(T * 2.2) * 1.2;
   ctx.translate(0, bob);

@@ -1,0 +1,1050 @@
+{
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h13.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h13g.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h21.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h21g.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h8.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "C:/Users/test/AppData/Local/Temp/claude/C--Users-test/744ff297-6b25-4eb6-bedd-01c891b91a4e/scratchpad/hell/h8g.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "assets/worlds/alien/boss.png": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, resized",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a gigantic alien mothership battleship, perfectly symmetrical, dark metallic organic hull, glowing green reactor core in the center, many turrets and armor plates, highly detailed realistic sci-fi concept art, centered, isolated on pure black background",
+    "seed": "61"
+  },
+  "assets/worlds/alien/fighter.png": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, rotated 180 deg, resized",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "47"
+  },
+  "assets/worlds/alien/fighter2.png": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, rotated 180 deg, resized",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "31"
+  },
+  "assets/worlds/alien/interceptor.png": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, resized",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien interceptor spacecraft, perfectly symmetrical, crescent shaped wings, dark purple chitin hull with glowing magenta lights, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "53"
+  },
+  "assets/worlds/alien/jupiter.png": {
+    "author": "NASA/JPL/Space Science Institute",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "planet disk masked out, darkened",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Portrait_of_Jupiter_from_Cassini.jpg",
+    "title": "File:Portrait of Jupiter from Cassini.jpg"
+  },
+  "assets/worlds/alien/ship_player.png": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, rotated 180 deg, resized",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a sleek futuristic space fighter jet, pointing straight up, perfectly symmetrical, white and silver armor plating, glass cockpit canopy, twin engines at the bottom, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "23"
+  },
+  "assets/worlds/alien/space_backdrop.jpg": {
+    "author": "NASA, ESA, M. Robberto (Space Telescope Science Institute/ESA) and the Hubble Sp; NASA, ESA, and The Hubble Heritage Team (STScI/AURA); NASA, ESA, N. Smith (University of California, Berkeley), and The Hubble Heritag",
+    "license": "Public domain",
+    "modified": "three images stacked with cross-fades, darkened for gameplay readability",
+    "origin": "Composite of NASA/ESA Hubble images (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg | https://commons.wikimedia.org/wiki/File:Fairy_of_Eagle_Nebula.jpg | https://commons.wikimedia.org/wiki/File:NGC_3372a-full.jpg"
+  },
+  "assets/worlds/alien/src/ai_asteroid.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic rocky asteroid, craters and rough grey stone surface, lit from the top left, isolated on pure black background, highly detailed",
+    "seed": "83"
+  },
+  "assets/worlds/alien/src/ai_boss_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a gigantic alien mothership battleship, perfectly symmetrical, dark metallic organic hull, glowing green reactor core in the center, many turrets and armor plates, highly detailed realistic sci-fi concept art, centered, isolated on pure black background",
+    "seed": "61"
+  },
+  "assets/worlds/alien/src/ai_boss_b.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a gigantic alien mothership battleship, perfectly symmetrical, dark metallic organic hull, glowing green reactor core in the center, many turrets and armor plates, highly detailed realistic sci-fi concept art, centered, isolated on pure black background",
+    "seed": "79"
+  },
+  "assets/worlds/alien/src/ai_fighter_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "31"
+  },
+  "assets/worlds/alien/src/ai_fighter_b.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "47"
+  },
+  "assets/worlds/alien/src/ai_hangar.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down view looking down into an alien spaceship hangar bay, dark metallic floor panels, glowing green light strips, docking clamps, symmetrical, highly detailed realistic sci-fi environment",
+    "seed": "97"
+  },
+  "assets/worlds/alien/src/ai_interceptor.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien interceptor spacecraft, perfectly symmetrical, crescent shaped wings, dark purple chitin hull with glowing magenta lights, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "53"
+  },
+  "assets/worlds/alien/src/ai_player_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a sleek futuristic space fighter jet, pointing straight up, perfectly symmetrical, white and silver armor plating, glass cockpit canopy, twin engines at the bottom, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "11"
+  },
+  "assets/worlds/alien/src/ai_player_b.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a sleek futuristic space fighter jet, pointing straight up, perfectly symmetrical, white and silver armor plating, glass cockpit canopy, twin engines at the bottom, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "23"
+  },
+  "assets/worlds/alien/src/cut_boss_a.png": {
+    "derived_from": "ai_boss_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a gigantic alien mothership battleship, perfectly symmetrical, dark metallic organic hull, glowing green reactor core in the center, many turrets and armor plates, highly detailed realistic sci-fi concept art, centered, isolated on pure black background",
+    "seed": "61"
+  },
+  "assets/worlds/alien/src/cut_fighter_a.png": {
+    "derived_from": "ai_fighter_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "31"
+  },
+  "assets/worlds/alien/src/cut_fighter_b.png": {
+    "derived_from": "ai_fighter_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of an alien fighter spacecraft, pointing straight down, perfectly symmetrical, dark organic biomechanical hull, glowing green vents, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "47"
+  },
+  "assets/worlds/alien/src/cut_interceptor.png": {
+    "derived_from": "ai_interceptor.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "top-down orthographic view of an alien interceptor spacecraft, perfectly symmetrical, crescent shaped wings, dark purple chitin hull with glowing magenta lights, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "53"
+  },
+  "assets/worlds/alien/src/cut_player_a.png": {
+    "derived_from": "ai_player_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a sleek futuristic space fighter jet, pointing straight up, perfectly symmetrical, white and silver armor plating, glass cockpit canopy, twin engines at the bottom, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "11"
+  },
+  "assets/worlds/alien/src/cut_player_b.png": {
+    "derived_from": "ai_player_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "top-down orthographic view of a sleek futuristic space fighter jet, pointing straight up, perfectly symmetrical, white and silver armor plating, glass cockpit canopy, twin engines at the bottom, highly detailed realistic 3d render, centered, isolated on pure black background",
+    "seed": "23"
+  },
+  "assets/worlds/alien/src/jupiter.jpg": {
+    "author": "NASA/JPL/Space Science Institute",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Portrait_of_Jupiter_from_Cassini.jpg",
+    "title": "File:Portrait of Jupiter from Cassini.jpg"
+  },
+  "assets/worlds/alien/src/neb_carina.jpg": {
+    "author": "NASA, ESA, N. Smith (University of California, Berkeley), and The Hubble Heritage Team (STScI/AURA); credit for CTIO Image: N. Smith (University of California, Berkeley) and NOAO/AURA/NSF",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:NGC_3372a-full.jpg",
+    "title": "File:NGC 3372a-full.jpg"
+  },
+  "assets/worlds/alien/src/neb_eagle.jpg": {
+    "author": "NASA, ESA, and The Hubble Heritage Team (STScI/AURA)",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Fairy_of_Eagle_Nebula.jpg",
+    "title": "File:Fairy of Eagle Nebula.jpg"
+  },
+  "assets/worlds/alien/src/neb_orion.jpg": {
+    "author": "NASA, ESA, M. Robberto (Space Telescope Science Institute/ESA) and the Hubble Space Telescope Orion Treasury Project Team",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg",
+    "title": "File:Orion Nebula - Hubble 2006 mosaic 18000.jpg"
+  },
+  "assets/worlds/animal/bark.webp": {
+    "author": "Saral Shots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "rotated, graded, mirrored to tile vertically",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bark_of_Sapota_tree.jpg",
+    "title": "File:Bark of Sapota tree.jpg"
+  },
+  "assets/worlds/animal/bg_far.webp": {
+    "author": "Vyacheslav Argenberg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "modified": "graded, blurred, mist fade",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Titiwangsa_Range,_Malaysia,_Rainforest.jpg",
+    "title": "File:Titiwangsa Range, Malaysia, Rainforest.jpg"
+  },
+  "assets/worlds/animal/bg_mid.webp": {
+    "author": "Killerscene / Vyacheslav Argenberg / Vyacheslav Argenberg",
+    "license": "CC0 / CC BY 4.0 / CC BY 4.0",
+    "modified": "three photos cross-faded into one strip, graded, blurred, mist fade",
+    "origin": "Wikimedia Commons photos, joined",
+    "source": "https://commons.wikimedia.org/wiki/File:Daintree_Rainforest_4.jpg ; https://commons.wikimedia.org/wiki/File:Tropical_evergreen_jungle,_Khao_Lak,_Thailand.jpg ; https://commons.wikimedia.org/wiki/File:Taman_Negara,_Malaysia,_Primary_tropical_rainforest.jpg"
+  },
+  "assets/worlds/animal/boar.webp": {
+    "author": "4028mdk09",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Weibliches_Wildschwein_Wildpark_Pforzheim.JPG",
+    "title": "File:Weibliches Wildschwein Wildpark Pforzheim.JPG"
+  },
+  "assets/worlds/animal/croc.webp": {
+    "author": "This Photo was taken by Timothy A. Gonsalves.  Feel free to use my photos, but please mention me as the author.  I would much appreciate if you send me an email tagooty@yahoo.com or write on my talk page, for my information.  Please contact me before commercial use.\n\n\n\nPlease do not upload an edited image here without consulting me.  I would like to make corrections only at my own source to ensure that the changes improve the image and are preserved.Otherwise you may upload an edited image with a new name. Please use one of the templates derivative or extract.",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, darkened + olive-graded to read as wet",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Mugger_Crocodile_Full_Right_Side_Sunning_Kabini_Apr22_D72_23644.jpg",
+    "title": "File:Mugger Crocodile Full Right Side Sunning Kabini Apr22 D72 23644.jpg"
+  },
+  "assets/worlds/animal/eagle.webp": {
+    "author": "Andy  Morffew from Itchen Abbas, Hampshire, UK",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bald_eagle_in_Alaska_2016-3.jpg",
+    "title": "File:Bald eagle in Alaska 2016-3.jpg"
+  },
+  "assets/worlds/animal/fern.webp": {
+    "author": "Kieran Roy Powell",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Struthiopteris_spicant_Craig_Rhosyfelin_Frond.jpg",
+    "title": "File:Struthiopteris spicant Craig Rhosyfelin Frond.jpg"
+  },
+  "assets/worlds/animal/litter.webp": {
+    "author": "Alexeyevitch",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "cropped, darkened, graded, mirrored to tile",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Fuchsia_excorticata_leaf_litter.jpg",
+    "title": "File:Fuchsia excorticata leaf litter.jpg"
+  },
+  "assets/worlds/animal/lotus.webp": {
+    "author": "Hong Zhang (jennyzhh2008)",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lotus_flower_(978659).jpg",
+    "title": "File:Lotus flower (978659).jpg"
+  },
+  "assets/worlds/animal/python.webp": {
+    "author": "TimVickers",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Morelia_viridis_9.jpg",
+    "title": "File:Morelia viridis 9.jpg"
+  },
+  "assets/worlds/animal/src/bark.jpg": {
+    "author": "Saral Shots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bark_of_Sapota_tree.jpg",
+    "title": "File:Bark of Sapota tree.jpg"
+  },
+  "assets/worlds/animal/src/bark_moss.jpg": {
+    "author": "Shadowmeld Photography",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Mossy_Tree_Bark_Texture_DTXR-WD-BK-1.jpg",
+    "title": "File:Mossy Tree Bark Texture DTXR-WD-BK-1.jpg"
+  },
+  "assets/worlds/animal/src/bg_daintree.jpg": {
+    "author": "Killerscene",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Daintree_Rainforest_4.jpg",
+    "title": "File:Daintree Rainforest 4.jpg"
+  },
+  "assets/worlds/animal/src/bg_khaolak.jpg": {
+    "author": "Vyacheslav Argenberg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Tropical_evergreen_jungle,_Khao_Lak,_Thailand.jpg",
+    "title": "File:Tropical evergreen jungle, Khao Lak, Thailand.jpg"
+  },
+  "assets/worlds/animal/src/bg_khlong.jpg": {
+    "author": "Vyacheslav Argenberg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Old_growth_forest_jungle_in_Thailand,_Khlong_Phanom.jpg",
+    "title": "File:Old growth forest jungle in Thailand, Khlong Phanom.jpg"
+  },
+  "assets/worlds/animal/src/bg_taman.jpg": {
+    "author": "Vyacheslav Argenberg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Taman_Negara,_Malaysia,_Primary_tropical_rainforest.jpg",
+    "title": "File:Taman Negara, Malaysia, Primary tropical rainforest.jpg"
+  },
+  "assets/worlds/animal/src/bg_titiwangsa.jpg": {
+    "author": "Vyacheslav Argenberg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Titiwangsa_Range,_Malaysia,_Rainforest.jpg",
+    "title": "File:Titiwangsa Range, Malaysia, Rainforest.jpg"
+  },
+  "assets/worlds/animal/src/boar.jpg": {
+    "author": "4028mdk09",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Weibliches_Wildschwein_Wildpark_Pforzheim.JPG",
+    "title": "File:Weibliches Wildschwein Wildpark Pforzheim.JPG"
+  },
+  "assets/worlds/animal/src/boar_cut.png": {
+    "author": "4028mdk09",
+    "derived_from": "boar.jpg",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Weibliches_Wildschwein_Wildpark_Pforzheim.JPG",
+    "title": "File:Weibliches Wildschwein Wildpark Pforzheim.JPG"
+  },
+  "assets/worlds/animal/src/croc2.jpg": {
+    "author": "This Photo was taken by Timothy A. Gonsalves.  Feel free to use my photos, but please mention me as the author.  I would much appreciate if you send me an email tagooty@yahoo.com or write on my talk page, for my information.  Please contact me before commercial use.\n\n\n\nPlease do not upload an edited image here without consulting me.  I would like to make corrections only at my own source to ensure that the changes improve the image and are preserved.Otherwise you may upload an edited image with a new name. Please use one of the templates derivative or extract.",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Mugger_Crocodile_Full_Right_Side_Sunning_Kabini_Apr22_D72_23644.jpg",
+    "title": "File:Mugger Crocodile Full Right Side Sunning Kabini Apr22 D72 23644.jpg"
+  },
+  "assets/worlds/animal/src/croc2_cut.png": {
+    "derived_from": "croc2_crop.jpg",
+    "modified": "background removed"
+  },
+  "assets/worlds/animal/src/croc_side.jpg": {
+    "author": "Photo by Derek Ramsey (Ram-Man)",
+    "license": "CC BY-SA 2.5",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.5",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Nile_Crocodile_Side_View_2620px.jpg",
+    "title": "File:Nile Crocodile Side View 2620px.jpg"
+  },
+  "assets/worlds/animal/src/croc_side.png": {
+    "author": "Photo by Derek Ramsey (Ram-Man)",
+    "derived_from": "croc_side.jpg",
+    "license": "CC BY-SA 2.5",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.5",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Nile_Crocodile_Side_View_2620px.jpg",
+    "title": "File:Nile Crocodile Side View 2620px.jpg"
+  },
+  "assets/worlds/animal/src/eagle.jpg": {
+    "author": "WallpapersWide.com",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Bald_Eagle_-_Spreading_the_Wings.jpg",
+    "title": "File:The Bald Eagle - Spreading the Wings.jpg"
+  },
+  "assets/worlds/animal/src/eagle2.jpg": {
+    "author": "Andy  Morffew from Itchen Abbas, Hampshire, UK",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bald_eagle_in_Alaska_2016-3.jpg",
+    "title": "File:Bald eagle in Alaska 2016-3.jpg"
+  },
+  "assets/worlds/animal/src/eagle2_cut.png": {
+    "author": "Andy  Morffew from Itchen Abbas, Hampshire, UK",
+    "derived_from": "eagle2.jpg",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bald_eagle_in_Alaska_2016-3.jpg",
+    "title": "File:Bald eagle in Alaska 2016-3.jpg"
+  },
+  "assets/worlds/animal/src/eagle_cut.png": {
+    "author": "WallpapersWide.com",
+    "derived_from": "eagle.jpg",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Bald_Eagle_-_Spreading_the_Wings.jpg",
+    "title": "File:The Bald Eagle - Spreading the Wings.jpg"
+  },
+  "assets/worlds/animal/src/fern.jpg": {
+    "author": "Kieran Roy Powell",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Struthiopteris_spicant_Craig_Rhosyfelin_Frond.jpg",
+    "title": "File:Struthiopteris spicant Craig Rhosyfelin Frond.jpg"
+  },
+  "assets/worlds/animal/src/fern_cut.png": {
+    "author": "Kieran Roy Powell",
+    "derived_from": "fern.jpg",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Struthiopteris_spicant_Craig_Rhosyfelin_Frond.jpg",
+    "title": "File:Struthiopteris spicant Craig Rhosyfelin Frond.jpg"
+  },
+  "assets/worlds/animal/src/litter.jpg": {
+    "author": "Alexeyevitch",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Fuchsia_excorticata_leaf_litter.jpg",
+    "title": "File:Fuchsia excorticata leaf litter.jpg"
+  },
+  "assets/worlds/animal/src/lotus.jpg": {
+    "author": "Hong Zhang (jennyzhh2008)",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lotus_flower_(978659).jpg",
+    "title": "File:Lotus flower (978659).jpg"
+  },
+  "assets/worlds/animal/src/lotus_cut.png": {
+    "author": "Hong Zhang (jennyzhh2008)",
+    "derived_from": "lotus.jpg",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lotus_flower_(978659).jpg",
+    "title": "File:Lotus flower (978659).jpg"
+  },
+  "assets/worlds/animal/src/python.jpg": {
+    "author": "TimVickers",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Morelia_viridis_9.jpg",
+    "title": "File:Morelia viridis 9.jpg"
+  },
+  "assets/worlds/animal/src/python_cut.png": {
+    "author": "TimVickers",
+    "derived_from": "python.jpg",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Morelia_viridis_9.jpg",
+    "title": "File:Morelia viridis 9.jpg"
+  },
+  "assets/worlds/animal/src/vulture.jpg": {
+    "author": "Вых Пыхманн",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Flying_griffon_vulture.jpg",
+    "title": "File:Flying griffon vulture.jpg"
+  },
+  "assets/worlds/animal/src/vulture_cut.png": {
+    "author": "Вых Пыхманн",
+    "derived_from": "vulture.jpg",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Flying_griffon_vulture.jpg",
+    "title": "File:Flying griffon vulture.jpg"
+  },
+  "assets/worlds/animal/vulture.webp": {
+    "author": "Вых Пыхманн",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "modified": "background removed, graded",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Flying_griffon_vulture.jpg",
+    "title": "File:Flying griffon vulture.jpg"
+  },
+  "assets/worlds/hell/backdrop.jpg": {
+    "author": "Charles Furneaux",
+    "derived_from": "paint_crater.jpg",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "frame cropped, graded darker and redder",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Night_in_Kilauea_Crater_by_Charles_Furneaux,_1885,_Lyman_House_.JPG",
+    "title": "File:Night in Kilauea Crater by Charles Furneaux, 1885, Lyman House .JPG"
+  },
+  "assets/worlds/hell/bat.png": {
+    "author": "Laverta.Dianthus",
+    "derived_from": "cut_bat.png",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bat_flying_in_the_darkness.jpg",
+    "title": "File:Bat flying in the darkness.jpg"
+  },
+  "assets/worlds/hell/bat_glow.png": {
+    "author": "Laverta.Dianthus",
+    "derived_from": "cut_bat.png",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bat_flying_in_the_darkness.jpg",
+    "title": "File:Bat flying in the darkness.jpg"
+  },
+  "assets/worlds/hell/brute.png": {
+    "author": "Jules Verne Times Two",
+    "derived_from": "cut_bear.png",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Eurasian_brown_bear_(Ursus_arctos_arctos)_standing_on_rear_legs,_Skansen,_Stockholm,_Sweden_julesvernex2.jpg",
+    "title": "File:Eurasian brown bear (Ursus arctos arctos) standing on rear legs, Skansen, Stockholm, Sweden julesvernex2.jpg"
+  },
+  "assets/worlds/hell/brute_glow.png": {
+    "author": "Jules Verne Times Two",
+    "derived_from": "cut_bear.png",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Eurasian_brown_bear_(Ursus_arctos_arctos)_standing_on_rear_legs,_Skansen,_Stockholm,_Sweden_julesvernex2.jpg",
+    "title": "File:Eurasian brown bear (Ursus arctos arctos) standing on rear legs, Skansen, Stockholm, Sweden julesvernex2.jpg"
+  },
+  "assets/worlds/hell/canyon.jpg": {
+    "derived_from": "bg_mid_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "cropped above its own lava lake, darkened",
+    "origin": "AI-generated with AI Horde (Deliberate)",
+    "prompt": "photorealistic dark volcanic cavern, towering black basalt rock pillars and cliffs, lava waterfalls pouring down glowing orange, smoke and embers, deep red atmosphere, cinematic wide shot, no people",
+    "seed": "9"
+  },
+  "assets/worlds/hell/demon.png": {
+    "derived_from": "cut_brute_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hulking horned demon brute, obsidian black skin with glowing molten lava cracks, huge arms, full body side view walking to the right, whole body in frame, isolated on plain light grey studio background, dramatic lighting",
+    "seed": "5"
+  },
+  "assets/worlds/hell/demon_glow.png": {
+    "derived_from": "cut_brute_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hulking horned demon brute, obsidian black skin with glowing molten lava cracks, huge arms, full body side view walking to the right, whole body in frame, isolated on plain light grey studio background, dramatic lighting",
+    "seed": "5"
+  },
+  "assets/worlds/hell/gargoyle.png": {
+    "derived_from": "cut_imp_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic gargoyle demon bat creature in flight, wings fully spread, dark charred skin with glowing ember cracks, side view facing right, whole creature in frame, isolated on plain white background",
+    "seed": "31"
+  },
+  "assets/worlds/hell/gargoyle_glow.png": {
+    "derived_from": "cut_imp_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic gargoyle demon bat creature in flight, wings fully spread, dark charred skin with glowing ember cracks, side view facing right, whole creature in frame, isolated on plain white background",
+    "seed": "31"
+  },
+  "assets/worlds/hell/ghoul.png": {
+    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
+    "derived_from": "cut_hyena.png",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
+    "title": "File:Running spotted hyena (11065789016).jpg"
+  },
+  "assets/worlds/hell/ghoul_glow.png": {
+    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
+    "derived_from": "cut_hyena.png",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
+    "title": "File:Running spotted hyena (11065789016).jpg"
+  },
+  "assets/worlds/hell/hellhound.png": {
+    "derived_from": "cut_hound_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic demonic hellhound, muscular black wolf-like beast with charred cracked skin and glowing orange lava cracks, burning yellow eyes, open jaws, full body side view running to the right, entire body visible, isolated on plain light grey studio background, sharp focus, cinematic lighting",
+    "seed": "11"
+  },
+  "assets/worlds/hell/hellhound_glow.png": {
+    "derived_from": "cut_hound_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic demonic hellhound, muscular black wolf-like beast with charred cracked skin and glowing orange lava cracks, burning yellow eyes, open jaws, full body side view running to the right, entire body visible, isolated on plain light grey studio background, sharp focus, cinematic lighting",
+    "seed": "11"
+  },
+  "assets/worlds/hell/hornhound.png": {
+    "derived_from": "cut_hound_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hell hound demon dog, emaciated black skin with smoldering magma veins, horns, glowing red eyes, full body profile side view, running pose facing right, whole animal in frame, isolated on plain white background, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/hell/hornhound_glow.png": {
+    "derived_from": "cut_hound_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hell hound demon dog, emaciated black skin with smoldering magma veins, horns, glowing red eyes, full body profile side view, running pose facing right, whole animal in frame, isolated on plain white background, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/hell/hound.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "assets/worlds/hell/hound_glow.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "cut_wolf.png",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, charred, lava cracks added",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "assets/worlds/hell/imp.png": {
+    "derived_from": "cut_imp_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic flying imp demon with large leathery bat wings spread wide, red-black skin, horns, glowing eyes, claws, full body side view flying to the right, isolated on plain light grey studio background, high detail",
+    "seed": "7"
+  },
+  "assets/worlds/hell/imp_glow.png": {
+    "derived_from": "cut_imp_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, mirrored, emissive layer extracted",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic flying imp demon with large leathery bat wings spread wide, red-black skin, horns, glowing eyes, claws, full body side view flying to the right, isolated on plain light grey studio background, high detail",
+    "seed": "7"
+  },
+  "assets/worlds/hell/rock.jpg": {
+    "author": "Dexter Perkins",
+    "derived_from": "photo_basalt1.jpg",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "cropped, graded dark, made seamless",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Basalt_flow_(GeoDIL_number_-_3118).jpg",
+    "title": "File:Basalt flow (GeoDIL number - 3118).jpg"
+  },
+  "assets/worlds/hell/src/bat1.jpg": {
+    "author": "Laverta.Dianthus",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bat_flying_in_the_darkness.jpg",
+    "title": "File:Bat flying in the darkness.jpg"
+  },
+  "assets/worlds/hell/src/bat2.jpg": {
+    "author": "Moshiur Rahman Happy",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Flying_Fox_drinking_water_on_mid-flight.jpg",
+    "title": "File:Flying Fox drinking water on mid-flight.jpg"
+  },
+  "assets/worlds/hell/src/bear1.jpg": {
+    "author": "USFWSAlaska",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bear_standing_(51102086125).jpg",
+    "title": "File:Bear standing (51102086125).jpg"
+  },
+  "assets/worlds/hell/src/bear2.png": {
+    "author": "Malene Thyssen",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Brown_bear_(Ursus_arctos_arctos)_standing.png",
+    "title": "File:Brown bear (Ursus arctos arctos) standing.png"
+  },
+  "assets/worlds/hell/src/bear3.jpg": {
+    "author": "Jules Verne Times Two",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Eurasian_brown_bear_(Ursus_arctos_arctos)_standing_on_rear_legs,_Skansen,_Stockholm,_Sweden_julesvernex2.jpg",
+    "title": "File:Eurasian brown bear (Ursus arctos arctos) standing on rear legs, Skansen, Stockholm, Sweden julesvernex2.jpg"
+  },
+  "assets/worlds/hell/src/bg_far_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (Deliberate)",
+    "prompt": "epic hellscape matte painting panorama, vast volcanic underworld, distant erupting volcanoes, rivers of glowing lava, jagged black basalt cliffs, red and orange smoky sky with glowing ash clouds, photorealistic, cinematic, ultra detailed, no people",
+    "seed": "3"
+  },
+  "assets/worlds/hell/src/bg_mid_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (Deliberate)",
+    "prompt": "photorealistic dark volcanic cavern, towering black basalt rock pillars and cliffs, lava waterfalls pouring down glowing orange, smoke and embers, deep red atmosphere, cinematic wide shot, no people",
+    "seed": "9"
+  },
+  "assets/worlds/hell/src/brute_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hulking horned demon brute, obsidian black skin with glowing molten lava cracks, huge arms, full body side view walking to the right, whole body in frame, isolated on plain light grey studio background, dramatic lighting",
+    "seed": "5"
+  },
+  "assets/worlds/hell/src/cut_bat.png": {
+    "author": "Laverta.Dianthus",
+    "derived_from": "bat1.jpg",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bat_flying_in_the_darkness.jpg",
+    "title": "File:Bat flying in the darkness.jpg"
+  },
+  "assets/worlds/hell/src/cut_bear.png": {
+    "author": "Jules Verne Times Two",
+    "derived_from": "bear3.jpg",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "modified": "background removed, mirrored",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Eurasian_brown_bear_(Ursus_arctos_arctos)_standing_on_rear_legs,_Skansen,_Stockholm,_Sweden_julesvernex2.jpg",
+    "title": "File:Eurasian brown bear (Ursus arctos arctos) standing on rear legs, Skansen, Stockholm, Sweden julesvernex2.jpg"
+  },
+  "assets/worlds/hell/src/cut_brute_a.png": {
+    "derived_from": "brute_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hulking horned demon brute, obsidian black skin with glowing molten lava cracks, huge arms, full body side view walking to the right, whole body in frame, isolated on plain light grey studio background, dramatic lighting",
+    "seed": "5"
+  },
+  "assets/worlds/hell/src/cut_hound_a.png": {
+    "derived_from": "hound_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic demonic hellhound, muscular black wolf-like beast with charred cracked skin and glowing orange lava cracks, burning yellow eyes, open jaws, full body side view running to the right, entire body visible, isolated on plain light grey studio background, sharp focus, cinematic lighting",
+    "seed": "11"
+  },
+  "assets/worlds/hell/src/cut_hound_b.png": {
+    "derived_from": "hound_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hell hound demon dog, emaciated black skin with smoldering magma veins, horns, glowing red eyes, full body profile side view, running pose facing right, whole animal in frame, isolated on plain white background, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/hell/src/cut_hyena.png": {
+    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
+    "derived_from": "hyena1.jpg",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "modified": "background removed, mirrored",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
+    "title": "File:Running spotted hyena (11065789016).jpg"
+  },
+  "assets/worlds/hell/src/cut_imp_a.png": {
+    "derived_from": "imp_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic flying imp demon with large leathery bat wings spread wide, red-black skin, horns, glowing eyes, claws, full body side view flying to the right, isolated on plain light grey studio background, high detail",
+    "seed": "7"
+  },
+  "assets/worlds/hell/src/cut_imp_b.png": {
+    "derived_from": "imp_b.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic gargoyle demon bat creature in flight, wings fully spread, dark charred skin with glowing ember cracks, side view facing right, whole creature in frame, isolated on plain white background",
+    "seed": "31"
+  },
+  "assets/worlds/hell/src/cut_wolf.png": {
+    "author": "Photographer: Jim Clark",
+    "derived_from": "wolf1.jpg",
+    "license": "Public domain",
+    "license_url": "",
+    "modified": "background removed, mirrored",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "assets/worlds/hell/src/hound_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic demonic hellhound, muscular black wolf-like beast with charred cracked skin and glowing orange lava cracks, burning yellow eyes, open jaws, full body side view running to the right, entire body visible, isolated on plain light grey studio background, sharp focus, cinematic lighting",
+    "seed": "11"
+  },
+  "assets/worlds/hell/src/hound_b.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic hell hound demon dog, emaciated black skin with smoldering magma veins, horns, glowing red eyes, full body profile side view, running pose facing right, whole animal in frame, isolated on plain white background, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/hell/src/hyena1.jpg": {
+    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
+    "title": "File:Running spotted hyena (11065789016).jpg"
+  },
+  "assets/worlds/hell/src/imp_a.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic flying imp demon with large leathery bat wings spread wide, red-black skin, horns, glowing eyes, claws, full body side view flying to the right, isolated on plain light grey studio background, high detail",
+    "seed": "7"
+  },
+  "assets/worlds/hell/src/imp_b.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic gargoyle demon bat creature in flight, wings fully spread, dark charred skin with glowing ember cracks, side view facing right, whole creature in frame, isolated on plain white background",
+    "seed": "31"
+  },
+  "assets/worlds/hell/src/paint_crater.jpg": {
+    "author": "Charles Furneaux",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Night_in_Kilauea_Crater_by_Charles_Furneaux,_1885,_Lyman_House_.JPG",
+    "title": "File:Night in Kilauea Crater by Charles Furneaux, 1885, Lyman House .JPG"
+  },
+  "assets/worlds/hell/src/photo_basalt1.jpg": {
+    "author": "Dexter Perkins",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Basalt_flow_(GeoDIL_number_-_3118).jpg",
+    "title": "File:Basalt flow (GeoDIL number - 3118).jpg"
+  },
+  "assets/worlds/hell/src/photo_basalt2.jpg": {
+    "author": "Dexter Perkins",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Basalt_flow_(GeoDIL_number_-_3116).jpg",
+    "title": "File:Basalt flow (GeoDIL number - 3116).jpg"
+  },
+  "assets/worlds/hell/src/photo_channel.jpg": {
+    "author": "United States Geological Survey",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:USGS_K%C4%ABlauea_multimediaFile-2444_(2018-07-17).jpg",
+    "title": "File:USGS Kīlauea multimediaFile-2444 (2018-07-17).jpg"
+  },
+  "assets/worlds/hell/src/photo_channel2.jpg": {
+    "author": "Brocken Inaglory\n\nOriginal uploader was Brocken Inaglory",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lava_channel_with_overflows_edit_4.jpg",
+    "title": "File:Lava channel with overflows edit 4.jpg"
+  },
+  "assets/worlds/hell/src/photo_flowfront.jpg": {
+    "author": "F. Trusdell/USGS",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lava_flow_front_of_the_2022_Mauna_Loa_eruption.jpg",
+    "title": "File:Lava flow front of the 2022 Mauna Loa eruption.jpg"
+  },
+  "assets/worlds/hell/src/photo_fountain1.jpg": {
+    "author": "J.D. Griggs",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Pahoeoe_fountain_edit2.jpg",
+    "title": "File:Pahoeoe fountain edit2.jpg"
+  },
+  "assets/worlds/hell/src/photo_fountain2.jpg": {
+    "author": "J.B. Judd - USGS",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Lava_fountain_dome_2.jpg",
+    "title": "File:Lava fountain dome 2.jpg"
+  },
+  "assets/worlds/hell/src/photo_fountain3.jpg": {
+    "author": "Hawaii Volcanoes National Park",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Kapoho_lava_fountains_(2).jpg",
+    "title": "File:Kapoho lava fountains (2).jpg"
+  },
+  "assets/worlds/hell/src/photo_lake.jpg": {
+    "author": "Hawai‘i Volcanoes NPS",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:HAVO_20211219_Halemaumau_lava_lake_from_Keanakakoi_J_Wei_(51759578453).jpg",
+    "title": "File:HAVO 20211219 Halemaumau lava lake from Keanakakoi J Wei (51759578453).jpg"
+  },
+  "assets/worlds/hell/src/photo_night1.jpg": {
+    "author": "United States Geological Survey",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:USGS_K%C4%ABlauea_multimediaFile-2066.jpg",
+    "title": "File:USGS Kīlauea multimediaFile-2066.jpg"
+  },
+  "assets/worlds/hell/src/photo_piton.jpg": {
+    "author": "Aurélien Théau",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:PitonFournaise_avril_2007.JPG",
+    "title": "File:PitonFournaise avril 2007.JPG"
+  },
+  "assets/worlds/hell/src/wolf1.jpg": {
+    "author": "Photographer: Jim Clark",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
+    "title": "File:Canis lupus baileyi running.jpg"
+  },
+  "assets/worlds/hell/src/wolf2.jpg": {
+    "author": "Barry O'Neill",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:WolfRunningInSnow.jpg",
+    "title": "File:WolfRunningInSnow.jpg"
+  },
+  "assets/worlds/hell/src/wolf3.jpg": {
+    "author": "NPS/Jim Peaco",
+    "license": "Public domain",
+    "license_url": "",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:File-Grey_wolf_running_in_Little_America_Flats;-Jim_Peaco;-January_2004;-Catalog_18035d;-Original_B66G3006_(1d535a2b-e193-480d-8ac3-91f9125add0f).jpg",
+    "title": "File:File-Grey wolf running in Little America Flats;-Jim Peaco;-January 2004;-Catalog 18035d;-Original B66G3006 (1d535a2b-e193-480d-8ac3-91f9125add0f).jpg"
+  },
+  "assets/worlds/hell/volcano.jpg": {
+    "derived_from": "bg_far_a.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "top half cropped, darkened",
+    "origin": "AI-generated with AI Horde (Deliberate)",
+    "prompt": "epic hellscape matte painting panorama, vast volcanic underworld, distant erupting volcanoes, rivers of glowing lava, jagged black basalt cliffs, red and orange smoky sky with glowing ash clouds, photorealistic, cinematic, ultra detailed, no people",
+    "seed": "3"
+  }
+}

@@ -7,6 +7,16 @@ pond, collect blooms, and land on the lotus before the clock runs out. There are
 stages × 10 levels. The clock gets shorter every level, and each stage adds a new threat:
 fading pads, currents, crocodiles, falling stars, snakes, saucers, the dragon.
 
+Getting caught pulls you into a side world. Win it and you're back on your pad; lose it
+and you lose a heart:
+- A croc or snake bite → **Animal World**, a sword fight through the jungle with real
+  crocodiles, pythons, boars and eagles.
+- A saucer beam → **Alien World**, a space shooter that ends with the mothership.
+- Dragon fire → **Hell**, an archer run across lava with the horde right behind you.
+
+Each world has its own on-screen controller. Photo credits are on the title screen
+under **Credits**.
+
 ## Put it on your phone like an app
 
 - **iPhone:** open the link in **Safari** and tap **Share**, which is inside the **⋯** menu next to the address bar on iOS 26. Then tap **Add to Home Screen**.

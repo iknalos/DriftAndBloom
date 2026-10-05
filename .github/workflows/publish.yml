@@ -31,6 +31,7 @@ jobs:
         run: |
           mkdir _site
           cp -r index.html sw.js manifest.webmanifest icons workspace assets _site/
+          if [ -d worlds ]; then cp -r worlds _site/; fi
 
       - uses: actions/configure-pages@v5
 

@@ -48,6 +48,15 @@ button:active { opacity: 0.75; }
   border-radius: 16px; font-size: 20px; font-weight: bold; padding: 16px 56px;
   cursor: pointer; letter-spacing: 2px; z-index: 2; margin: 0;
 }
+#credits-btn { position: absolute; bottom: 18px; right: 18px; margin: 0; padding: 8px 12px; background: transparent; color: rgba(160,220,200,0.55); font-size: 13px; font-weight: normal; z-index: 2; }
+#credits-layer { position: absolute; inset: 0; z-index: 80; display: none; background: rgba(4,12,20,0.97); color: #cfe; overflow-y: auto; padding: 64px 22px 30px; font: 13px/1.45 system-ui, sans-serif; }
+#credits-layer.open { display: block; }
+#credits-layer h2 { margin: 0 0 6px; text-align: left; }
+#credits-layer h3 { font: 700 13px system-ui; letter-spacing: 2px; color: #9FE1CB; margin: 18px 0 6px; text-transform: uppercase; }
+#credits-layer .cr { margin: 0 0 9px; color: rgba(220,240,232,0.85); }
+#credits-layer .cr b { color: #fff; font-weight: 600; }
+#credits-layer a { color: #ffd86b; }
+#credits-layer .close { position: fixed; top: 18px; right: 18px; margin: 0; padding: 8px 14px; font-size: 15px; }
 #begin-btn:active { background: rgba(93,202,165,0.15); opacity: 1; }
 
 /* Character grid */
@@ -89,6 +98,9 @@ button:active { opacity: 0.75; }
 #stage-stars { font: 600 13px system-ui, sans-serif; color: #FFD740; margin-top: 4px; }
 .stage-arrow { background: rgba(7,24,40,0.72); border: 1.5px solid rgba(93,202,165,0.5); color: #9FE1CB; width: 42px; height: 42px; border-radius: 50%; padding: 0; margin: 0; font-size: 26px; line-height: 36px; }
 .stage-arrow:disabled { opacity: 0.22; cursor: default; }
+#world-dev { position: absolute; top: 62px; right: 16px; z-index: 4; display: none; flex-direction: column; gap: 6px; background: rgba(4,16,28,0.92); border: 1px solid rgba(93,202,165,0.35); border-radius: 14px; padding: 10px; }
+#world-dev.open { display: flex; }
+#world-dev button { margin: 0; padding: 10px 16px; font-size: 15px; border-radius: 10px; text-align: left; }
 #stage-hint { position: absolute; left: 22px; right: 22px; bottom: 22px; text-align: center; font-size: 13px; line-height: 1.35; color: rgba(205,238,228,0.88); z-index: 2; background: rgba(4,16,28,0.72); border: 1px solid rgba(93,202,165,0.25); border-radius: 12px; padding: 9px 12px; }
 .lv-node { position: absolute; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; padding: 0; border: 2px solid rgba(160,240,200,0.55);
   background: radial-gradient(circle at 38% 30%, #74d494, #2c8a55 45%, #164d32 100%); color: #eafff4; font: 800 20px Georgia, serif; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
@@ -130,6 +142,7 @@ if ('serviceWorker' in navigator) {
   <div id="s-begin" class="screen active" style="padding:0;">
     <canvas id="begin-bg" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
     <button id="begin-btn" onclick="goTo('s-charselect')">Begin</button>
+    <button id="credits-btn" onclick="showCredits()">Credits</button>
   </div>
 
   <!-- Screen 2: Character Select -->
@@ -150,12 +163,22 @@ if ('serviceWorker' in navigator) {
       <button id="stage-next" class="stage-arrow" aria-label="Next stage">›</button>
     </div>
     <div id="stage-hint"></div>
+    <button id="world-dev-btn" class="btn-back" style="left:auto;right:20px;z-index:3;display:none" onclick="document.getElementById('world-dev').classList.toggle('open')">⚔ Worlds</button>
+    <div id="world-dev">
+      <button onclick="tryWorld('animal')">🐊 Animal World</button>
+      <button onclick="tryWorld('alien')">🛸 Alien World</button>
+      <button onclick="tryWorld('hell')">🔥 Hell</button>
+    </div>
   </div>
+
+  <!-- Credits: every photo / AI image used by the side worlds, from assets/worlds/CREDITS.json -->
+  <div id="credits-layer"><button class="close" onclick="document.getElementById('credits-layer').classList.remove('open')">Close</button>
+    <h2>Credits</h2><div id="credits-body">Loading…</div></div>
 
   <!-- Screen 4: Gameplay -->
   <div id="s-gameplay" class="screen" style="padding:0;">
     <canvas id="game-cv" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-    <button class="btn-back" onclick="goTo('s-levelselect');gActive=false;" style="position:absolute;top:20px;left:20px;z-index:2;">← Back</button>
+    <button class="btn-back" onclick="window.DABWorlds&&DABWorlds.abort();goTo('s-levelselect');gActive=false;" style="position:absolute;top:20px;left:20px;z-index:2;">← Back</button>
   </div>
 
 </div>
@@ -164,6 +187,12 @@ if ('serviceWorker' in navigator) {
      drawSpirit / drawEnemy / drawNightSky etc. are the single global source. -->
 <script src="workspace/character/spirit_draw.js"></script>
 <script src="workspace/character/scene_draw.js"></script>
+<!-- Side worlds a catch sends you into: croc/snake -> Animal World, saucer ->
+     Alien World, dragon fire -> Hell. Engine + one module per world. -->
+<script src="worlds/world_core.js"></script>
+<script src="worlds/animal.js"></script>
+<script src="worlds/alien.js"></script>
+<script src="worlds/hell.js"></script>
 <script>
 'use strict';
 
@@ -563,6 +592,8 @@ let gActive = false;
   let cfg=null,levelN=1,charId='spirit',spd=1;
   let sT=0,won=false,winT=0,failed=false,lives=3,maxLives=3,invuln=0,shake=0,starsShown=0,hits=0;
   let bloomsTotal=0,bloomsGot=0,respawnT=0,introT=0,introTxt=null;
+  let inWorld=false;   // true while a catch has the spirit in a side world
+  let homeT=0;         // > 0 just after winning a world: warm glow instead of the red hurt vignette
   let timeLimit=60,timeLeft=60,failReason='lives',timeDrop=0,startedN=0,toastT=0;
   let hover={x:-99,y:-99};
   const sp={x:0,y:0,pad:null,jumping:false,jt:0,dur:0.5,from:{x:0,y:0},to:null,hidden:false,state:'IDLE',stateT:0,vx:0,vy:0};
@@ -642,7 +673,7 @@ let gActive = false;
     buildPond(n);
     sp.pad=pads[0];sp.jumping=false;sp.hidden=false;sp.state='IDLE';sp.stateT=0;sp.vx=0;sp.vy=0;sp.to=null;
     placeOnPad();
-    won=false;winT=0;failed=false;starsShown=0;hits=0;parts=[];floaters=[];invuln=0;shake=0;respawnT=0;sT=0;
+    won=false;winT=0;failed=false;starsShown=0;hits=0;parts=[];floaters=[];invuln=0;shake=0;respawnT=0;sT=0;inWorld=false;homeT=0;
     maxLives=lives=cfg.lives||3;
     enemies=spawnEnemies(cfg);
     introTxt=INTRO[n]||null; introT=introTxt?4.2:0;
@@ -673,8 +704,9 @@ let gActive = false;
     return pool.length?pool[Math.floor(Math.random()*pool.length)]:(standing()&&sp.pad.kind!=='goal'?sp.pad:null);
   }
 
-  function hurt(reason,wet){
-    if(invuln>0||won||failed||respawnT>0)return;
+  function hurt(reason,wet,world){
+    if(invuln>0||won||failed||respawnT>0||inWorld)return;
+    if(world&&window.DABWorlds&&DABWorlds.has(world)){ catchToWorld(reason,world); return; }
     lives--;hits++;invuln=1.7;shake=0.45;
     burst(sp.x,sp.y,'255,90,90',14,3);
     floatText(sp.x,sp.y-48,reason,'255,170,160');
@@ -683,6 +715,44 @@ let gActive = false;
     // every hit sends the spirit back to the start pad and restores the pond
     sp.hidden=true;respawnT=0.9;
   }
+  // A croc / snake bite, a saucer beam or dragon fire pulls the spirit into a
+  // side world (worlds/*.js). The pond freezes (clock included) while it's
+  // there. Win the world: back on the pad you were caught on, no heart lost.
+  // Lose it: costs a heart and sends you to the start, like any other hit.
+  function catchToWorld(reason,world){
+    hits++; inWorld=true; shake=0.45;
+    burst(sp.x,sp.y,'255,90,90',14,3);
+    floatText(sp.x,sp.y-48,reason,'255,170,160');
+    const from={x:sp.x,y:sp.y,pad:sp.pad};
+    setTimeout(()=>{
+      if(!gActive||!inWorld){ inWorld=false; return; }
+      sp.hidden=true;
+      DABWorlds.enter(world,{charId,reason}).then(res=>{
+        inWorld=false;
+        if(!gActive||res.aborted)return;
+        calmThreats(2.4);
+        if(res.won){
+          let p=from.pad&&padUp(from.pad)&&!from.pad.abducted?from.pad:null;
+          if(!p){ let bd=1e9; for(const q of pads){ if(!padUp(q)||q.kind==='goal'||q.abducted)continue; const d=dist(q.x,q.y,from.x,from.y); if(d<bd){bd=d;p=q;} } }
+          sp.pad=p||pads[0]; sp.hidden=false; sp.jumping=false; sp.state='IDLE'; invuln=2.2; homeT=2.2; placeOnPad();
+          ripple(sp.x,sp.y,charRgb());
+          floatText(sp.x,sp.y-52,'You made it back!','255,220,140');
+        } else {
+          lives--;
+          if(lives<=0){ failed=true; failReason='lives'; sp.hidden=true; return; }
+          respawn();
+        }
+      });
+    },650);
+  }
+  // send every threat away for a moment (flyers on screen head off gracefully)
+  function calmThreats(base){
+    enemies.forEach((e,i)=>{
+      if(e.pad)e.pad.lift=0;
+      if((e.type==='saucer'||e.type==='dragon')&&e.st!=='wait'){ e.st='leave'; e.pad=null; e.power=0; return; }
+      e.st='wait';e.t=base+i*0.9;e.pad=null;e.power=0;e.a=0; if(e.type==='snake'||e.type==='dragon'||e.type==='saucer')e.x=-300;
+    });
+  }
   // put every pad back as the stage began (crumbled pads resurface, currents
   // rewind) and give the enemies a moment before they come back
   function resetPond(){
@@ -690,11 +760,7 @@ let gActive = false;
       p.x=p.bx;p.y=p.by;p.fading=false;p.fadeT=0;p.lift=0;p.abducted=false;
       if(p.st!=='up'){p.st='rise';p.stT=0.35;}
     }
-    enemies.forEach((e,i)=>{
-      // flyers already on screen head off gracefully instead of vanishing
-      if((e.type==='saucer'||e.type==='dragon')&&e.st!=='wait'){ e.st='leave'; e.pad=null; e.power=0; if(e.pad)e.pad.lift=0; return; }
-      e.st='wait';e.t=1.6+i*0.9;e.pad=null;e.power=0;e.a=0; if(e.type==='snake'||e.type==='dragon'||e.type==='saucer')e.x=-300;
-    });
+    calmThreats(1.6);
   }
   function respawn(){
     resetPond();
@@ -712,7 +778,7 @@ let gActive = false;
           if(e.st==='wait'&&e.t<=0){ e.pad=pickTargetPad(0.7); if(!e.pad){e.t=1;break;} e.dir=Math.random()<0.5?1:-1; e.st='telegraph'; e.t=Math.max(0.8,1.6/Math.sqrt(spd)); }
           if(e.pad){ e.x=e.pad.x+e.dir*(e.st==='charge'?30:42); e.y=e.pad.y+6; }
           if(e.st==='telegraph'){ e.a=Math.min(1,e.a+dt*3); if(e.t<=0){e.st='charge';e.t=0.5;shake=Math.max(shake,0.15);} }
-          else if(e.st==='charge'){ if(standing()&&sp.pad===e.pad)hurt('Snapped by a croc!',false); if(e.t<=0){e.st='sink';e.t=0.6;} }
+          else if(e.st==='charge'){ if(standing()&&sp.pad===e.pad)hurt('Snapped by a croc!',false,'animal'); if(e.t<=0){e.st='sink';e.t=0.6;} }
           else if(e.st==='sink'){ e.a=Math.max(0,e.a-dt*2); if(e.t<=0){e.st='wait';e.t=rnd(3.5,6.5)/spd;e.pad=null;} }
           break;
         }
@@ -723,7 +789,7 @@ let gActive = false;
             if(standing()){
               for(let u=0;u<=1;u+=0.1){
                 const bx=e.x-e.dir*(-2+u*96), by=e.y+Math.sin(sT*4-u*6)*6.5*(0.35+0.65*u);
-                if(dist(bx,by,sp.x,sp.y+3)<21){hurt('Bitten by a snake!',false);break;}
+                if(dist(bx,by,sp.x,sp.y+3)<21){hurt('Bitten by a snake!',false,'animal');break;}
               }
             }
             if((e.dir>0&&e.x>W+140)||(e.dir<0&&e.x<-140)){e.st='wait';e.t=rnd(2.5,5)/spd;}
@@ -743,7 +809,7 @@ let gActive = false;
           if(e.st==='aim'&&e.t<=0){ e.st='fire'; e.t=1.25; e.bt=0; }
           if(e.st==='fire'){
             e.bt+=dt; e.power=Math.min(1,e.bt/0.25,Math.max(0,e.t)/0.25);
-            if(e.bt>0.3&&standing()&&dist(sp.x,sp.y,e.tx,e.ty)<34)hurt('Scorched by dragon fire!',false);
+            if(e.bt>0.3&&standing()&&dist(sp.x,sp.y,e.tx,e.ty)<34)hurt('Scorched by dragon fire!',false,'hell');
             if(e.t<=0){ e.st='leave'; e.power=0; if(e.pad&&e.pad!==sp.pad)sinkPad(e.pad,2.6); e.pad=null; }
           }
           if((e.st==='leave'||e.st==='fly')&&(e.x<-170||e.x>W+170)){ e.st='wait'; e.t=rnd(5,8)/spd; }
@@ -773,7 +839,7 @@ let gActive = false;
           }
           else if(e.st==='abduct'){
             e.pad.lift=Math.min(1,e.pad.lift+dt*1.6);
-            if(standing()&&sp.pad===e.pad)hurt('Beamed away!',true);
+            if(standing()&&sp.pad===e.pad)hurt('Beamed away!',true,'alien');
             if(e.t<=0){ const p=e.pad; p.lift=0; sinkPad(p,4.5); p.abducted=true; e.st='leave'; e.pad=null; e.vx=0; }
           }
           else if(e.st==='leave'){
@@ -869,12 +935,13 @@ let gActive = false;
   function update(dt){
     sT+=dt;
     if(invuln>0)invuln=Math.max(0,invuln-dt);
+    if(homeT>0)homeT=Math.max(0,homeT-dt);
     if(shake>0)shake=Math.max(0,shake-dt*1.6);
     if(introT>0)introT=Math.max(0,introT-dt);
     if(toastT>0)toastT=Math.max(0,toastT-dt);
     for(let i=parts.length-1;i>=0;i--){const pt=parts[i];pt.life-=dt*(pt.ring?1.6:pt.kind==='drop'?1.7:1.4);if(pt.life<=0){parts.splice(i,1);continue;}if(!pt.ring){pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=pt.kind==='drop'?0.2:0.1;pt.vx*=0.96;pt.vy*=pt.kind==='drop'?0.99:0.96;pt.rot=(pt.rot||0)+dt*4;}}
     for(let i=floaters.length-1;i>=0;i--){const f=floaters[i];f.life-=dt*0.8;f.y-=dt*18;if(f.life<=0)floaters.splice(i,1);}
-    if(failed)return;
+    if(failed||inWorld)return;
     if(!won&&introT<=0){
       timeLeft-=dt;
       if(timeLeft<=0){timeLeft=0;failed=true;failReason='time';shake=0.3;return;}
@@ -1253,6 +1320,7 @@ let gActive = false;
   let last2=0;
   function gLoop(ts){
     const dt=Math.min((ts-last2)/1000,.05);last2=ts;
+    if(inWorld&&window.DABWorlds&&DABWorlds.isActive()){ requestAnimationFrame(gLoop); return; }
     cx=hiDPI(cv,W,H);
     if(gActive)update(dt);
     cx.save();
@@ -1279,7 +1347,8 @@ let gActive = false;
       drawToast();
     }
     cx.restore();
-    if(invuln>0){const a=Math.min(0.45,invuln*0.5);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,40,40,0)');vg.addColorStop(1,`rgba(255,30,30,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
+    if(homeT>0){const a=Math.min(0.35,homeT*0.3);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,220,140,0)');vg.addColorStop(1,`rgba(255,214,120,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
+    else if(invuln>0){const a=Math.min(0.45,invuln*0.5);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,40,40,0)');vg.addColorStop(1,`rgba(255,30,30,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
     if(gActive&&won){ if(levelN%10===0)drawStageClear(dt||0.016); else drawWin(dt||0.016); }
     if(gActive&&failed)drawFail();
     requestAnimationFrame(gLoop);
@@ -1290,6 +1359,47 @@ let gActive = false;
 // ── Init ────────────────────────────────────────────────────────────────────
 buildCharGrid();
 buildLevelGrid();
+
+// Credits screen: lists every shipped side-world image with its author and license
+function showCredits(){
+  const layer=document.getElementById('credits-layer'), body=document.getElementById('credits-body');
+  layer.classList.add('open');
+  const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  fetch('assets/worlds/CREDITS.json').then(r=>r.ok?r.json():{}).then(data=>{
+    const groups={animal:'Animal World',alien:'Alien World',hell:'Hell'};
+    let html='<p class="cr">Drift &amp; Bloom: game, spirits, pond and dragon by the developer. Side-world images listed below; photos are used under their licenses (changes: cut out, recoloured, animated).</p>';
+    for(const g in groups){
+      const rows=Object.entries(data).filter(([f])=>f.startsWith('assets/worlds/'+g+'/')&&!f.includes('/src/'));
+      if(!rows.length)continue;
+      html+=`<h3>${groups[g]}</h3>`;
+      const seen=new Set();
+      for(const [f,c] of rows){
+        const key=(c.source||c.prompt||f)+(c.author||'');
+        if(seen.has(key))continue; seen.add(key);
+        const name=esc((c.title||f.split('/').pop()).replace(/^File:/,''));
+        const lic=c.license_url?`<a href="${esc(c.license_url)}" target="_blank" rel="noopener">${esc(c.license)}</a>`:esc(c.license||'');
+        const src=c.source?` · <a href="${esc(c.source)}" target="_blank" rel="noopener">source</a>`:'';
+        html+=`<p class="cr"><b>${name}</b><br>${esc(c.author||c.origin||'')}${c.author?' · ':''}${lic}${src}</p>`;
+      }
+    }
+    body.innerHTML=html;
+  }).catch(()=>{ body.textContent='Credits are listed in assets/worlds/CREDITS.json.'; });
+}
+
+// Side worlds outside a level: the stage map's "⚔ Worlds" button (developer
+// builds) and game.html?world=animal|alien|hell for tests. Replays until left.
+function tryWorld(id){
+  document.getElementById('world-dev').classList.remove('open');
+  if(!window.DABWorlds||!DABWorlds.has(id))return;
+  DABWorlds.enter(id,{charId:selectedChar,reason:'Practice run'});
+}
+if(UNLOCK_ALL&&window.DABWorlds)document.getElementById('world-dev-btn').style.display='block';
+(function(){
+  const w=new URLSearchParams(location.search).get('world');
+  if(!w||!window.DABWorlds||!DABWorlds.has(w))return;
+  const go=()=>DABWorlds.enter(w,{charId:selectedChar,reason:'Test run'}).then(r=>{ if(!r.aborted)go(); });
+  go();
+})();
 </script>
 </body>
 </html>
