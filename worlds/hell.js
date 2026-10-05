@@ -55,7 +55,7 @@
   ];
   const TRIGGERS = [
     { at: 120, spawn: 'hound', x: 830 },
-    { at: 120, msg: 'Hold the bow to draw · let go to shoot' },
+    { at: 120, msg: 'Tap ⚔ to slash · hold ⚔, let go = whirlwind' },
     { at: 640, spawn: 'bat', x: 1180, y: 370 },
     { at: 1040, wall: true },
     { at: 1280, spawn: 'hound', from: 'wall' },
@@ -193,13 +193,13 @@ void main(){
   }
 
   DABWorlds.register('hell', {
-    title: 'Hell', color: '255,122,52',
+    title: 'Hell', color: '255,122,52', opaque: true, hero: 'hell',
     subtitle: r => (r && /dragon|scorch/i.test(r) ? r + ' ' : '') + 'You fell through the burning pond into the underworld.',
     hint: 'Run for the exit gate. The horde is right behind you.',
-    howto: ['◀ ▶ run · ⤒ jump · never touch the lava', 'hold the bow to draw, let go to shoot', '🔥 = flaming volley'],
+    howto: ['◀ ▶ run · ⤒ jump · never touch the lava', 'tap ⚔ to slash · hold ⚔ and let go = whirlwind', '🔥 = flaming storm'],
     controls: {
       dirs: 'lr',
-      buttons: [{ id: 'attack', icon: 'bow' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: '\uD83D\uDD25', count: () => VOLLEY.n }]
+      buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: '\uD83D\uDD25', count: () => VOLLEY.n }]
     },
     assets: {
       rock: A + 'rock.jpg', backdrop: A + 'backdrop.jpg', volcano: A + 'volcano.jpg', canyon: A + 'canyon.jpg',
@@ -235,7 +235,8 @@ void main(){
     const hero = {
       x: 60, y: 590, vx: 0, vy: 0, face: 1, onGround: true, seg: null, coyote: 0, jumpBuf: 0, jumpCut: false,
       draw: 0, drawing: false, aim: 0.05, shootCd: 0, hurtT: 0, phase: 0, lavaT: 0, hidden: false,
-      portalT: 0, safe: { x: 60, seg: null }, target: null, volleyCd: 0
+      portalT: 0, safe: { x: 60, seg: null }, target: null, volleyCd: 0,
+      atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), holdT: 0, charge: 0, castT: 0, runClock: 0
     };
     const segs = SEGS.map(([x0, x1, top, kind], i) => ({ i, x0, x1, top, y: top, kind, st: 'solid', t: 0, vy: 0, alpha: 1 }));
     hero.seg = segs[0]; hero.safe.seg = segs[0];
@@ -243,7 +244,7 @@ void main(){
     const zones = SERPENT_ZONES.map(([x0, x1]) => ({ x0, x1, on: false, st: 'lurk', t: 1.2, s: null }));
     const pickups = PICKUPS.map(([x, y, kind]) => ({ x, y, kind, taken: false, ph: Math.random() * 6 }));
     const triggers = TRIGGERS.map(t => Object.assign({ done: false }, t));
-    const enemies = [], arrows = [], shots = [], waves = [];
+    const enemies = [], arrows = [], shots = [], waves = [], winds = [];
     const wall = { on: false, x: -900, alpha: 0, spawnT: 9 };
     let cam = 0, arena = false, portalOpen = false, portalK = 0, flashT = 7, skyFlash = 0, msgT = 0, msg = '';
     let boss = null, tAll = 0, embAcc = 0, ashAcc = 0, smokeAcc = 0, kills = 0, openT = 0, frameMs = 0;
@@ -632,27 +633,43 @@ void main(){
       let mv = (I.right ? 1 : 0) - (I.left ? 1 : 0);
       if (h.hurtT > 0) mv = 0;
 
-      // bow: hold to draw, let go to loose
+      // sword: a tap slashes at once (3-hit combo); keep holding to charge the whirlwind,
+      // let go to send the tornado at the nearest threat. 🔥 = a big flaming storm.
       h.target = pickTarget();
-      if (I.held.attack && h.shootCd <= 0 && h.hurtT <= 0) {
-        if (!h.drawing) { h.drawing = true; h.draw = 0.05; }
-        h.draw = Math.min(1, h.draw + dt / 0.6);
-      } else if (h.drawing && !I.held.attack) {
-        shoot(Math.max(h.draw, 0.34)); h.drawing = false; h.draw = 0; h.shootCd = 0.14;
+      if (I.pressed.attack && h.hurtT <= 0) {
+        h.holdT = 0;
+        if (!h.atk) startSlash(1);
+        else if (h.atkT > SLASH_DUR[h.atkStep - 1] * 0.32) h.atkQ = true;
       }
-      if (h.drawing && h.target) {                 // a drawn bow stays on its target — backpedal while aiming
-        const d = Math.sign(h.target.x - h.x); if (d) h.face = d;
-      } else if (mv) h.face = mv;
-      const wantAim = h.target ? solveAim(h.target, 560 + 640 * Math.max(h.draw, 0.34)) : 0.06;
-      h.aim = lerp(h.aim, wantAim, 1 - Math.exp(-dt * 14));
+      if (I.held.attack && h.hurtT <= 0) {
+        h.holdT += dt;
+        if (h.holdT > 0.3) {
+          const was = h.charge;
+          h.charge = Math.min(1, (h.holdT - 0.3) / 0.5);
+          if (was < 1 && h.charge >= 1) { spawnP({ x: h.x, y: h.y - 52, kind: 'ring', rgb: '210,235,255', size: 8, grow: 160, life: 0.3, layer: 'front' }); env.shake(0.12); }
+          if (Math.random() < 0.8) { const a = rand(0, TAU), r = rand(24, 40);
+            spawnP({ x: h.x + Math.cos(a) * r, y: h.y - 52 + Math.sin(a) * r * 0.7, vx: -Math.sin(a) * 160, vy: Math.cos(a) * 110 - 30,
+              kind: 'glow', rgb: '205,232,255', size: rand(1.6, 2.8), life: 0.3, drag: 2, layer: 'front' }); }
+        }
+      }
+      if (I.released.attack) { if (h.charge > 0.15) castWind(h.charge, false); h.charge = 0; h.holdT = 0; }
+      if (h.atk) {
+        h.atkT += dt;
+        const dur = h.onGround ? SLASH_DUR[h.atkStep - 1] : 0.3, k = h.atkT / dur;
+        if (k > 0.28 && k < 0.66) slashHits();
+        if (k >= 1) { if (h.atkQ && h.atkStep < 3) startSlash(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; } }
+      }
+      if (h.castT > 0) h.castT -= dt;
+      if (h.target && (h.charge > 0 || h.castT > 0)) { const d = Math.sign(h.target.x - h.x); if (d) h.face = d; }
+      else if (mv && !h.atk) h.face = mv;
       if (I.pressed.special && VOLLEY.n > 0 && h.volleyCd <= 0) {
         VOLLEY.n--; h.volleyCd = 0.6;
-        for (const off of [-0.13, -0.06, 0.01, 0.08, 0.15]) shoot(1, true, off);
-        env.flash('255,140,40', 0.25); env.shake(0.2);
+        castWind(1, true);
+        env.flash('255,140,40', 0.25); env.shake(0.28);
       }
 
       // run + jump
-      const top = h.drawing && h.onGround ? 85 : 192;     // drawing slows you on foot, never mid-jump
+      const top = h.onGround ? (h.charge > 0 ? 95 : h.atk ? 70 : 192) : 192;   // slashing / charging slows you on foot
       if (h.onGround || mv) h.vx += (mv * top - h.vx) * Math.min(1, dt * (h.onGround ? 14 : 6));
       if (I.pressed.jump) h.jumpBuf = 0.13;
       if (h.jumpBuf > 0 && (h.onGround || h.coyote > 0)) {
@@ -690,6 +707,102 @@ void main(){
       }
       if (h.y > LAVA_Y + 6) lavaDeath();
       h.phase += dt * Math.abs(h.vx) / 13;
+      h.runClock += dt * clamp(Math.abs(h.vx) / 192, 0.45, 1.25);   // sprite run cycle keeps pace with the feet
+    }
+
+    // ── sword + whirlwind ──
+    const SLASH_DUR = [0.27, 0.27, 0.40];
+    function startSlash(step) {
+      const h = hero;
+      h.atk = 1; h.atkStep = step; h.atkT = 0; h.atkQ = false; h.hitSet = new Set();
+      if (h.onGround) h.vx += h.face * (step === 3 ? 200 : 100);
+    }
+    function slashHits() {
+      const h = hero, s3 = h.atkStep === 3;
+      const cx = h.x + h.face * 46, cy = h.y - 56, r = s3 ? 66 : 56;
+      for (const e of enemies) {
+        if (e.dying || e.st === 'sleep' || h.hitSet.has(e)) continue;
+        const b = box(e);
+        const nx = clamp(cx, b[0], b[2]), ny = clamp(cy, b[1], b[3]);
+        if (Math.hypot(nx - cx, ny - cy) > r) continue;
+        h.hitSet.add(e);
+        if (damageEnemy(e, s3 ? 2.6 : 1.5, h.face, false)) {
+          env.hitstop(s3 ? 0.1 : 0.05); env.shake(s3 ? 0.3 : 0.16);
+          burstP(nx, ny, { n: s3 ? 18 : 11, speed: s3 ? 300 : 220, rgb: '255,235,190', kind: 'spark', life: 0.3, size: 2.6 });
+          spawnP({ x: nx, y: ny, kind: 'ring', rgb: '255,240,210', size: 6, grow: 180, life: 0.22 });
+        }
+      }
+      for (const z of zones) {
+        const s = z.s;
+        if (s && !s.dead && z.st === 'leap' && !h.hitSet.has(s) && serpentHit(s, cx, cy, r)) { h.hitSet.add(s); hurtSerpent(z, s3 ? 2.6 : 1.5, false); }
+      }
+    }
+    function castWind(power, storm) {
+      const h = hero, t = h.target;
+      h.castT = 0.42; h.atk = 0; h.atkStep = 0;
+      const sp = storm ? 520 : 430 + 260 * power;
+      winds.push({ x: h.x + h.face * 34, yc: h.y - 52, ty: t ? aimY(t) : h.y - 52, vx: h.face * sp, age: 0,
+        life: storm ? 1.9 : 1.1 + 0.6 * power, r: storm ? 44 : 22 + 18 * power, h: storm ? 190 : 100 + 60 * power,
+        dmg: storm ? 3.2 : 1.2 + 1.9 * power, fire: !!storm, hit: new Set(), spin: rand(0, TAU) });
+      burstP(h.x + h.face * 40, h.y - 52, { n: storm ? 22 : 12, speed: 240, rgb: storm ? '255,150,60' : '220,240,255', kind: 'spark', life: 0.3, angle: h.face > 0 ? 0 : Math.PI, spread: 1.1 });
+      env.shake(storm ? 0.3 : 0.12 + 0.12 * power);
+    }
+    function updateWinds(dt) {
+      for (let i = winds.length - 1; i >= 0; i--) {
+        const w = winds[i];
+        w.age += dt; w.life -= dt; w.spin += dt * 14;
+        w.x += w.vx * dt;
+        w.yc += clamp(w.ty - w.yc, -320 * dt, 320 * dt);            // drifts up toward a flying target
+        const s = segAt(w.x);
+        if (!w.fire && Math.random() < 0.7) spawnP({ x: w.x + rand(-w.r, w.r), y: (s ? s.y : w.yc + w.h * 0.45), vx: rand(-60, 60) - w.vx * 0.1, vy: rand(-200, -80), g: 300,
+          kind: Math.random() < 0.6 ? 'debris' : 'glow', rgb: Math.random() < 0.6 ? '90,70,60' : '220,240,255', size: rand(1.6, 3), life: 0.5 });
+        if (w.fire && Math.random() < 0.95) spawnP({ x: w.x + rand(-w.r, w.r) * 0.8, y: w.yc + rand(-w.h, w.h) * 0.45, vx: rand(-40, 40), vy: rand(-140, -40),
+          kind: 'glow', rgb: Math.random() < 0.5 ? '255,170,60' : '255,90,20', size: rand(1.8, 3.4), life: 0.5, layer: 'front' });
+        for (const e of enemies) {
+          if (e.dying || e.st === 'sleep' || w.hit.has(e)) continue;
+          const b = box(e);
+          if (b[2] < w.x - w.r || b[0] > w.x + w.r || b[3] < w.yc - w.h / 2 || b[1] > w.yc + w.h / 2) continue;
+          w.hit.add(e);
+          if (damageEnemy(e, w.dmg, Math.sign(w.vx), w.fire)) {
+            if (e.type === 'hound' || e.type === 'ghoul') { e.vy = -380; e.onGround = false; }   // tossed into the air
+            env.hitstop(0.05);
+          } else if (!w.fire) w.life = Math.min(w.life, 0.15);       // the brute's ward breaks a plain whirlwind
+        }
+        for (const z of zones) {
+          const sn = z.s;
+          if (sn && !sn.dead && z.st === 'leap' && !w.hit.has(sn) && serpentHit(sn, w.x, w.yc, w.r + 20)) { w.hit.add(sn); hurtSerpent(z, w.dmg, w.fire); }
+        }
+        if (w.life <= 0 || w.x < cam - 140 || w.x > cam + W + 160) winds.splice(i, 1);
+      }
+    }
+    function drawWinds(c) {
+      for (const w of winds) {
+        const x = w.x - cam, k = Math.min(1, w.age / 0.1) * Math.min(1, w.life / 0.3);
+        const col = w.fire ? '255,140,50' : '214,236,255';
+        c.save(); c.globalCompositeOperation = 'lighter';
+        // soft body of spinning air
+        c.globalAlpha = 0.4 * k;
+        c.drawImage(env.glowSprite(w.fire ? '255,110,30' : '160,200,255'), x - w.r * 1.7, w.yc - w.h * 0.66, w.r * 3.4, w.h * 1.32);
+        // banded funnel: narrow at the ground, wide at the top, two counter-phased streaks per band
+        const N = 14;
+        c.lineCap = 'round'; c.strokeStyle = `rgb(${col})`;
+        for (let i = 0; i < N; i++) {
+          const u = i / (N - 1);
+          const yy = w.yc + w.h * 0.5 - u * w.h;
+          const rx = w.r * (0.2 + 0.45 * u + 0.55 * u * u) * (0.9 + 0.1 * Math.sin(w.age * 9 + i * 1.7));
+          const sway = Math.sin(w.age * 6 + u * 3.5) * 8 * u;
+          for (let j = 0; j < 2; j++) {
+            const a0 = w.spin * (1 + 0.18 * j) + i * 0.7 + j * Math.PI;
+            c.globalAlpha = (0.2 + 0.34 * (1 - u)) * k * (j ? 0.6 : 1);
+            c.lineWidth = (1.6 + 5 * (1 - u)) * (j ? 0.6 : 1);
+            c.beginPath(); c.ellipse(x + sway, yy, rx, rx * 0.32, 0, a0, a0 + 2.7); c.stroke();
+          }
+        }
+        // bright core
+        c.globalAlpha = 0.55 * k;
+        c.drawImage(env.glowSprite(w.fire ? '255,210,140' : '255,255,255'), x - w.r * 0.45, w.yc - w.h * 0.52, w.r * 0.9, w.h * 1.04);
+        c.restore();
+      }
     }
 
     // ── arrows ──
@@ -1073,7 +1186,7 @@ void main(){
         if (Math.abs(hero.x - p.x) < 28 && Math.abs(hero.y - 36 - p.y) < 44 && hero.lavaT <= 0) {
           p.taken = true;
           if (p.kind === 'heal') { env.heal(20); env.floatText(p.x - cam, p.y - 20, '+20', '120,255,170'); }
-          else { VOLLEY.n = Math.min(5, VOLLEY.n + 1); env.floatText(p.x - cam, p.y - 20, '+1 flaming volley', '255,190,90'); }
+          else { VOLLEY.n = Math.min(5, VOLLEY.n + 1); env.floatText(p.x - cam, p.y - 20, '+1 flaming storm', '255,190,90'); }
           burstP(p.x, p.y, { n: 22, speed: 160, rgb: p.kind === 'heal' ? '140,255,200' : '255,170,60', kind: 'glow', life: 0.7, size: 2 });
           spawnP({ x: p.x, y: p.y, kind: 'ring', rgb: p.kind === 'heal' ? '140,255,200' : '255,170,60', size: 6, grow: 120, life: 0.4 });
         }
@@ -1117,7 +1230,11 @@ void main(){
       const threat = tgt && (tgt.serpent ? Math.abs(tdx) < 150 : Math.abs(tdx) < 430);
       const fighting = arena && boss && !boss.dying;
       if (threat || fighting) {
-        if (!(h.drawing && h.draw >= 0.9)) I.held.attack = true;
+        const close = tgt && !tgt.serpent && Math.abs(tdx) < 120 && (tgt.type === 'hound' || tgt.type === 'ghoul' || tgt.type === 'brute' || Math.abs(aimY(tgt) - h.y) < 120);
+        autoHold++;
+        if (close) { if (autoHold % 4 < 2) I.held.attack = true; }               // tap-tap-tap: the combo
+        else if (h.charge < 0.85) I.held.attack = true;                          // charge, then let go
+
         const blocker = tgt && (tgt.type === 'ghoul' || tgt.type === 'brute') && tdx > 0 && tdx < 270;
         if (!blocker && !fighting) I.right = true;
       } else I.right = true;
@@ -1140,7 +1257,7 @@ void main(){
         if (boss && boss.st === 'charge' && Math.abs(boss.x - h.x) < 150) I.held.jump = true;
         for (const e of enemies) if (e.type === 'hound' && e.st === 'pounce' && Math.abs(e.x - h.x) < 120) I.held.jump = true;
       } else if (h.vy < 0) I.held.jump = true;
-      if (h.drawing && !I.held.attack) { /* release */ }
+      // (releasing a charged attack happens by not holding it this frame)
       if (I.right) { I.ax = 1; } if (I.left) { I.ax = -1; I.right = false; }
       for (const k in I.held) if (!autoPrev[k]) I.pressed[k] = true;
       for (const k in autoPrev) if (!I.held[k]) I.released[k] = true;
@@ -1190,7 +1307,7 @@ void main(){
         else if (e.type === 'brute') updateBrute(e, dt);
         if (e.gone) enemies.splice(i, 1);
       }
-      updateArrows(dt); updateShots(dt); updatePickups(dt);
+      updateArrows(dt); updateWinds(dt); updateShots(dt); updatePickups(dt);
 
       // camera: hero a third in, a little lead; the arena is framed
       let want = hero.x - 140 + hero.face * 18;
@@ -1232,7 +1349,7 @@ void main(){
       const glowBand = c.createLinearGradient(0, LAVA_Y - 180, 0, LAVA_Y + 4);
       glowBand.addColorStop(0, 'rgba(255,70,10,0)'); glowBand.addColorStop(0.75, 'rgba(255,80,15,0.07)'); glowBand.addColorStop(1, 'rgba(255,130,40,0.26)');
       const vign = c.createRadialGradient(W / 2, H * 0.45, H * 0.3, W / 2, H * 0.48, H * 0.75);
-      vign.addColorStop(0, 'rgba(0,0,0,0)'); vign.addColorStop(1, 'rgba(0,0,0,0.62)');
+      vign.addColorStop(0, 'rgba(20,4,0,0)'); vign.addColorStop(1, 'rgba(26,6,1,0.64)');
       const skyFb = c.createLinearGradient(0, 0, 0, 500);
       skyFb.addColorStop(0, '#080202'); skyFb.addColorStop(1, '#3a0d05');
       const fallGlow = c.createLinearGradient(-22, 0, 22, 0);
@@ -1242,7 +1359,9 @@ void main(){
 
     function drawSky(c) {
       const g = gradients(c);
-      if (!env.drawShader(c, skyProg, 0, 0, W, H, { u_cam: cam, u_flash: skyFlash }, 0.4)) { c.fillStyle = g.skyFb; c.fillRect(0, 0, W, 500); }
+      // the sky shader is transparent below y = 500, so only that strip is rendered
+      if (!env.drawShader(c, skyProg, 0, 0, W, 500, { u_cam: cam, u_flash: skyFlash }, 0.4)) { c.fillStyle = g.skyFb; c.fillRect(0, 0, W, 500); }
+      c.fillStyle = '#000'; c.fillRect(0, 498, W, LAVA_Y - 494);   // under the ridges (was the core's clear)
       if (backdrop) {
         const pw = backdrop.width, ox = -((cam * 0.07 + 260) % (pw * 2));
         for (let k = 0; k < 3; k++) {
@@ -1314,22 +1433,39 @@ void main(){
       c.restore();
     }
     function drawLava(c) {
-      const ok = env.drawShader(c, lavaProg, 0, 0, W, H, { u_cam: cam, u_top: LAVA_Y, u_glow: 1.0, u_rock: AS.rock || undefined }, 0.4);
+      // lava only exists below LAVA_Y: render just that strip (u_top is relative to the strip)
+      const LY0 = LAVA_Y - 4;
+      const ok = env.drawShader(c, lavaProg, 0, LY0, W, H - LY0, { u_cam: cam, u_top: LAVA_Y - LY0, u_glow: 1.0, u_rock: AS.rock || undefined }, 0.4);
       if (!ok) {
         const gr = c.createLinearGradient(0, LAVA_Y, 0, H);
         gr.addColorStop(0, '#ffb040'); gr.addColorStop(0.1, '#e0500c'); gr.addColorStop(1, '#5a1003');
         c.fillStyle = gr; c.fillRect(0, LAVA_Y, W, H - LAVA_Y);
       }
     }
+    // Heat haze over the lava edge. It used to copy the canvas onto itself in
+    // ~26 strips per frame, which forces a GPU readback per strip on phones (a
+    // big stutter source). Now: a pre-drawn band of soft rising heat plumes,
+    // two layers drifting at different speeds and pulsing — no readback.
+    let hazeCv = null;
     function shimmer(c, y0, y1) {
-      let m;
-      try { m = c.getTransform(); } catch (e) { return; }
-      const sc = m.a, cvs = c.canvas;
-      for (let y = y0; y < y1; y += 3) {
-        const k = (y - y0) / (y1 - y0);
-        const off = Math.sin(y * 0.23 + tAll * 7) * 1.4 * k;
-        c.drawImage(cvs, 0, y * sc + m.f, cvs.width, 3 * sc, -m.e / sc + off, y, cvs.width / sc, 3);
+      if (!hazeCv) {
+        hazeCv = document.createElement('canvas'); hazeCv.width = 512; hazeCv.height = 72;
+        const g = hazeCv.getContext('2d');
+        for (let i = 0; i < 64; i++) {
+          const x = 30 + Math.random() * 452, w = 10 + Math.random() * 26, h = 24 + Math.random() * 46;
+          const gr = g.createRadialGradient(x, 72, 0, x, 72, h);
+          gr.addColorStop(0, 'rgba(255,160,70,0.20)'); gr.addColorStop(0.5, 'rgba(255,110,40,0.07)'); gr.addColorStop(1, 'rgba(255,90,30,0)');
+          g.fillStyle = gr; g.fillRect(x - w, 72 - h, w * 2, h);
+        }
       }
+      const h = y1 - y0;
+      c.save(); c.globalCompositeOperation = 'lighter';
+      const o1 = (tAll * 24 + cam * 0.6) % 512, o2 = (cam * 0.9 - tAll * 15) % 512;
+      c.globalAlpha = 0.5 + 0.2 * Math.sin(tAll * 3.1);
+      for (let x = -o1; x < W; x += 512) c.drawImage(hazeCv, x, y0, 512, h);
+      c.globalAlpha = 0.3 + 0.15 * Math.sin(tAll * 4.3 + 1);
+      for (let x = -((o2 % 512) + 512) % 512; x < W; x += 512) c.drawImage(hazeCv, x + 256, y0 + h * 0.15, 512, h * 0.85);
+      c.restore();
     }
     function drawSegs(c) {
       for (const s of segs) {
@@ -1738,9 +1874,22 @@ void main(){
       // warm lava light pooled under the feet
       c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.28;
       c.drawImage(env.glowSprite('255,110,40'), x - 40, y - 16, 80, 26); c.restore();
-      env.drawHero(c, x, y, {
+      if (env.hero.ready) {
+        const HA = env.hero;
+        let anim = 'idle', at = tAll;
+        if (h.castT > 0) { anim = 'thrust'; at = HA.dur('thrust') * (0.25 + 0.65 * (1 - h.castT / 0.42)); }
+        else if (h.atk) {
+          const dur = h.onGround ? SLASH_DUR[h.atkStep - 1] : 0.3, k = clamp(h.atkT / dur, 0, 1);
+          anim = !h.onGround ? 'slash3' : h.atkStep === 3 ? 'thrust' : h.atkStep === 2 ? 'slash2' : 'slash1';
+          at = HA.dur(anim) * k * 0.86;
+        }
+        else if (h.charge > 0) { anim = 'slash1'; at = 0; }                 // sword raised, gathering the wind
+        else if (!h.onGround) { anim = 'air'; at = (h.vy < -260 ? 0 : h.vy < 220 ? 1 : 2) / 12; }
+        else if (Math.abs(h.vx) > 34) { anim = 'run'; at = h.runClock; }
+        HA.draw(c, x, y, { anim, t: at, facing: h.face, height: 112, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
+      } else env.drawHero(c, x, y, {
         facing: h.face, run: clamp(Math.abs(h.vx) / 192, 0, 1), phase: h.phase, air: !h.onGround, vy: h.vy,
-        weapon: 'bow', draw: h.drawing ? h.draw : 0, aim: h.aim, hurt: h.hurtT / 0.32, scale: 1.02
+        weapon: 'sword', attack: h.atk ? clamp(h.atkT / SLASH_DUR[Math.max(0, h.atkStep - 1)], 0.001, 1) : 0, hurt: h.hurtT / 0.32, scale: 1.02
       });
       c.restore();
     }
@@ -1752,7 +1901,7 @@ void main(){
       env.fx.draw(c, 'back', cam, 0);
       drawSegs(c);
       drawLava(c);                                   // after the rock: the lava buries every base
-      shimmer(c, LAVA_Y - 80, LAVA_Y - 2);
+      if (!window.__noHaze) shimmer(c, LAVA_Y - 80, LAVA_Y - 2);
       // lava light climbing the rock faces
       c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = gradients(c).glowBand; c.fillRect(0, LAVA_Y - 180, W, 184); c.restore();
       drawGeysers(c);
@@ -1777,15 +1926,13 @@ void main(){
       }
       drawHeroLayer(c);
       drawArrows(c);
+      drawWinds(c);
       drawShots(c);
       drawWall(c);
       env.fx.draw(c, 'front', cam, 0);
-      // grade: warm multiply + vignette
-      c.save();
-      c.globalCompositeOperation = 'multiply'; c.fillStyle = 'rgba(255,196,170,1)'; c.globalAlpha = 0.2; c.fillRect(0, 0, W, H);
-      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-      c.fillStyle = gradients(c).vign; c.fillRect(0, 0, W, H);
-      c.restore();
+      // grade: a warm vignette, drawn only where it isn't fully transparent (top + bottom bands).
+      // (The full-screen warm multiply pass is gone: two full-screen fills per frame on phones.)
+      c.fillStyle = gradients(c).vign; c.fillRect(0, 0, W, 222); c.fillRect(0, 538, W, H - 538);
       if (msgT > 0) {
         c.save(); c.globalAlpha = clamp(msgT / 0.5, 0, 1) * clamp((3.2 - msgT) / 0.3, 0, 1);
         c.textAlign = 'center'; c.font = 'bold 16px system-ui';

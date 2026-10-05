@@ -212,6 +212,8 @@ const CHARS = [
 ];
 
 let selectedChar = localStorage.getItem('selected_character') || 'spirit';
+// background animation loops only draw while their screen is showing (and never under a side world)
+const screenHidden = id => !document.getElementById(id).classList.contains('active') || !!(window.DABWorlds && DABWorlds.isActive());
 let selectedLevel = 1;
 
 // ── Display: fit the 390×844 phone layout to any window, and render every
@@ -373,6 +375,7 @@ function buildCharGrid() {
       // hovering over a moonlit strip of water; the selected spirit celebrates
       function frame(now) {
         lt += Math.min(0.05, (now - last) / 1000); last = now;
+        if (screenHidden('s-charselect')) { window._cLoops[idx] = requestAnimationFrame(frame); return; }
         const cx2 = hiDPI(canvas, CW, CH);
         const bg = cx2.createLinearGradient(0, 0, 0, CH);
         bg.addColorStop(0, CHARS[idx].dark); bg.addColorStop(0.7, '#071a28'); bg.addColorStop(1, '#0b2a3a');
@@ -501,7 +504,7 @@ document.getElementById('stage-next').addEventListener('click', () => showStage(
   let t = 0;
   function frame(){
     requestAnimationFrame(frame);
-    if (!scr.classList.contains('active')) return;
+    if (screenHidden('s-levelselect')) return;
     t += 0.016;
     const c = hiDPI(cv, 390, 844);
     drawNightSky(c, 390, 844, t);
@@ -534,6 +537,7 @@ function getProgress() {
   let t=0,shoot={on:false,t:0,x:0,y:0,vx:0,vy:0},st=0;
 
   function frame(){
+    if(screenHidden('s-begin')){requestAnimationFrame(frame);return;}
     t+=.016;st+=.016;
     cx=hiDPI(cv,W,H);
     // shared night sky + moon + stars, then the title-screen water band on top
@@ -1366,10 +1370,10 @@ function showCredits(){
   layer.classList.add('open');
   const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   fetch('assets/worlds/CREDITS.json').then(r=>r.ok?r.json():{}).then(data=>{
-    const groups={animal:'Animal World',alien:'Alien World',hell:'Hell'};
+    const groups={hero:'Hero',animal:'Animal World',alien:'Alien World',hell:'Hell'};
     let html='<p class="cr">Drift &amp; Bloom: game, spirits, pond and dragon by the developer. Side-world images listed below; photos are used under their licenses (changes: cut out, recoloured, animated).</p>';
     for(const g in groups){
-      const rows=Object.entries(data).filter(([f])=>f.startsWith('assets/worlds/'+g+'/')&&!f.includes('/src/'));
+      const rows=Object.entries(data).filter(([f])=>f.startsWith(g==='hero'?'assets/hero/':'assets/worlds/'+g+'/')&&!f.includes('/src/'));
       if(!rows.length)continue;
       html+=`<h3>${groups[g]}</h3>`;
       const seen=new Set();

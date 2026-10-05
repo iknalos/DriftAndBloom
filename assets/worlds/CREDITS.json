@@ -59,6 +59,15 @@
     "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
     "title": "File:Canis lupus baileyi running.jpg"
   },
+  "assets/hero/day/hero_0.webp": {
+    "author": "Kay Lousberg (kaylousberg.com)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "shield removed, rendered side-on, relit",
+    "origin": "3D model, rendered into sprite sheets",
+    "source": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+    "title": "Knight (KayKit Adventurers Character Pack 1.0)"
+  },
   "assets/worlds/alien/boss.png": {
     "license": "AI-generated, no copyright claimed",
     "modified": "background removed, resized",

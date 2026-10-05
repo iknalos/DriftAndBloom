@@ -7,6 +7,7 @@
 // A world module registers itself:
 //   DABWorlds.register('animal', {
 //     title: 'Animal World', color: '120,200,90',
+//     opaque: true,          // optional: the world paints every pixel each frame (skips the clear)
 //     subtitle: reason => 'The croc dragged you into the wild...',
 //     hint: 'Fight your way to the lotus gate',
 //     controls: { dirs: 'lr' | 'stick', buttons: [{ id, icon, label?, count?() }] },
@@ -77,7 +78,7 @@
     return clamp((window.devicePixelRatio || 1) * s, 1, 3);
   }
   function sizeCanvas() {
-    const d = dpr(), bw = Math.round(W * d), bh = Math.round(H * d);
+    const d = Math.min(dpr(), active ? active.dprCap : 3), bw = Math.round(W * d), bh = Math.round(H * d);
     if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
     ctx = cv.getContext('2d');
     ctx.setTransform(bw / W, 0, 0, bh / H, 0, 0);
@@ -549,6 +550,85 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.restore();
   }
 
+  // ── SPRITE HERO: a pre-rendered 3D swordsman (tools/hero/*) ─────────────
+  // assets/hero/<set>/hero.json + WebP sheets, rendered from a rigged model with
+  // tools/hero/make_sheets.js + pack_sheets.py. A world opts in with def.hero =
+  // 'day' | 'hell' (lighting variant) and draws it with env.hero.draw(). When a
+  // set is missing (or fetch fails, e.g. file://), env.hero.ready stays false and
+  // the world keeps using env.drawHero (the drawn rig).
+  const heroSets = {};
+  function loadHeroSet(set) {
+    if (heroSets[set]) return heroSets[set].p;
+    const H = { set, ready: false, meta: null, sheets: [] };
+    const base = `assets/hero/${set}/`;
+    H.p = fetch(base + 'hero.json').then(r => (r.ok ? r.json() : null)).then(meta => {
+      if (!meta) return H;
+      return Promise.all(meta.sheets.map(n => loadImage(base + n).then(img => (img && img.decode ? img.decode().then(() => img, () => img) : img))))
+        .then(imgs => { if (imgs.every(Boolean)) { H.meta = meta; H.sheets = imgs; H.ready = true; } return H; });
+    }).catch(() => H);
+    heroSets[set] = H;
+    return H.p;
+  }
+  function heroFrame(H, name, t) {
+    const an = H.meta.anims[name] || H.meta.anims.idle;
+    const n = an.f.length, f = Math.floor(Math.max(0, t) * an.fps);
+    let i;
+    if (an.loop) i = f % n;
+    else if (an.pingpong && n > 1) { const p = f % (2 * n - 2); i = p < n ? p : 2 * n - 2 - p; }
+    else i = Math.min(n - 1, f);
+    return an.f[i];
+  }
+  function makeHeroApi(H) {
+    return {
+      get ready() { return !!(H && H.ready); },
+      has(name) { return !!(H && H.ready && H.meta.anims[name]); },
+      // seconds a non-looping animation takes
+      dur(name) { const an = H && H.ready && H.meta.anims[name]; return an ? an.f.length / an.fps : 0; },
+      // draw at the feet point (x, y). o: { anim, t (s into the anim), facing (1 right / -1 left),
+      //   height (app px of the standing hero, default 110), flash 0..1 (hit flash),
+      //   alpha, rot (radians, around the feet), shadow (default true) }
+      draw(c, x, y, o) {
+        if (!H || !H.ready) return false;
+        o = o || {};
+        const rec = heroFrame(H, o.anim || 'idle', o.t || 0);
+        const k = (o.height || 110) / H.meta.charPx, f = o.facing || 1;
+        const [s, sx, sy, w, h, ax, ay] = rec;
+        const sheet = H.sheets[s];
+        c.save();
+        if (o.shadow !== false) {
+          c.globalAlpha = 0.5 * (o.alpha === undefined ? 1 : o.alpha);
+          const sw = (o.height || 110) * 0.62;
+          c.drawImage(shadowSprite(), x - sw / 2, y - sw * 0.09, sw, sw * 0.18);
+          c.globalAlpha = 1;
+        }
+        c.translate(x, y);
+        if (o.rot) c.rotate(o.rot);
+        c.scale(f * k, k);
+        if (o.alpha !== undefined) c.globalAlpha = o.alpha;
+        c.drawImage(sheet, sx, sy, w, h, -ax, -ay, w, h);
+        if (o.flash > 0) {                          // hit flash: the same frame added on top
+          c.globalCompositeOperation = 'lighter';
+          c.globalAlpha = Math.min(1, o.flash) * 0.85;
+          c.drawImage(sheet, sx, sy, w, h, -ax, -ay, w, h);
+        }
+        c.restore();
+        return true;
+      },
+      // touch every sheet once so the first attack doesn't stall on a texture upload
+      warm(c) { if (H && H.ready) for (const sh of H.sheets) c.drawImage(sh, 0, 0, 1, 1, -10, -10, 1, 1); }
+    };
+  }
+  let shadowCv = null;
+  function shadowSprite() {
+    if (shadowCv) return shadowCv;
+    shadowCv = document.createElement('canvas'); shadowCv.width = 128; shadowCv.height = 32;
+    const g = shadowCv.getContext('2d');
+    const gr = g.createRadialGradient(64, 16, 0, 64, 16, 64);
+    gr.addColorStop(0, 'rgba(0,0,0,0.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.setTransform(1, 0, 0, 0.25, 0, 12); g.fillStyle = gr; g.fillRect(0, -64, 128, 128);
+    return shadowCv;
+  }
+
   // ── Controller (canvas-drawn, multi-touch) ───────────────────────────────
   const BTN_POS = [
     { x: 322, y: 744, r: 40 },     // primary (e.g. attack / fire)
@@ -713,6 +793,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.hud = { objective: def.hint || '', progress: null, boss: null, counters: [] };
     S.controls = def.controls || { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }, { id: 'attack', icon: 'sword' }] };
     S.reason = opts.reason || '';
+    S.dprMax = dpr(); S.dprCap = S.dprMax;          // adaptive: drops when frames run slow
+    S.ftAvg = 16; S.ftSlowT = 0; S.ftFastT = 0;
     S.dpr = sizeCanvas();
     layer.style.display = 'block';
     layer.style.opacity = '0';
@@ -721,6 +803,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.env = {
       W, H, TAU, clamp, lerp, rand, ease,
       get t() { return S.t; },
+      get dpr() { return S.dpr; },               // current canvas pixels per app px (adaptive)
       charId: S.charId, charRgb: S.charRgb,
       assets: {},
       get health() { return S.health; }, get maxHealth() { return S.maxHealth; },
@@ -745,20 +828,35 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       hitstop(sec) { S.stop = Math.max(S.stop, sec); },
       floatText(x, y, txt, rgb) { S.floaters.push({ x, y, txt, rgb: rgb || '255,255,255', life: 1 }); },
       shader: makeShader, drawShader, drawHero, glowSprite, loadImage,
+      hero: makeHeroApi(null),                  // sprite hero (def.hero), see SPRITE HERO
       setControls(cfg) { S.controls = cfg; }
     };
 
-    loadAll(def.assets, k => { S.loadK = k; }).then(a => {
+    const heroP = def.hero ? loadHeroSet(def.hero) : Promise.resolve(null);
+    loadAll(def.assets, k => { S.loadK = k * (def.hero ? 0.85 : 1); }).then(a => heroP.then(H => {
+      S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
       try { S.world = def.create(S.env); } catch (e) { console.error('[worlds] create failed', e); S.world = null; }
       S.ready = true;
-    });
+    }));
 
     S.last = performance.now();
     S.raf = requestAnimationFrame(S.loop.bind(S));
   }
 
   Session.prototype.startPlay = function () { this.phase = 'play'; this.playT = 0; };
+
+  // Keep it smooth on slower phones: if frames keep taking > 21 ms, render the
+  // world at a lower canvas resolution (down to 1.25 px per app px); creep back up
+  // when there is headroom. Only during play, never while paused.
+  Session.prototype.adaptResolution = function (ms) {
+    if (this.phase !== 'play' || this.paused || ms <= 0 || ms > 250) return;
+    this.ftAvg = this.ftAvg * 0.92 + ms * 0.08;
+    const s = ms / 1000;
+    if (this.ftAvg > 21) { this.ftSlowT += s; this.ftFastT = 0; } else if (this.ftAvg < 13.5) { this.ftFastT += s; this.ftSlowT = 0; } else { this.ftSlowT = 0; this.ftFastT = 0; }
+    if (this.ftSlowT > 0.8 && this.dprCap > 1.25) { this.dprCap = Math.max(1.25, Math.min(this.dprCap, this.dpr) - 0.35); this.ftSlowT = 0; this.ftAvg = 16; }
+    else if (this.ftFastT > 5 && this.dprCap < this.dprMax) { this.dprCap = Math.min(this.dprMax, this.dprCap + 0.25); this.ftFastT = 0; }
+  };
 
   Session.prototype.hitControl = function (p, dirsOnly) {
     const c = this.controls;
@@ -824,15 +922,21 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
 
   Session.prototype.loop = function (now) {
     if (active !== this) return;
-    let dt = Math.min((now - this.last) / 1000, 0.05);
+    const rawMs = now - this.last;
+    let dt = Math.min(rawMs / 1000, 0.05);
     this.last = now;
+    this.adaptResolution(rawMs);
     this.dpr = sizeCanvas();
     const c = ctx;
     if (this.paused) dt = 0;
     if (this.stop > 0) { this.stop -= dt; dt *= 0.08; }
     this.t += dt;
 
-    if (this.phase === 'intro') { this.introT += dt; if (this.ready && this.introT > 3.2) this.startPlay(); }
+    if (this.phase === 'intro') {
+      this.introT += dt;
+      if (this.ready && !this.warmed) { this.warmed = true; this.env.hero.warm(c); }
+      if (this.ready && this.introT > 3.2) this.startPlay();
+    }
     const input = this.buildInput();
     if (this.phase === 'play' || this.phase === 'result') {
       if (this.phase === 'play') this.playT += dt;
@@ -850,7 +954,9 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
 
     // ── draw ──
     c.save();
-    c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+    // worlds that paint their whole background (def.opaque) skip this full-screen clear —
+    // one less screen of fill per frame — except while shaking, when the edges show
+    if (!this.def.opaque || this.shakeA > 0 || this.phase === 'intro') { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); }
     if (this.shakeA > 0) { const m = this.shakeA * this.shakeA * 14; c.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m); }
     if (this.world && this.phase !== 'intro') {
       try { this.world.render(c); } catch (e) { console.error('[worlds] render failed', e); this.world = null; this.env.win(); }
@@ -1052,6 +1158,6 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   window.__dabWorldEnd = won => { if (active && active.phase !== 'result') { if (active.phase === 'intro') active.startPlay(); won ? active.env.win() : active.env.lose(); } };
   window.__dabWorld = () => active ? Object.assign({
     world: active.id, phase: active.phase, health: active.health, t: active.t, paused: active.paused,
-    won: active.won, particles: active.fx.list.length
+    won: active.won, particles: active.fx.list.length, dpr: +active.dpr.toFixed(2)
   }, active.world && active.world.debug ? active.world.debug() : {}) : null;
 })();

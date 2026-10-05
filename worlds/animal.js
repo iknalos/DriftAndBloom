@@ -114,7 +114,7 @@ void main(){
   function polyPath(g, pts, s) { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0] * s, p[1] * s) : g.moveTo(p[0] * s, p[1] * s))); g.closePath(); }
 
   DABWorlds.register('animal', {
-    title: 'Animal World', color: '150,215,110',
+    title: 'Animal World', opaque: true, hero: 'day', color: '150,215,110',
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
@@ -369,6 +369,7 @@ void main(){
       const sp = Math.abs(h.vx);
       h.run = lerp(h.run, h.ground ? clamp(sp / 188, 0, 1) : 0, 1 - Math.exp(-dt * 12));
       h.phase += dt * (5 + 7 * h.run) * (h.run > 0.05 ? 1 : 0);
+      h.runClock = (h.runClock || 0) + dt * clamp(sp / 188, 0.45, 1.25);   // sprite run cycle keeps pace with the feet
       if (h.ground && h.run > 0.6 && Math.random() < dt * 6) dust(h.x - h.face * 6, h.y, 1, -h.face);
       // afterimages while dashing
       if (h.dashT > 0) { h.trail.push({ x: h.x, y: h.y, a: 0.45 }); }
@@ -741,7 +742,21 @@ void main(){
     }
 
     // ── drawing: backgrounds ───────────────────────────────────────────────
+    // The background (sky, far forest, god rays, misty tree rows, mid photo,
+    // ground mist) is soft by design, so it renders into a half-resolution buffer
+    // that is drawn to the screen once: about a quarter of the pixel work of
+    // painting each of those full-screen layers at phone resolution.
+    let bgBuf = null, bgCtx = null;
     function drawBack(c) {
+      const k = Math.max(0.75, (env.dpr || 2) * 0.5);
+      const bw = Math.ceil(W * k), bh = Math.ceil(H * k);
+      if (!bgBuf) bgBuf = document.createElement('canvas');
+      if (bgBuf.width !== bw || bgBuf.height !== bh || !bgCtx) { bgBuf.width = bw; bgBuf.height = bh; bgCtx = bgBuf.getContext('2d'); }
+      bgCtx.setTransform(k, 0, 0, k, 0, 0);
+      paintBack(bgCtx);
+      c.drawImage(bgBuf, 0, 0, W, H);
+    }
+    function paintBack(c) {
       // sky above the photo layers (seen when an eagle carries you up)
       const sky = c.createLinearGradient(0, -400, 0, 300);
       sky.addColorStop(0, '#8fb1b6'); sky.addColorStop(1, '#c2d6cb');
@@ -799,15 +814,44 @@ void main(){
         c.drawImage(a.cv, t.x - a.cx, GROUND + 14 - a.h, a.w, a.h);
       }
     }
+    // The ground never changes, so it's painted ONCE into 512 px world tiles (path,
+    // litter texture, depth gradient, grass lip, rocks) and each frame just blits
+    // the visible tiles. Painting it live (clip + pattern + tall gradient per
+    // segment) was ~70% of the frame time and the main cause of lag on phones.
+    const TILE = 512, TILE_TOP = GROUND - 64, TILE_H = 420;
+    const groundTiles = new Map();
+    function groundTile(i) {
+      let cv = groundTiles.get(i);
+      if (cv) return cv;
+      const k = Math.min(2, Math.max(1, env.dpr || 2));
+      cv = document.createElement('canvas');
+      cv.width = Math.ceil(TILE * k); cv.height = Math.ceil(TILE_H * k);
+      const tc = cv.getContext('2d');
+      tc.setTransform(k, 0, 0, k, -i * TILE * k, -TILE_TOP * k);
+      paintGround(tc, i * TILE, (i + 1) * TILE, TILE_TOP + TILE_H);
+      groundTiles.set(i, cv);
+      return cv;
+    }
     function drawGround(c) {
+      const camL = ZOO ? 0 : camX;
+      const i0 = Math.floor((camL - 2) / TILE), i1 = Math.floor((camL + W + 2) / TILE);
+      for (let i = i0; i <= i1; i++) c.drawImage(groundTile(i), i * TILE, TILE_TOP, TILE, TILE_H);
+      const bottom = H - camY + 40, tileEnd = TILE_TOP + TILE_H;
+      if (bottom > tileEnd) { c.fillStyle = '#050704'; c.fillRect(camL - 4, tileEnd - 1, W + 8, bottom - tileEnd + 1); }
+      // ferns sway in the wind, so they stay live
+      if (img.fern) for (const f of ferns) {
+        if (f.x < camL - 100 || f.x > camL + W + 100 || f.d) continue;
+        drawFern(c, f);
+      }
+    }
+    function paintGround(c, L0, R0, bottom) {
       let x0 = -300;
       const segs = [];
       for (const g of GAPS) { segs.push([x0, g[0]]); x0 = g[1]; }
       segs.push([x0, END + 900]);
-      const bottom = H - camY + 40;
       for (const [a, b] of segs) {
-        if (b < camX - 40 || a > camX + W + 40) continue;
-        const L = Math.max(a, camX - 60), Rr = Math.min(b, camX + W + 60);
+        if (b < L0 - 40 || a > R0 + 40) continue;
+        const L = Math.max(a, L0 - 60), Rr = Math.min(b, R0 + 60);
         c.beginPath();
         const leftBank = a > -300, rightBank = b < END + 900;
         c.moveTo(L, bottom);
@@ -831,11 +875,7 @@ void main(){
         for (let x = Math.floor(gs / gw) * gw; x < ge; x += gw) c.drawImage(grass.cv, x, GROUND - 30, gw, grass.h);
         c.restore();
       }
-      for (const r of rocks) { if (r.x < camX - 80 || r.x > camX + W + 80) continue; const a = stoneArt[r.v]; c.drawImage(a.cv, r.x - a.w * r.s / 2, GROUND - a.h * r.s * 0.72, a.w * r.s, a.h * r.s); }
-      if (img.fern) for (const f of ferns) {
-        if (f.x < camX - 100 || f.x > camX + W + 100 || f.d) continue;
-        drawFern(c, f);
-      }
+      for (const r of rocks) { if (r.x < L0 - 80 || r.x > R0 + 80) continue; const a = stoneArt[r.v]; c.drawImage(a.cv, r.x - a.w * r.s / 2, GROUND - a.h * r.s * 0.72, a.w * r.s, a.h * r.s); }
     }
     function drawFern(c, f) {
       const fe = img.fern, w = fe.width * f.s, h = fe.height * f.s;
@@ -1092,8 +1132,41 @@ void main(){
       }
     }
 
+    // ── the 3D swordsman (pre-rendered sprite sheets, env.hero) ──────────────
+    const HERO_H = 116;                     // standing height on screen (app px)
+    function heroPose(h) {
+      const HA = env.hero;
+      if (h.carried) return { anim: 'air', t: 1 / 12, rot: Math.sin(T * 7) * 0.09 * h.face };
+      if (h.dashT > 0) return { anim: 'dash', t: HA.dur('dash') * (0.22 + 0.5 * (1 - h.dashT / 0.22)) };
+      if (h.atk) {
+        const dur = h.ground ? ATK_DUR[h.atkStep - 1] : 0.3, k = clamp(h.atkT / dur, 0, 1);
+        const anim = !h.ground ? 'slash3' : h.atkStep === 3 ? 'thrust' : h.atkStep === 2 ? 'slash2' : 'slash1';
+        return { anim, t: HA.dur(anim) * k * 0.86 };
+      }
+      if (!h.ground) return { anim: 'air', t: (h.vy < -260 ? 0 : h.vy < 220 ? 1 : 2) / 12 };
+      if (h.run > 0.18) return { anim: 'run', t: h.runClock };
+      return { anim: 'idle', t: T };
+    }
+    function drawHeroSprite(c) {
+      const h = hero;
+      if (h.plungeT > 0) return;
+      for (const tr of h.trail)
+        env.hero.draw(c, tr.x, tr.y, { anim: 'dash', t: env.hero.dur('dash') * 0.45, facing: h.face, height: HERO_H, alpha: tr.a * 0.55, shadow: false });
+      const blink = env.invulnerable && h.dashT <= 0 && !h.carried && Math.floor(T * 18) % 2 === 0;
+      const p = heroPose(h);
+      env.hero.draw(c, h.x, h.y + (h.landT > 0 ? h.landT * 10 : 0), {
+        anim: p.anim, t: p.t, rot: (p.rot || 0) - (h.hurtT > 0 ? 0.1 * h.face : 0), facing: h.face, height: HERO_H,
+        flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, alpha: blink ? 0.55 : 1, shadow: h.ground && !h.carried
+      });
+      const dur = h.atkStep ? (h.ground ? ATK_DUR[h.atkStep - 1] : 0.3) : 1;
+      if (h.atk && h.atkStep === 3 && h.atkT / dur > 0.45 && h.atkT / dur < 0.6 && h.ground) {
+        fx.spawn({ x: h.x + h.face * 70, y: h.y - 46, kind: 'ring', size: 8, grow: 220, life: 0.3, rgb: env.charRgb });
+      }
+    }
+
     function drawHeroAll(c) {
       const h = hero;
+      if (env.hero.ready) { drawHeroSprite(c); return; }
       if (h.plungeT > 0) return;
       for (const tr of h.trail) {
         c.save(); c.globalAlpha = tr.a * 0.6;
@@ -1136,7 +1209,10 @@ void main(){
         c.drawImage(a.cv, -a.w / 2, 0, a.w, a.h);
         c.restore();
       }
-      c.drawImage(vignette, 0, 0, W, H);
+      // the vignette is fully transparent across the middle band: draw only its top and bottom
+      const vk = vignette.width / W;
+      c.drawImage(vignette, 0, 0, vignette.width, 224 * vk, 0, 0, W, 224);
+      c.drawImage(vignette, 0, 484 * vk, vignette.width, (H - 484) * vk, 0, 484, W, H - 484);
       // arena banners
       for (const a of arenas) {
         if (a.st === 'fight' && a.banner > 0) {
