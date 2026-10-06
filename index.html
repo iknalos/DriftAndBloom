@@ -59,6 +59,8 @@ button:active { opacity: 0.75; }
 #update-banner button { margin: 0; padding: 8px 16px; border-radius: 10px; font-size: 14px; }
 #update-banner .get { background: #ffd760; color: #241800; border: none; font-weight: 700; }
 #update-banner .later { background: transparent; color: rgba(210,240,230,0.8); border: 1px solid rgba(210,240,230,0.3); }
+#update-banner .bar { height: 8px; margin: 10px 4px 2px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; }
+#update-banner .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd760, #ffb347); transition: width .15s linear; }
 @keyframes bannerPop { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 #credits-btn { position: absolute; bottom: 18px; right: 18px; margin: 0; padding: 8px 12px; background: transparent; color: rgba(160,220,200,0.55); font-size: 13px; font-weight: normal; z-index: 2; }
 #credits-layer { position: absolute; inset: 0; z-index: 80; display: none; background: rgba(4,12,20,0.97); color: #cfe; overflow-y: auto; padding: 64px 22px 30px; font: 13px/1.45 system-ui, sans-serif; }
@@ -232,14 +234,23 @@ function checkForUpdate(){
       let skip = 0; try { skip = +localStorage.getItem('dab_update_skip') || 0; } catch (e) {}
       if (skip >= L.build) return;
       const el = document.getElementById('update-banner'); if (!el) return;
-      const ios = APP.os === 'ios';
-      el.innerHTML = `⬆ Update available: build ${L.build} <small>You have build ${APP.build}.` +
-        (ios ? ` Re-install the new IPA with Sideloadly on your PC.` : ` Tap Get it, then open the download to install (sign in to GitHub in the browser if it asks).`) +
-        `</small><div class="row">${ios ? '' : '<button class="get">Get it</button>'}<button class="later">Later</button></div>`;
+      const N = window.DABNative, inApp = !!(N && N.downloadUpdate);   // builds from dev-10 download + install themselves
+      el.innerHTML = `⬆ Update available: build ${L.build} <small>You have build ${APP.build}. ` +
+        (inApp ? `It downloads here, then Android asks you to install it. Your progress stays.` : `Tap Get it, then open the download to install it.`) +
+        `</small><div class="bar" hidden><i></i></div><div class="row"><button class="get">${inApp ? 'Update now' : 'Get it'}</button><button class="later">Later</button></div>`;
       el.classList.add('show');
-      const get = el.querySelector('.get'), later = el.querySelector('.later');
-      if (get) get.onclick = () => { location.href = L.apk || L.page; };            // the app hands github.com links to the browser
+      const get = el.querySelector('.get'), later = el.querySelector('.later'), bar = el.querySelector('.bar'), fill = el.querySelector('.bar i'), note = el.querySelector('small');
       later.onclick = () => { el.classList.remove('show'); try { localStorage.setItem('dab_update_skip', L.build); } catch (e) {} };
+      if (!inApp) { get.onclick = () => { location.href = L.apk || L.page; }; return; }   // the app hands https links to the browser
+      // in-app: download with a progress bar, then the system installer (DABNative reports back)
+      window.__dabUpdate = (ev, v) => {
+        if (ev === 'progress') { fill.style.width = (v >= 0 ? Math.round(v * 100) : 50) + '%'; note.textContent = v >= 0 ? `Downloading… ${Math.round(v * 100)}%` : 'Downloading…'; }
+        else if (ev === 'downloaded') { fill.style.width = '100%'; note.textContent = 'Downloaded. Opening the installer…'; }
+        else if (ev === 'permission') note.textContent = 'Allow “Install unknown apps” for Drift & Bloom, then come back here.';
+        else if (ev === 'installing') note.textContent = 'Tap Update on the Android screen. Your progress stays.';
+        else if (ev === 'failed') { bar.hidden = true; get.disabled = false; get.textContent = 'Try again'; note.textContent = 'The download stopped. Check the connection and try again.'; }
+      };
+      get.onclick = () => { get.disabled = true; get.textContent = 'Updating…'; bar.hidden = false; note.textContent = 'Starting the download…'; N.downloadUpdate(L.apk); };
     }).catch(() => {});                                                          // offline: just play
 }
 checkForUpdate();
