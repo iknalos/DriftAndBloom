@@ -47,6 +47,11 @@
   'use strict';
 
   const W = 390, H = 844, TAU = Math.PI * 2;
+  // screen space (HUD, controls, overlays): portrait 390 x 844, landscape (390 * aspect) x 390
+  let SW = W, SH = H;
+  const LAND_H = 390;
+  const native = () => window.DABNative || null;               // Android app bridge (orientation)
+  const wantLandscape = () => { try { return localStorage.getItem('dab_landscape') !== '0'; } catch (e) { return true; } };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const lerp = (a, b, k) => a + (b - a) * k;
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -72,22 +77,29 @@
     app.appendChild(layer);
     bindPointer();
   }
+  function placeLayer(land) {
+    const app = document.getElementById('app') || document.body, host = land ? document.body : app;
+    if (layer.parentNode !== host) host.appendChild(layer);
+    layer.style.position = land ? 'fixed' : 'absolute';
+  }
   function dpr() {
-    const app = document.getElementById('app');
-    const s = app ? app.getBoundingClientRect().width / W : 1;
+    let s = 1;
+    if (SW !== W) s = (window.innerHeight || LAND_H) / SH;      // landscape: the canvas fills the window
+    else { const app = document.getElementById('app'); s = app ? app.getBoundingClientRect().width / W : 1; }
     return clamp((window.devicePixelRatio || 1) * s, 1, 3);
   }
   function sizeCanvas() {
-    const d = Math.min(dpr(), active ? active.dprCap : 3), bw = Math.round(W * d), bh = Math.round(H * d);
+    const d = Math.min(dpr(), active ? active.dprCap : 3), bw = Math.round(SW * d), bh = Math.round(SH * d);
     if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
     ctx = cv.getContext('2d');
-    ctx.setTransform(bw / W, 0, 0, bh / H, 0, 0);
+    ctx.setTransform(bw / SW, 0, 0, bh / SH, 0, 0);
     return d;
   }
   function appPoint(e) {
     const r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+    return { x: (e.clientX - r.left) * SW / r.width, y: (e.clientY - r.top) * SH / r.height };
   }
+  const windowIsLandscape = () => (window.innerWidth || 0) > (window.innerHeight || 1) * 1.15;
 
   // ── Assets ────────────────────────────────────────────────────────────────
   function loadImage(src) {
@@ -694,6 +706,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   ];
   const DPAD = { lr: [{ id: 'left', x: 50, y: 770, r: 36 }, { id: 'right', x: 132, y: 770, r: 36 }] };
   const STICK = { x: 92, y: 752, r: 62 };
+  // landscape: stick bottom-left, attack cluster bottom-right (thumbs on the corners)
+  const L_BTN = () => [
+    { x: SW - 92, y: SH - 96, r: 42 }, { x: SW - 196, y: SH - 58, r: 34 }, { x: SW - 82, y: SH - 206, r: 30 }, { x: SW - 186, y: SH - 160, r: 27 }];
+  const L_STICK = () => ({ x: 118, y: SH - 104, r: 62 });
+  const btnPos = () => (SW !== W ? L_BTN() : BTN_POS);
+  const stickPos = () => (SW !== W ? L_STICK() : STICK);
+  const pausePos = () => (SW !== W ? { x: SW - 34, y: 34 } : { x: 362, y: 46 });
 
   function makeInput() {
     return {
@@ -710,12 +729,15 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       if (active.phase === 'intro') {
         const pid = active.portraitAt(p);
         if (pid) { active.pickHero(pid); return; }
-        if (active.ready && !active.heroLoading && (!active.roster.length || p.y > 690)) active.startPlay();
+        if (active.def.landscape && p.y > 650 && p.y < 700 && Math.abs(p.x - W / 2) < 120) { active.toggleLand(); return; }
+        if (active.ready && !active.heroLoading && (!active.roster.length || p.y > 704)) active.startPlay();
         return;
       }
+      if (active.phase === 'rotate') { if (p.y > SH * 0.62) active.beginWorld(false); return; }   // "play in portrait instead"
       if (active.phase === 'result') { if (active.resultT > 0.9) active.finish(); return; }
       if (active.paused) { active.pauseTap(p); return; }
-      if (Math.hypot(p.x - 362, p.y - 46) < 26) { active.paused = true; if (window.DABAudio) DABAudio.duck(true); return; }
+      const pp = pausePos();
+      if (Math.hypot(p.x - pp.x, p.y - pp.y) < 26) { active.paused = true; if (window.DABAudio) DABAudio.duck(true); return; }
       const hit = active.hitControl(p);
       if (hit) {
         try { cv.setPointerCapture(e.pointerId); } catch (err) { /* old browsers */ }
@@ -763,6 +785,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       active.pickHero(active.roster[(i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n].id); e.preventDefault(); return;
     }
     if (active.phase === 'intro' && active.ready && (e.key === ' ' || e.key === 'Enter')) { active.startPlay(); e.preventDefault(); return; }
+    if (active.phase === 'rotate' && (e.key === ' ' || e.key === 'Enter')) { active.beginWorld(false); e.preventDefault(); return; }
     if (active.phase === 'result' && active.resultT > 0.9 && (e.key === ' ' || e.key === 'Enter')) { active.finish(); e.preventDefault(); return; }
     const k = KEYMAP[e.key];
     if (k) { keysDown.add(k); e.preventDefault(); }
@@ -869,8 +892,11 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     layer.style.opacity = '0';
     requestAnimationFrame(() => { layer.style.transition = 'opacity .35s ease'; layer.style.opacity = '1'; });
 
+    S.land = false; S.view = { top: 0, h: H }; S.ws = 1;
     S.env = {
       W, H, TAU, clamp, lerp, rand, ease,
+      get land() { return S.land; },
+      get view() { return S.view; },              // world rows on screen: top .. top + h
       get t() { return S.t; },
       get dpr() { return S.dpr; },               // current canvas pixels per app px (adaptive)
       charId: S.charId, charRgb: S.charRgb,
@@ -917,15 +943,55 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     loadAll(def.assets, k => { S.loadK = k * (def.hero || def.roster ? 0.85 : 1); }).then(a => heroP.then(H => {
       S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
-      try { S.world = def.create(S.env); } catch (e) { console.error('[worlds] create failed', e && e.stack ? e.stack : e); S.world = null; }
-      S.ready = true;
+      S.ready = true;                              // the world itself is built on Start (orientation first)
     }));
 
     S.last = performance.now();
     S.raf = requestAnimationFrame(S.loop.bind(S));
   }
 
-  Session.prototype.startPlay = function () { this.phase = 'play'; this.playT = 0; if (window.DABAudio) DABAudio.play('start', { vol: 0.7, jitter: 0 }); };
+  // Start: side-scrollers turn the phone to landscape first (if the player wants it), then the
+  // world is built for that screen and play begins
+  Session.prototype.startPlay = function () {
+    if (this.phase !== 'intro' || !this.ready) return;
+    if (window.DABAudio) DABAudio.play('start', { vol: 0.7, jitter: 0 });
+    if (this.def.landscape && wantLandscape()) {
+      this.phase = 'rotate'; this.rotT = 0;
+      placeLayer(true);
+      const N = native();
+      if (N && N.setOrientation) { try { N.setOrientation('landscape'); } catch (e) { } }
+      else if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { });
+      SW = W; SH = H;                                  // the prompt is drawn upright until the phone turns
+      if (windowIsLandscape()) this.beginWorld(true);
+      return;
+    }
+    this.beginWorld(false);
+  };
+  Session.prototype.beginWorld = function (land) {
+    if (this.world || (this.phase !== 'rotate' && this.phase !== 'intro')) return;
+    this.applyLayout(land);
+    try { this.world = this.def.create(this.env); } catch (e) { console.error('[worlds] create failed', e && e.stack ? e.stack : e); this.world = null; }
+    this.phase = 'play'; this.playT = 0;
+  };
+  Session.prototype.applyLayout = function (land) {
+    this.land = !!land;
+    if (land) {
+      SH = LAND_H; SW = Math.max(W, Math.round(LAND_H * (window.innerWidth || 844) / (window.innerHeight || 390)));
+      const v = this.def.landscape;
+      this.view = { top: v.top || 0, h: v.h || 560 };
+      this.ws = SH / this.view.h;
+      this.env.W = Math.round(SW / this.ws);
+    } else {
+      SW = W; SH = H; this.view = { top: 0, h: H }; this.ws = 1; this.env.W = W;
+      placeLayer(false);
+      const N = native();
+      if (N && N.setOrientation && this.phase === 'rotate') { try { N.setOrientation('portrait'); } catch (e) { } }
+    }
+  };
+  Session.prototype.toggleLand = function () {
+    try { localStorage.setItem('dab_landscape', wantLandscape() ? '0' : '1'); } catch (e) { }
+    if (window.DABAudio) DABAudio.play('select', { jitter: 0 });
+  };
   // choose a hero on the intro card (re-loads that hero's sprite sheets)
   Session.prototype.pickHero = function (id) {
     if (!id || id === this.heroId) return;
@@ -963,12 +1029,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       for (const d of DPAD.lr) if (Math.hypot(p.x - d.x, p.y - d.y) < d.r + 14) return { kind: 'dir', id: d.id };
       if (dirsOnly) return null;
     } else if (c.dirs === 'stick') {
-      if (!dirsOnly && p.x < W * 0.5 && p.y > 560) return { kind: 'stick', ox: p.x, oy: p.y };
+      if (!dirsOnly && p.x < SW * 0.42 && p.y > SH * (SW !== W ? 0.4 : 0.66)) return { kind: 'stick', ox: p.x, oy: p.y };
     }
     if (dirsOnly) return null;
-    const bs = c.buttons || [];
+    const bs = c.buttons || [], BP = btnPos();
     for (let i = 0; i < bs.length; i++) {
-      const b = BTN_POS[i];
+      const b = BP[i];
       if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 12) return { kind: 'btn', id: bs[i].id };
     }
     return null;
@@ -1015,11 +1081,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     return I;
   };
 
+  const pauseRows = () => (SW !== W ? { title: 70, rows: [104, 166, 228] } : { title: 360, rows: [403, 473, 543] });
   Session.prototype.pauseTap = function (p) {
-    const AU = window.DABAudio;
-    if (p.y > 400 && p.y < 456 && Math.abs(p.x - W / 2) < 110) { this.paused = false; if (AU) AU.duck(false); }            // Resume
-    else if (p.y > 470 && p.y < 526 && Math.abs(p.x - W / 2) < 110) { this.paused = false; if (AU) AU.duck(false); this.env.lose(); this.gaveUp = true; }
-    else if (p.y > 540 && p.y < 596 && Math.abs(p.x - W / 2) < 110 && AU) { AU.toggle(); AU.play('select', { jitter: 0 }); }   // Sound on / off
+    const AU = window.DABAudio, R = pauseRows().rows, on = y => p.y > y - 3 && p.y < y + 53 && Math.abs(p.x - SW / 2) < 110;
+    if (on(R[0])) { this.paused = false; if (AU) AU.duck(false); }            // Resume
+    else if (on(R[1])) { this.paused = false; if (AU) AU.duck(false); this.env.lose(); this.gaveUp = true; }
+    else if (on(R[2]) && AU) { AU.toggle(); AU.play('select', { jitter: 0 }); }   // Sound on / off
   };
 
   Session.prototype.loop = function (now) {
@@ -1038,6 +1105,14 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       this.introT += dt;
       if (this.ready && !this.warmed) { this.warmed = true; this.env.hero.warm(c); }
       if (this.ready && !this.heroLoading && this.introT > (this.roster.length ? 12 : 3.2)) this.startPlay();
+    }
+    if (this.phase === 'rotate') {                 // waiting for the phone to turn (the app turns itself)
+      this.rotT += rawMs / 1000;
+      if (windowIsLandscape()) this.beginWorld(true);
+    } else if (this.land && windowIsLandscape()) {
+      // the window can still settle after the turn (system bars): zoom so the world fills it
+      const sw = Math.max(W, Math.round(LAND_H * window.innerWidth / window.innerHeight));
+      if (Math.abs(sw - SW) > 2) { SW = sw; this.ws = SW / this.env.W; this.view.h = SH / this.ws; }
     }
     const input = this.buildInput();
     if (this.phase === 'play' || this.phase === 'result') {
@@ -1058,9 +1133,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.save();
     // worlds that paint their whole background (def.opaque) skip this full-screen clear —
     // one less screen of fill per frame — except while shaking, when the edges show
-    if (!this.def.opaque || this.shakeA > 0 || this.phase === 'intro') { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); }
+    if (!this.def.opaque || this.shakeA > 0 || this.phase === 'intro' || this.phase === 'rotate') { c.fillStyle = '#000'; c.fillRect(0, 0, SW, SH); }
     if (this.shakeA > 0) { const m = this.shakeA * this.shakeA * 14; c.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m); }
-    if (this.world && this.phase !== 'intro') {
+    if (this.ws !== 1 || this.view.top) { c.scale(this.ws, this.ws); c.translate(0, -this.view.top); }   // landscape camera
+    if (this.world && this.phase !== 'intro' && this.phase !== 'rotate') {
       try { this.world.render(c); } catch (e) { console.error('[worlds] render failed', e); this.world = null; this.env.win(); }
     }
     for (const f of this.floaters) {
@@ -1071,12 +1147,14 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.globalAlpha = 1;
     }
     c.restore();
-    if (this.flashA > 0) { c.fillStyle = `rgba(${this.flashRgb},${this.flashA.toFixed(3)})`; c.fillRect(0, 0, W, H); }
+    if (this.flashA > 0) { c.fillStyle = `rgba(${this.flashRgb},${this.flashA.toFixed(3)})`; c.fillRect(0, 0, SW, SH); }
     if (this.dmgFlash > 0) {
-      const vg = c.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.62);
+      const R = Math.max(SW, SH);
+      const vg = c.createRadialGradient(SW / 2, SH / 2, R * 0.28, SW / 2, SH / 2, R * 0.62);
       vg.addColorStop(0, 'rgba(255,0,0,0)'); vg.addColorStop(1, `rgba(220,20,20,${(this.dmgFlash * 0.5).toFixed(3)})`);
-      c.fillStyle = vg; c.fillRect(0, 0, W, H);
+      c.fillStyle = vg; c.fillRect(0, 0, SW, SH);
     }
+    if (this.phase === 'rotate') this.drawRotate(c);
     if (this.phase === 'play' || (this.phase === 'result' && this.resultT < 0.6)) { this.drawHUD(c); this.drawControls(c); }
     if (this.phase === 'intro') this.drawIntro(c);
     if (this.phase === 'result') this.drawResult(c);
@@ -1102,19 +1180,19 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (this.hud.objective) { c.font = '12px system-ui'; c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillText(this.hud.objective, x, y + 46); }
     // progress to the destination
     if (this.hud.progress !== null && this.hud.progress !== undefined) {
-      const px = 196, pw = 140, py = y + 3;
+      const pw = SW !== W ? 220 : 140, px = SW !== W ? SW / 2 - pw / 2 : 196, py = y + 3;
       c.fillStyle = 'rgba(0,0,0,0.5)'; roundRect(c, px, py, pw, 8, 4); c.fill();
       c.fillStyle = `rgba(${this.rgb},0.9)`; roundRect(c, px, py, pw * clamp(this.hud.progress, 0, 1), 8, 4); c.fill();
       c.fillStyle = '#ffd86b'; c.beginPath(); c.arc(px + pw, py + 4, 5, 0, TAU); c.fill();
     }
     // boss bar
     if (this.hud.boss) {
-      const bx = 40, bw = W - 80, by = 112;
+      const bx = SW !== W ? SW / 2 - 220 : 40, bw = SW !== W ? 440 : W - 80, by = SW !== W ? 62 : 112;
       c.fillStyle = 'rgba(0,0,0,0.6)'; roundRect(c, bx - 3, by - 3, bw + 6, 16, 8); c.fill();
       const bg = c.createLinearGradient(bx, 0, bx + bw, 0); bg.addColorStop(0, '#b0173a'); bg.addColorStop(1, '#ff5468');
       c.fillStyle = bg; roundRect(c, bx, by, bw * clamp(this.hud.boss.hp, 0, 1), 10, 5); c.fill();
       c.fillStyle = '#fff'; c.font = 'bold 11px system-ui'; c.textAlign = 'center';
-      c.fillText(this.hud.boss.name || 'BOSS', W / 2, by - 10);
+      c.fillText(this.hud.boss.name || 'BOSS', bx + bw / 2, by - 10);
     }
     // counters (ammo etc.)
     let cy = y + 66;
@@ -1123,8 +1201,9 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.fillText(`${ct.icon || ''} ${ct.value}`, x, cy); cy += 18;
     }
     // pause button
-    c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.arc(362, 46, 17, 0, TAU); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(356, 39, 4, 14); c.fillRect(364, 39, 4, 14);
+    const pp = pausePos();
+    c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.arc(pp.x, pp.y, 17, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(pp.x - 6, pp.y - 7, 4, 14); c.fillRect(pp.x + 2, pp.y - 7, 4, 14);
     c.restore();
   };
 
@@ -1133,7 +1212,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (cfg.dirs === 'lr') {
       for (const d of DPAD.lr) drawButton(c, d.x, d.y, d.r, !!this.touch.dirs[d.id] || this.input[d.id], d.id, this.rgb);
     } else if (cfg.dirs === 'stick') {
-      const st = this.stick, ox = st ? st.ox : STICK.x, oy = st ? st.oy : STICK.y;
+      const ST = stickPos(), st = this.stick, ox = st ? st.ox : ST.x, oy = st ? st.oy : ST.y;
       c.save();
       c.fillStyle = 'rgba(255,255,255,0.07)'; c.strokeStyle = 'rgba(255,255,255,0.28)'; c.lineWidth = 2;
       c.beginPath(); c.arc(ox, oy, STICK.r, 0, TAU); c.fill(); c.stroke();
@@ -1147,9 +1226,9 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.fillStyle = g; c.beginPath(); c.arc(kx, ky, 27, 0, TAU); c.fill();
       c.restore();
     }
-    const bs = cfg.buttons || [];
-    for (let i = 0; i < bs.length && i < BTN_POS.length; i++) {
-      const b = BTN_POS[i], spec = bs[i];
+    const bs = cfg.buttons || [], BP = btnPos();
+    for (let i = 0; i < bs.length && i < BP.length; i++) {
+      const b = BP[i], spec = bs[i];
       const count = spec.count ? spec.count() : undefined;
       drawButton(c, b.x, b.y, b.r, !!held[spec.id], spec.icon || spec.id, this.rgb, count);
     }
@@ -1184,6 +1263,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     wrap(c, this.def.hint || '', W / 2, R ? 540 : 580, 330, 20);
     c.fillStyle = 'rgba(255,255,255,0.55)'; c.font = '12.5px system-ui';
     (this.def.howto || []).forEach((line, i) => c.fillText(line, W / 2, (R ? 584 : 630) + i * 19));
+    if (this.def.landscape) {                                   // screen choice for side-scrollers
+      const on = wantLandscape();
+      c.fillStyle = 'rgba(255,255,255,0.1)'; roundRect(c, W / 2 - 112, 652, 224, 36, 18); c.fill();
+      c.strokeStyle = on ? `rgba(${this.rgb},0.8)` : 'rgba(255,255,255,0.3)'; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = on ? `rgb(${this.rgb})` : 'rgba(255,255,255,0.8)'; c.font = 'bold 13.5px system-ui'; c.textBaseline = 'middle';
+      c.fillText(on ? '📱⟷  Landscape (tap for portrait)' : '📱  Portrait (tap for landscape)', W / 2, 671); c.textBaseline = 'alphabetic';
+    }
     // loading bar / tap to start
     if (!this.ready) {
       c.fillStyle = 'rgba(255,255,255,0.15)'; roundRect(c, W / 2 - 80, 740, 160, 6, 3); c.fill();
@@ -1224,13 +1310,29 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     }
   };
 
+  Session.prototype.drawRotate = function (c) {
+    c.save();
+    c.fillStyle = '#05070d'; c.fillRect(0, 0, SW, SH);
+    c.textAlign = 'center'; c.fillStyle = `rgb(${this.rgb})`;
+    const cx = SW / 2, cy = SH * 0.32, a = Math.sin(this.t * 2.2) * 0.7 - 0.7;   // a phone tipping onto its side
+    c.save(); c.translate(cx, cy); c.rotate(a);
+    c.strokeStyle = `rgb(${this.rgb})`; c.lineWidth = 3; roundRect(c, -18, -32, 36, 64, 7); c.stroke();
+    c.fillRect(-5, 24, 10, 3); c.restore();
+    c.font = 'bold 20px system-ui'; c.fillStyle = '#fff'; c.fillText('Turn your phone sideways', cx, SH * 0.5);
+    c.font = '13px system-ui'; c.fillStyle = 'rgba(255,255,255,0.65)'; c.fillText('Landscape shows much more of the level', cx, SH * 0.5 + 24);
+    c.fillStyle = 'rgba(255,255,255,0.12)'; roundRect(c, cx - 110, SH * 0.68, 220, 40, 14); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = 'bold 14px system-ui'; c.textBaseline = 'middle';
+    c.fillText('Play in portrait instead', cx, SH * 0.68 + 20);
+    c.restore();
+  };
+
   Session.prototype.drawResult = function (c) {
     const k = clamp(this.resultT / 0.6, 0, 1);
     c.save();
-    c.fillStyle = `rgba(0,0,0,${(0.62 * k).toFixed(3)})`; c.fillRect(0, 0, W, H);
+    c.fillStyle = `rgba(0,0,0,${(0.62 * k).toFixed(3)})`; c.fillRect(0, 0, SW, SH);
     c.globalAlpha = k; c.textAlign = 'center';
     const sc = 0.8 + 0.2 * ease(k);
-    c.translate(W / 2, 380); c.scale(sc, sc);
+    c.translate(SW / 2, SW !== W ? SH * 0.4 : 380); c.scale(sc, sc);
     c.fillStyle = this.won ? '#ffd86b' : '#ff6b6b'; c.font = 'bold 40px Georgia, serif';
     c.fillText(this.won ? 'Escaped!' : (this.gaveUp ? 'You gave up' : 'Knocked out'), 0, 0);
     c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '16px system-ui';
@@ -1242,14 +1344,15 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
 
   Session.prototype.drawPause = function (c) {
     c.save();
-    c.fillStyle = 'rgba(0,0,0,0.7)'; c.fillRect(0, 0, W, H);
-    c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = 'bold 30px Georgia, serif'; c.fillText('Paused', W / 2, 360);
+    c.fillStyle = 'rgba(0,0,0,0.7)'; c.fillRect(0, 0, SW, SH);
+    const o = pauseRows();
+    c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = 'bold 30px Georgia, serif'; c.fillText('Paused', SW / 2, o.title);
     const btn = (y, txt, rgb) => {
-      c.fillStyle = `rgba(${rgb},0.85)`; roundRect(c, W / 2 - 110, y, 220, 50, 14); c.fill();
-      c.fillStyle = '#071828'; c.font = 'bold 17px system-ui'; c.textBaseline = 'middle'; c.fillText(txt, W / 2, y + 26); c.textBaseline = 'alphabetic';
+      c.fillStyle = `rgba(${rgb},0.85)`; roundRect(c, SW / 2 - 110, y, 220, 50, 14); c.fill();
+      c.fillStyle = '#071828'; c.font = 'bold 17px system-ui'; c.textBaseline = 'middle'; c.fillText(txt, SW / 2, y + 26); c.textBaseline = 'alphabetic';
     };
-    btn(403, 'Resume', '93,202,165'); btn(473, 'Give up (lose a heart)', '255,140,120');
-    if (window.DABAudio) btn(543, DABAudio.muted() ? '🔇  Sound: off' : '🔊  Sound: on', '200,210,230');
+    btn(o.rows[0], 'Resume', '93,202,165'); btn(o.rows[1], 'Give up (lose a heart)', '255,140,120');
+    if (window.DABAudio) btn(o.rows[2], DABAudio.muted() ? '🔇  Sound: off' : '🔊  Sound: on', '200,210,230');
     c.restore();
   };
 
@@ -1262,8 +1365,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (window.DABAudio) { DABAudio.duck(false); DABAudio.music(this.opts.music === undefined ? 'music_pond' : this.opts.music); }
     try { this.world && this.world.destroy && this.world.destroy(); } catch (e) { /* ignore */ }
     keysDown.clear();
+    if (this.land || this.phase === 'rotate') {                  // the pond is portrait
+      const N = native();
+      if (N && N.setOrientation) { try { N.setOrientation('portrait'); } catch (e) { } }
+      else if (screen.orientation && screen.orientation.unlock) { try { screen.orientation.unlock(); } catch (e) { } }
+    }
     layer.style.transition = 'opacity .3s ease'; layer.style.opacity = '0';
-    setTimeout(() => { if (!active) layer.style.display = 'none'; }, 320);
+    setTimeout(() => { if (!active) { layer.style.display = 'none'; SW = W; SH = H; placeLayer(false); } }, 320);
     this.resolve({ won: !!won, aborted: !!aborted });
   };
 
@@ -1289,12 +1397,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     isActive() { return !!active; },
     abort() { if (active) active.end(false, true); },
     // shared helpers other modules may want outside a session
-    drawHero, glowSprite, roundRect, HERO
+    drawHero, glowSprite, roundRect, HERO,
+    pxScale() { return active ? active.dpr : 2; }               // device px per world px (pre-rendered art resolution)
   };
   // test hook: end the running world now (won = true / false)
-  window.__dabWorldEnd = won => { if (active && active.phase !== 'result') { if (active.phase === 'intro') active.startPlay(); won ? active.env.win() : active.env.lose(); } };
+  window.__dabWorldEnd = won => { if (active && active.phase !== 'result') { if (active.phase === 'intro') active.startPlay(); if (active.phase === 'rotate') active.beginWorld(false); won ? active.env.win() : active.env.lose(); } };
   window.__dabWorld = () => active ? Object.assign({
     world: active.id, phase: active.phase, health: active.health, t: active.t, paused: active.paused,
-    won: active.won, particles: active.fx.list.length, dpr: +active.dpr.toFixed(2)
+    won: active.won, particles: active.fx.list.length, dpr: +active.dpr.toFixed(2), land: active.land, viewW: active.env.W
   }, active.world && active.world.debug ? active.world.debug() : {}) : null;
 })();

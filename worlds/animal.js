@@ -103,7 +103,8 @@ void main(){
   const offRes = () => {
     const app = document.getElementById('app');
     const s = app ? app.getBoundingClientRect().width / 390 : 1;
-    return Math.max(1, Math.min(2, (window.devicePixelRatio || 1) * s));
+    const live = window.DABWorlds && DABWorlds.pxScale ? DABWorlds.pxScale() : 0;     // the running canvas's scale
+    return Math.max(1, Math.min(2, live || (window.devicePixelRatio || 1) * s));
   };
   function canvas(w, h, R) {
     const c = document.createElement('canvas');
@@ -115,6 +116,7 @@ void main(){
 
   DABWorlds.register('animal', {
     title: 'Animal World', opaque: true, roster: 'animal', color: '150,215,110',
+    landscape: { top: 150, h: 560 },        // landscape camera: world rows 150..710 (sky trimmed, ground + soil kept)
     music: 'music_animal',
     sounds: ['swing', 'swing_big', 'cut', 'cut_heavy', 'dash', 'plunge', 'jump', 'land', 'hurt', 'hiss', 'snake_strike',
       'croc_snap', 'splash', 'splash_big', 'splash_small', 'boar', 'eagle', 'bloom'],
@@ -134,6 +136,7 @@ void main(){
 
   function makeWorld(env) {
     const { W, H, TAU, clamp, lerp, rand } = env;
+    const AW = Math.min(W, 560);             // arena width: a fight-sized pen even on a wide landscape screen
     const img = env.assets;
     const R = offRes();
     const waterProg = env.shader(WATER_FS);
@@ -174,9 +177,9 @@ void main(){
 
     // ── state ──────────────────────────────────────────────────────────────
     const hero = {
-      x: START_X || 110, y: GROUND, vx: 0, vy: 0, ground: true, face: 1, phase: 0, run: 0,
+      x: START_X || (env.land ? 340 : 110), y: GROUND, vx: 0, vy: 0, ground: true, face: 1, phase: 0, run: 0,   // landscape: clear of the stick
       atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), air: false,
-      dashT: 0, dashCD: 0, hurtT: 0, coyote: 0, jumpBuf: 0, carried: null, lastSafe: START_X || 110,
+      dashT: 0, dashCD: 0, hurtT: 0, coyote: 0, jumpBuf: 0, carried: null, lastSafe: START_X || (env.land ? 340 : 110),
       fallFrom: null, plungeT: 0, trail: [], landT: 0, plat: null, rollT: 0,  // rollT must start at 0: `undefined <= 0` is false and blocked every attack
       crouch: false, crawl: false, crawlClock: 0
     };
@@ -198,19 +201,19 @@ void main(){
       for (const a of arenas) {
         if (a.st === 'wait' && hero.x > a.at && !hero.carried && hero.ground) {
           a.st = 'fight'; arena = a; a.t = 0; a.banner = 1.5;
-          a.members = enemies.filter(e => e.type === 'boar' && !e.dead && e.x > a.cam - 20 && e.x < a.cam + W + 60);
-          a.members.forEach(e => { e.seg = [a.cam + 14, a.cam + W - 14]; e.cd = Math.min(e.cd, 0.6); });
+          a.members = enemies.filter(e => e.type === 'boar' && !e.dead && e.x > a.cam - 20 && e.x < a.cam + AW + 60);
+          a.members.forEach(e => { e.seg = [a.cam + 14, a.cam + AW - 14]; e.cd = Math.min(e.cd, 0.6); });
           env.shake(0.3);
         }
         if (a.st !== 'fight') { if (a.go > 0) a.go -= dt; continue; }
         a.t += dt; a.banner = Math.max(0, a.banner - dt);
         for (const ex of a.extra) if (!ex.done && a.t > ex.delay) {
           ex.done = true;
-          const b = makeBoar(ex.side > 0 ? a.cam + W + 60 : a.cam - 60);
-          b.seg = [a.cam - 80, a.cam + W + 80]; b.face = -ex.side; b.st = 'notice'; b.t = 0.35; b.cd = 0; b.entering = true;
+          const b = makeBoar(ex.side > 0 ? a.cam + AW + 60 : a.cam - 60);
+          b.seg = [a.cam - 80, a.cam + AW + 80]; b.face = -ex.side; b.st = 'notice'; b.t = 0.35; b.cd = 0; b.entering = true;
           enemies.push(b); a.members.push(b);
         }
-        for (const e of a.members) if (e.entering && e.x > a.cam + 30 && e.x < a.cam + W - 30) { e.entering = false; e.seg = [a.cam + 14, a.cam + W - 14]; }
+        for (const e of a.members) if (e.entering && e.x > a.cam + 30 && e.x < a.cam + AW - 30) { e.entering = false; e.seg = [a.cam + 14, a.cam + AW - 14]; }
         a.left = a.members.filter(e => !e.dead && e.st !== 'die').length + a.extra.filter(ex => !ex.done).length;
         if (a.left === 0) {
           a.st = 'clear'; a.go = 3.5; arena = null;
@@ -412,7 +415,7 @@ void main(){
       h.x += h.vx * dt;
       if (h.plat && h.ground && h.plat.kind === 'log') h.x += h.plat.dx || 0;
       h.x = Math.max(h.x, camX + 14, 20);
-      if (arena) h.x = clamp(h.x, arena.cam + 14, arena.cam + W - 16);
+      if (arena) h.x = clamp(h.x, arena.cam + 14, arena.cam + AW - 16);
       if (won) h.x = Math.min(h.x, END + 70);
       let ny = h.y + h.vy * dt;
       const s = support(h.x, prevY);
@@ -861,7 +864,7 @@ void main(){
         }
       }
       // camera
-      const tx = arena ? arena.cam : clamp(hero.x - W * (hero.face > 0 ? 0.34 : 0.5), 0, END + 160 - W * 0.62);
+      const tx = arena ? Math.max(0, arena.cam + AW / 2 - W / 2) : clamp(hero.x - W * (hero.face > 0 ? 0.34 : 0.5), 0, END + 160 - W * 0.62);
       camX = lerp(camX, tx, 1 - Math.exp(-dt * 5));
       camX = Math.max(camX, 0);
       const ty = Math.min(0, hero.y - 330);
@@ -888,12 +891,13 @@ void main(){
     let bgBuf = null, bgCtx = null;
     function drawBack(c) {
       const k = Math.max(0.75, (env.dpr || 2) * 0.5);
-      const bw = Math.ceil(W * k), bh = Math.ceil(H * k);
+      const vt = env.view.top, vh = env.view.h;             // only the rows on screen (landscape shows 560 of 844)
+      const bw = Math.ceil(W * k), bh = Math.ceil(vh * k);
       if (!bgBuf) bgBuf = document.createElement('canvas');
       if (bgBuf.width !== bw || bgBuf.height !== bh || !bgCtx) { bgBuf.width = bw; bgBuf.height = bh; bgCtx = bgBuf.getContext('2d'); }
-      bgCtx.setTransform(k, 0, 0, k, 0, 0);
+      bgCtx.setTransform(k, 0, 0, k, 0, -vt * k);
       paintBack(bgCtx);
-      c.drawImage(bgBuf, 0, 0, W, H);
+      c.drawImage(bgBuf, 0, vt, W, vh);
     }
     function paintBack(c) {
       // sky above the photo layers (seen when an eagle carries you up)

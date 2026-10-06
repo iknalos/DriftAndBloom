@@ -127,7 +127,7 @@ void main(){
   if (d < -1.5) { gl_FragColor = vec4(0.0); return; }
   // ground-plane perspective: 1 at the waterline (moves with the rock), larger toward the viewer
   float persp = 1.0 + max(d, 0.0) / 230.0;
-  vec2 w = vec2(((px.x - 195.0) / persp + u_cam) / 44.0, (d + 10.0) / (19.0 * persp));
+  vec2 w = vec2(((px.x - u_res.x * 0.5) / persp + u_cam) / 44.0, (d + 10.0) / (19.0 * persp));
   vec2 flow = vec2(u_time * 0.07, 0.0);
   vec2 warp = vec2(lf(w * 0.6 + flow), lf(w * 0.6 + vec2(4.7, 1.3) - flow)) - 0.5;
   vec2 p = w + warp * 1.5 - flow * 0.6;
@@ -194,6 +194,7 @@ void main(){
 
   DABWorlds.register('hell', {
     title: 'Hell', color: '255,122,52', opaque: true, roster: 'hell',
+    landscape: { top: 160, h: 560 },        // landscape camera: world rows 160..720 (lava, rock and the sky over the action)
     music: 'music_hell',
     sounds: ['bow_draw', 'bow_shot', 'arrow_hit', 'volley', 'roll', 'jump', 'land_rock', 'hurt', 'growl', 'hound', 'brute',
       'splash_big', 'fire', 'lava_loop', 'explode'],
@@ -220,6 +221,7 @@ void main(){
   });
 
   function create(env) {
+    const W = env.W;                         // screen width in world px: 390 portrait, ~1200 landscape
     const AS = env.assets;
     VOLLEY.n = 1;
     const cheat = () => window.__hellCheat || {};
@@ -1287,12 +1289,12 @@ void main(){
       updateArrows(dt); updateShots(dt); updatePickups(dt);
 
       // camera: hero a third in, a little lead; the arena is framed
-      let want = hero.x - 140 + hero.face * 18;
+      let want = hero.x - (W > 400 ? W * 0.36 : 140) + hero.face * 18;   // a third in, either orientation
       if (arena) {                                  // keep the whole Gatekeeper and the hero in frame
         if (boss && !boss.dying) want = boss.x > hero.x ? clamp(boss.x + 74 - W, hero.x - 330, hero.x - 40) : clamp(boss.x - 74, hero.x - W + 40, hero.x - 60);
         want = clamp(want, ARENA_X - 60, PORTAL_X + 110 - W);
       }
-      cam = lerp(cam, clamp(want, -60, PORTAL_X + 110 - W), 1 - Math.exp(-dt * 6));
+      cam = lerp(cam, clamp(want, W > 400 ? -480 : -60, PORTAL_X + 110 - W), 1 - Math.exp(-dt * 6));   // (the first rock runs from -700)
       env.hud.progress = clamp(hero.x / PORTAL_X, 0, 1);
 
       // ambience
@@ -1935,8 +1937,9 @@ void main(){
       if (msgT > 0) {
         c.save(); c.globalAlpha = clamp(msgT / 0.5, 0, 1) * clamp((3.2 - msgT) / 0.3, 0, 1);
         c.textAlign = 'center'; c.font = 'bold 16px system-ui';
-        c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,0.7)'; c.strokeText(msg, W / 2, 168);
-        c.fillStyle = '#ffd9a8'; c.fillText(msg, W / 2, 168);
+        const my = Math.max(168, env.view.top + 70);            // inside the landscape camera's band too
+        c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,0.7)'; c.strokeText(msg, W / 2, my);
+        c.fillStyle = '#ffd9a8'; c.fillText(msg, W / 2, my);
         c.restore();
       }
     }
