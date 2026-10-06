@@ -199,8 +199,8 @@ void main(){
       'splash_big', 'fire', 'lava_loop', 'explode'],
     subtitle: r => (r && /dragon|scorch/i.test(r) ? r + ' ' : '') + 'You fell through the burning pond into the underworld.',
     hint: 'Run for the exit gate. The horde is right behind you.',
-    howto: ['Stick: run · push up to jump · never touch the lava', 'Hold the bow to draw · the stick aims · let go to shoot',
-            '» dodge roll · 🔥 = flaming volley'],
+    howto: ['Stick: run · push up to jump · down = crouch · down + move = crawl', 'Hold ⚔: pull an arrow, draw · the stick aims · let go to shoot',
+            '» dodge roll · 🔥 = flaming volley · crouch / crawl ducks under bats and fire'],
     controls: {
       dirs: 'stick',
       stickJump: true,
@@ -241,8 +241,11 @@ void main(){
       x: 60, y: 590, vx: 0, vy: 0, face: 1, onGround: true, seg: null, coyote: 0, jumpBuf: 0, jumpCut: false,
       draw: 0, drawing: false, aim: 0.05, shootCd: 0, hurtT: 0, phase: 0, lavaT: 0, hidden: false,
       portalT: 0, safe: { x: 60, seg: null }, target: null, volleyCd: 0,
-      atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), holdT: 0, charge: 0, castT: 0, runClock: 0
+      atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), holdT: 0, charge: 0, castT: 0, runClock: 0,
+      crouch: false, crawl: false, crawlClock: 0, quick: false
     };
+    // how tall the archer is right now: crouching / crawling ducks what flies at a standing archer
+    const heroTall = () => (hero.crawl ? 22 : hero.crouch ? 40 : 64);
     const segs = SEGS.map(([x0, x1, top, kind], i) => ({ i, x0, x1, top, y: top, kind, st: 'solid', t: 0, vy: 0, alpha: 1 }));
     hero.seg = segs[0]; hero.safe.seg = segs[0];
     const geysers = GEYSERS.map(([x, period, off]) => ({ x, period, off, h: 0, st: 'idle' }));
@@ -643,6 +646,8 @@ void main(){
       return { x: h.x + h.face * Math.cos(h.aim) * 30, y: h.y - 40 - Math.sin(h.aim) * 19 };
     }
     const ARROW_G = 360, AIM_MIN = -0.45, AIM_MAX = 0.87;     // flat, fast arrows; aim -25..50 deg
+    const DRAW_T = 0.55, NOCKED = 0.62;                          // full draw 0.55 s; the arrow is on the string at 0.34 s
+    const bowPower = () => Math.max(0.5, (hero.draw - NOCKED) / (1 - NOCKED));     // a quick shot still drops a hound
     const arrowSpeed = draw => 760 + 640 * draw;
     function solveAim(tg, speed) {
       const o = bowOrigin(), g = ARROW_G;
@@ -682,12 +687,20 @@ void main(){
       // want to shoot (the hero turns and plants his feet). Stick centred = straight ahead.
       // Nothing aims for you; the dotted line shows where the arrow will fly.
       const sax = I.ax || 0, say = I.ay || 0, stickAim = Math.hypot(sax, say) > 0.4;
-      if (I.held.attack && h.shootCd <= 0 && h.hurtT <= 0 && !(h.rollT > 0)) {
-        if (!h.drawing) { h.drawing = true; h.draw = 0.05; sfx('bow_draw', h.x, { vol: 0.7 }); }
-        h.draw = Math.min(1, h.draw + dt / 0.6);
-      } else if (h.drawing && !I.held.attack) {
-        shoot(Math.max(h.draw, 0.34)); h.drawing = false; h.draw = 0; h.shootCd = 0.14; h.relT = 0.32; h.relAim = h.aim;
+      // the draw follows the sprite: 0 .. NOCKED = reach back to the quiver and nock an arrow,
+      // NOCKED .. 1 = pull the string to the jaw. Let go early and he still nocks, then looses a quick shot.
+      const loose = () => {
+        shoot(bowPower()); h.drawing = false; h.draw = 0; h.quick = false; h.shootCd = 0.1; h.relT = 0.32; h.relAim = h.aim;
         sfx('bow_shot', h.x, { rate: 0.9 + 0.2 * h.relT });
+      };
+      if ((I.held.attack || h.quick) && h.shootCd <= 0 && h.hurtT <= 0 && !(h.rollT > 0)) {
+        if (!h.drawing) { h.drawing = true; h.draw = 0; h.quick = false; h.crouch = h.crawl = false; sfx('jump', h.x, { vol: 0.25, rate: 1.4 }); }
+        const was = h.draw;
+        h.draw = Math.min(1, h.draw + dt / DRAW_T);
+        if (was < NOCKED && h.draw >= NOCKED) sfx('bow_draw', h.x, { vol: 0.7 });
+        if (h.quick && h.draw >= NOCKED + 0.05) loose();
+      } else if (h.drawing && !I.held.attack) {
+        if (h.draw >= NOCKED) loose(); else h.quick = true;
       }
       env.noStickJump = h.drawing;                       // pushing up to aim must not jump
       h.aimMem = Math.max(0, (h.aimMem || 0) - dt);
@@ -719,8 +732,13 @@ void main(){
         env.flash('255,140,40', 0.25); env.shake(0.2);
       }
 
+      // crouch (stick down) / crawl (down + left or right): low under bats, spit and fire
+      h.crouch = h.onGround && !h.drawing && !(h.rollT > 0) && h.hurtT <= 0 && say > 0.55 && !I.held.attack && !I.pressed.jump;
+      h.crawl = h.crouch && Math.abs(sax) > 0.3;
+      if (h.crouch && !h.crawl) mv = 0;
+      if (h.crawl) h.crawlClock += dt * Math.abs(h.vx) / 60;
       // run + jump
-      const top = h.drawing && h.onGround ? 85 : 192;     // drawing slows you on foot, never mid-jump
+      const top = h.crawl ? 60 : h.drawing && h.onGround ? 85 : 192;     // drawing slows you on foot, never mid-jump
       if ((h.onGround || mv) && !(h.rollT > 0)) h.vx += (mv * top - h.vx) * Math.min(1, dt * (h.onGround ? 14 : 6));
       if (I.pressed.jump) h.jumpBuf = 0.13;
       if (h.jumpBuf > 0 && (h.onGround || h.coyote > 0)) {
@@ -820,7 +838,7 @@ void main(){
     function hitTest(e, x, y, r) { const b = box(e); return x > b[0] - r && x < b[2] + r && y > b[1] - r && y < b[3] + r; }
     function overlapHero(e, shrink) {
       const b = box(e), k = shrink || 0;
-      return hero.x + 12 > b[0] + k && hero.x - 12 < b[2] - k && hero.y > b[1] + k && hero.y - 64 < b[3] - k;
+      return hero.x + 12 > b[0] + k && hero.x - 12 < b[2] - k && hero.y > b[1] + k && hero.y - heroTall() < b[3] - k;
     }
     function damageEnemy(e, n, dir, flaming) {
       if (e.type === 'brute' && e.st === 'guard') {         // the ward turns the arrow aside
@@ -925,7 +943,7 @@ void main(){
 
     function updateBat(e, dt) {
       e.cd -= dt;
-      const hx = hero.x, hy = hero.y - 38;
+      const hx = hero.x, hy = hero.y - 64;                // dives at head height: crouch or crawl and it skims over
       if (e.st === 'fly') {
         const side = e.x > hx ? 1 : -1;
         const tx = hx + side * 150, ty = e.baseY + Math.sin(tAll * 1.7 + e.seed) * 34;
@@ -1062,7 +1080,7 @@ void main(){
         } else { s.vy = (s.vy || 0) + 900 * dt; s.hy += s.vy * dt; s.hx += z.dir * 40 * dt; }
         s.trail.unshift([s.hx, s.hy]); if (s.trail.length > 46) s.trail.pop();
         s.hitT = Math.max(0, s.hitT - dt * 4);
-        if (!s.dead && serpentHit(s, hero.x, hero.y - 34, 22) && hero.lavaT <= 0) hurtHero(12, s.hx, undefined, 70);
+        if (!s.dead && serpentHit(s, hero.x, hero.y - heroTall() * 0.53, 22) && hero.lavaT <= 0) hurtHero(12, s.hx, undefined, 70);
         if (Math.random() < 0.5) spawnP({ x: s.hx + rand(-8, 8), y: s.hy + 6, vx: rand(-20, 20), vy: rand(0, 60), g: 600, kind: 'glow', rgb: '255,130,40', size: rand(1.2, 2.2), life: 0.5, layer: 'front' });
         const tail = s.trail[s.trail.length - 1];
         if ((u >= 1 || (s.dead && s.hy > LAVA_Y + 20)) && tail && tail[1] > LAVA_Y) {
@@ -1164,7 +1182,7 @@ void main(){
         const hitHero = Math.abs(s.x - hero.x) < 20 && s.y > hero.y - 70 && s.y < hero.y + 4;
         if (hitHero || (g && s.y >= g.y) || s.y > LAVA_Y || s.life <= 0) {
           const R2 = s.small ? 30 : 50;
-          if (Math.abs(s.x - hero.x) < R2 && Math.abs(s.y - (hero.y - 30)) < R2 + 10) hurtHero(s.dmg || 10, s.x, undefined, s.small ? 120 : undefined);
+          if (Math.abs(s.x - hero.x) < R2 && Math.abs(s.y - (hero.y - heroTall() * 0.47)) < R2 + heroTall() * 0.16) hurtHero(s.dmg || 10, s.x, undefined, s.small ? 120 : undefined);
           burstP(s.x, s.y, { n: s.small ? 12 : 26, speed: s.small ? 160 : 240, rgb: '255,150,50', kind: 'spark', life: 0.55 });
           spawnP({ x: s.x, y: s.y, kind: 'ring', rgb: '255,140,50', size: 8, grow: s.small ? 90 : 160, life: 0.35 });
           env.shake(s.small ? 0.12 : 0.3);
@@ -1192,7 +1210,7 @@ void main(){
       if (threat || fighting) {
         if (!(h.drawing && h.draw >= 0.9)) I.held.attack = true;
         const aimT = fighting ? boss : tgt;
-        if (aimT) { I.aimFace = Math.sign(aimT.x - h.x) || h.face; I.aimAt = solveAim(aimT, arrowSpeed(Math.max(h.draw, 0.34))); }
+        if (aimT) { I.aimFace = Math.sign(aimT.x - h.x) || h.face; I.aimAt = solveAim(aimT, arrowSpeed(bowPower())); }
 
         const blocker = tgt && (tgt.type === 'ghoul' || tgt.type === 'brute') && tdx > 0 && tdx < 270;
         if (!blocker && !fighting) I.right = true;
@@ -1847,10 +1865,12 @@ void main(){
           anim = h.vy < -120 && has('jump') ? 'jump' : 'air';
           at = anim === 'jump' ? HA.dur('jump') * clamp(0.25 + 0.5 * (1 + h.vy / 665), 0.25, 0.85) : tAll;
         }
+        else if (h.crawl && has('crawl')) { anim = 'crawl'; at = h.crawlClock; }
+        else if (h.crouch && has('crouch')) { anim = 'crouch'; at = tAll; }
         else if (Math.abs(h.vx) > 34) { anim = 'run'; at = h.runClock; }
         if (!has(anim)) anim = 'idle';
         HA.draw(c, x, y, { anim, t: at, facing: h.face, height: HERO_H, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
-        if (h.drawing) aimGuide(c);
+        if (h.drawing && h.draw >= NOCKED) aimGuide(c);
       } else env.drawHero(c, x, y, {
         facing: h.face, run: clamp(Math.abs(h.vx) / 192, 0, 1), phase: h.phase, air: !h.onGround, vy: h.vy,
         weapon: 'bow', draw: h.drawing ? h.draw : 0, aim: h.aim, hurt: h.hurtT / 0.32, scale: 1.02
@@ -1860,7 +1880,7 @@ void main(){
 
     // where the arrow will go: dots along its real flight path, brighter as the bow bends
     function aimGuide(c) {
-      const h = hero, o = bowOrigin(), sp = arrowSpeed(Math.max(h.draw, 0.34));
+      const h = hero, o = bowOrigin(), sp = arrowSpeed(bowPower());
       const vx = Math.cos(h.aim) * sp * h.face, vy = -Math.sin(h.aim) * sp;
       const a0 = 0.25 + 0.55 * h.draw;
       c.save(); c.globalCompositeOperation = 'lighter';

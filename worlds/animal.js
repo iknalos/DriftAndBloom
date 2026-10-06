@@ -121,7 +121,7 @@ void main(){
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
-    howto: ['Stick: run · push up to jump · ⚔ combo (tap, tap, tap)', 'In the air: ⚔ rising slash, falling = plunge strike',
+    howto: ['Stick: run · up = jump · down = crouch · down + move = crawl · ⚔ combo', 'In the air: ⚔ rising slash, falling = plunge strike',
             '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free'],
     controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
@@ -146,8 +146,6 @@ void main(){
     const treeCache = {};
     const treeFor = (v, snake) => treeCache[v + (snake ? 's' : '')] || (treeCache[v + (snake ? 's' : '')] = makeTree(v, snake, Math.min(R, 1.5)));
     TREES.forEach(t => treeFor(t.v, t.snake));
-    const bgTreeArt = [0, 1, 2].map(v => fogged(makeTree(v, false, 1), 0.62, [74, 98, 82], 0.58));
-    const bgTreeArt2 = [1, 3].map(v => fogged(makeTree(v, false, 1), 0.45, [104, 128, 112], 0.72));
     const leafArt = [0, 1, 2].map(v => makeLeaf(v, R));
     const rays = makeRays();
     const mist = makeMist();
@@ -170,10 +168,6 @@ void main(){
     { const r = rng(7); for (let x = 60; x < END + 300; x += 70 + r() * 150) if (!gapAt(x, 30)) ferns.push({ x, s: 0.2 + r() * 0.17, f: r() < 0.5 ? -1 : 1, d: r() < 0.3 }); }
     const rocks = [];
     { const r = rng(11); for (let x = 300; x < END; x += 260 + r() * 420) if (!gapAt(x, 50)) rocks.push({ x, s: 0.5 + r() * 0.6, v: (r() * 3) | 0 }); }
-    const bgTrees = [];
-    { const r = rng(3); for (let x = -100; x < END * 0.62 + W + 200; x += 120 + r() * 150) bgTrees.push({ x, v: (r() * 3) | 0, s: 0.85 + r() * 0.35, f: r() < 0.5 }); }
-    const bgTrees2 = [];
-    { const r = rng(5); for (let x = -100; x < END * 0.45 + W + 200; x += 90 + r() * 120) bgTrees2.push({ x, v: (r() * 2) | 0, s: 0.75 + r() * 0.3, f: r() < 0.5 }); }
     const fgLeaves = [];
     { const r = rng(9); for (let x = 200; x < END * 1.25 + W; x += 330 + r() * 420) fgLeaves.push({ x, v: (r() * 3) | 0, top: true, s: 0.75 + r() * 0.45, f: r() < 0.5 }); }
     const motes = Array.from({ length: 34 }, () => ({ x: rand(0, W), y: rand(80, 600), z: rand(0.4, 1.3), ph: rand(0, TAU) }));
@@ -183,8 +177,11 @@ void main(){
       x: START_X || 110, y: GROUND, vx: 0, vy: 0, ground: true, face: 1, phase: 0, run: 0,
       atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), air: false,
       dashT: 0, dashCD: 0, hurtT: 0, coyote: 0, jumpBuf: 0, carried: null, lastSafe: START_X || 110,
-      fallFrom: null, plungeT: 0, trail: [], landT: 0, plat: null, rollT: 0   // rollT must start at 0: `undefined <= 0` is false and blocked every attack
+      fallFrom: null, plungeT: 0, trail: [], landT: 0, plat: null, rollT: 0,  // rollT must start at 0: `undefined <= 0` is false and blocked every attack
+      crouch: false, crawl: false, crawlClock: 0
     };
+    // the hero's head / shoulders right now (crouching and crawling duck the snake's strike and the eagle's talons)
+    const heroHeadY = () => hero.y - (hero.crawl ? 26 : hero.crouch ? 62 : 100);
     let camX = Math.max(0, hero.x - W * 0.34), camY = 0, won = false, winT = 0;
     const enemies = [];
     TREES.forEach(t => { if (t.snake) enemies.push(makeSnake(t)); });
@@ -376,6 +373,11 @@ void main(){
         if (Math.random() < 0.6) fx.spawn({ x: h.x - h.face * 10, y: h.y - rand(10, 60), vx: -h.face * 60, kind: 'glow', size: 3, life: 0.3, rgb: env.charRgb });
         if (h.dashT <= 0) h.vx *= 0.4;
       } else {
+        // crouch (stick down) / crawl (down + left or right), slow and low
+        h.crouch = h.ground && !h.atk && h.rollT <= 0 && h.hurtT <= 0 && !h.carried && (I.ay || 0) > 0.55 && !I.held.attack && !I.pressed.jump;
+        h.crawl = h.crouch && Math.abs(ax) > 0.3;
+        if (h.crouch) mv = h.crawl ? Math.sign(ax) * 0.3 : 0;
+        if (h.crawl) h.crawlClock += dt * Math.abs(h.vx) / 60;
         const maxV = (h.atk && h.ground ? 0.32 : 1) * 200;
         if (h.rollT <= 0) h.vx = approach(h.vx, mv * maxV, (h.ground ? 1500 : 950) * dt);
         if (mv && !h.atk && h.hurtT <= 0) h.face = Math.sign(mv);   // face is a flip (±1), never the stick's analog value — that squashed the sprite to a line mid-turn
@@ -579,7 +581,7 @@ void main(){
           }
           // 2) the attack: front K points leave the branch and hang in an S towards the hero
           const A = this.pts[K], ax = A.bx, ay = A.by;
-          const tx = hero.x + hero.vx * 0.12, ty = hero.y - 108;
+          const tx = hero.x + hero.vx * 0.12, ty = heroHeadY() - 8;
           const near = !hero.carried && hero.plungeT <= 0 && Math.abs(hero.x - ax) < 125 && hero.y > ay + 60;
           if (Math.random() < dt * (this.st === 'coil' ? 9 : 0.8)) this.tongue = 0.22;
           const neckLen = K * SEG;
@@ -593,7 +595,7 @@ void main(){
           } else if (this.st === 'strike') {
             this.drop = 1; this.ext = 1 - Math.max(0, this.t) / 0.15;
             const hd = this.pts[0];
-            if (!this.hitDone && this.ext > 0.6 && Math.hypot(hd.x - hero.x, hd.y - (hero.y - 100)) < 36) {
+            if (!this.hitDone && this.ext > 0.6 && Math.hypot(hd.x - hero.x, hd.y - heroHeadY()) < 36) {
               this.hitDone = true; hurtHero(7, hd.x, 230, 'Bitten! -7', clamp(hero.y - hd.y, 60, 120));
             }
             if (this.t <= 0) { this.st = 'hold'; this.t = 0.4; }
@@ -768,7 +770,7 @@ void main(){
             this.vx = (nx - this.x) / Math.max(dt, 1e-3); this.vy = (ny - this.y) / Math.max(dt, 1e-3);
             this.x = nx; this.y = ny;
             const tp = this.talonPt();
-            if (!won && !hero.carried && hero.fallFrom === null && !env.invulnerable && hero.plungeT <= 0 && Math.hypot(tp.x - hero.x, tp.y - (hero.y - 80)) < 42) this.grab();
+            if (!won && !hero.carried && hero.fallFrom === null && !env.invulnerable && hero.plungeT <= 0 && Math.hypot(tp.x - hero.x, tp.y - (heroHeadY() + 20)) < 42) this.grab();
             else if (this.u >= 1) { this.st = 'climb'; this.t = 0.9; this.dives++; }
           } else if (this.st === 'climb' || this.st === 'recoil') {
             this.vy = approach(this.vy, -240, 700 * dt); this.vx = approach(this.vx, this.dir * 120, 400 * dt);
@@ -904,30 +906,20 @@ void main(){
         const fh = 620, fw = far.width * fh / far.height, pf = (fw - W) / (END + 200);
         c.drawImage(far, -camX * pf, -10 - camY * 0.18, fw, fh);
       }
-      // god rays
+      // god rays (soft: the rainforest backdrop has its own sun shafts)
       c.save(); c.globalCompositeOperation = 'lighter';
-      c.globalAlpha = 0.5 + 0.18 * Math.sin(T * 0.6);
+      c.globalAlpha = 0.2 + 0.1 * Math.sin(T * 0.6);
       const rx = -((camX * 0.2) % 520);
       c.drawImage(rays, rx, -60 - camY * 0.25); c.drawImage(rays, rx + 520, -60 - camY * 0.25);
       c.restore();
-      // far mist trees, then the photo mid layer
-      for (const b of bgTrees2) {
-        const sx = b.x - camX * 0.45; if (sx < -120 || sx > W + 120) continue;
-        const a = bgTreeArt2[b.v]; drawArt(c, a, sx, 548 - camY * 0.42, b.s, b.f);
-      }
+      // the rainforest backdrop (one long strip, mid parallax)
       const mid = img.mid;
       if (mid) {
         const mh = 640, mw = mid.width * mh / mid.height, pf = (mw - W) / (END + 200);
         midMap = [-camX * pf, 6 - camY * 0.35, mw, mh];
-        c.globalAlpha = 0.92;
         c.drawImage(mid, midMap[0], midMap[1], mw, mh);
-        c.globalAlpha = 1;
         // the photo's misty floor colour continues below it (seen while carried up high)
         c.fillStyle = 'rgb(62,86,70)'; c.fillRect(0, midMap[1] + mh - 3, W, H);
-      }
-      for (const b of bgTrees) {
-        const sx = b.x - camX * 0.62; if (sx < -140 || sx > W + 140) continue;
-        drawArt(c, bgTreeArt[b.v], sx, 590 - camY * 0.6, b.s, b.f);
       }
       // ground mist band
       const mg = c.createLinearGradient(0, 470 - camY * 0.7, 0, 640 - camY);
@@ -1353,6 +1345,8 @@ void main(){
         return { anim: has('air') ? 'air' : 'jump', t: T };
       }
       if (h.landT > 0 && has('land')) return { anim: 'land', t: HA.dur('land') * clamp(1 - h.landT / 0.18, 0, 0.98) };
+      if (h.crawl && has('crawl')) return { anim: 'crawl', t: h.crawlClock };
+      if (h.crouch && has('crouch')) return { anim: 'crouch', t: T };
       if (h.run > 0.18) return { anim: 'run', t: h.runClock };
       return { anim: 'idle', t: T };
     }

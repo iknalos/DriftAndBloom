@@ -280,18 +280,20 @@
   },
   "assets/worlds/animal/bg_far.webp": {
     "author": "Vyacheslav Argenberg",
-    "license": "CC BY 4.0",
+    "license": "AI-generated, no copyright claimed",
     "license_url": "https://creativecommons.org/licenses/by/4.0",
-    "modified": "graded, blurred, mist fade",
-    "origin": "Wikimedia Commons photo",
+    "modified": "three images cross-faded into one strip, graded, blurred, mist fade",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1, SDXL)",
+    "prompt": "photorealistic deep tropical rainforest in the distance, layers of misty jungle canopy and tall tree silhouettes fading into soft morning fog, warm golden god rays through the leaves, atmospheric perspective, lush green, cinematic nature photography, wide panoramic view, no foreground",
     "source": "https://commons.wikimedia.org/wiki/File:Titiwangsa_Range,_Malaysia,_Rainforest.jpg",
     "title": "File:Titiwangsa Range, Malaysia, Rainforest.jpg"
   },
   "assets/worlds/animal/bg_mid.webp": {
     "author": "Killerscene / Vyacheslav Argenberg / Vyacheslav Argenberg",
-    "license": "CC0 / CC BY 4.0 / CC BY 4.0",
-    "modified": "three photos cross-faded into one strip, graded, blurred, mist fade",
-    "origin": "Wikimedia Commons photos, joined",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "4 images cross-faded into one strip, graded, floor mist fade",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1, SDXL)",
+    "prompt": "photorealistic lush tropical rainforest interior, side view along the forest floor, giant mossy tree trunks with hanging lianas and vines, big monstera and palm leaves, ferns, dappled sunlight and light shafts, gentle mist between the trees, rich greens, cinematic nature photography, highly detailed, wide angle",
     "source": "https://commons.wikimedia.org/wiki/File:Daintree_Rainforest_4.jpg ; https://commons.wikimedia.org/wiki/File:Tropical_evergreen_jungle,_Khao_Lak,_Thailand.jpg ; https://commons.wikimedia.org/wiki/File:Taman_Negara,_Malaysia,_Primary_tropical_rainforest.jpg"
   },
   "assets/worlds/animal/boar.webp": {
@@ -417,6 +419,48 @@
     "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
     "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
     "seed": "11"
+  },
+  "assets/worlds/animal/src/ai_far_14.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic deep tropical rainforest in the distance, layers of misty jungle canopy and tall tree silhouettes fading into soft morning fog, warm golden god rays through the leaves, atmospheric perspective, lush green, cinematic nature photography, wide panoramic view, no foreground",
+    "seed": "14"
+  },
+  "assets/worlds/animal/src/ai_far_27.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic deep tropical rainforest in the distance, layers of misty jungle canopy and tall tree silhouettes fading into soft morning fog, warm golden god rays through the leaves, atmospheric perspective, lush green, cinematic nature photography, wide panoramic view, no foreground",
+    "seed": "27"
+  },
+  "assets/worlds/animal/src/ai_far_3.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic deep tropical rainforest in the distance, layers of misty jungle canopy and tall tree silhouettes fading into soft morning fog, warm golden god rays through the leaves, atmospheric perspective, lush green, cinematic nature photography, wide panoramic view, no foreground",
+    "seed": "3"
+  },
+  "assets/worlds/animal/src/ai_mid_18.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic lush tropical rainforest interior, side view along the forest floor, giant mossy tree trunks with hanging lianas and vines, big monstera and palm leaves, ferns, dappled sunlight and light shafts, gentle mist between the trees, rich greens, cinematic nature photography, highly detailed, wide angle",
+    "seed": "18"
+  },
+  "assets/worlds/animal/src/ai_mid_31.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "photorealistic lush tropical rainforest interior, side view along the forest floor, giant mossy tree trunks with hanging lianas and vines, big monstera and palm leaves, ferns, dappled sunlight and light shafts, gentle mist between the trees, rich greens, cinematic nature photography, highly detailed, wide angle",
+    "seed": "31"
+  },
+  "assets/worlds/animal/src/ai_mid_44.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic lush tropical rainforest interior, side view along the forest floor, giant mossy tree trunks with hanging lianas and vines, big monstera and palm leaves, ferns, dappled sunlight and light shafts, gentle mist between the trees, rich greens, cinematic nature photography, highly detailed, wide angle",
+    "seed": "44"
+  },
+  "assets/worlds/animal/src/ai_mid_5.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "photorealistic lush tropical rainforest interior, side view along the forest floor, giant mossy tree trunks with hanging lianas and vines, big monstera and palm leaves, ferns, dappled sunlight and light shafts, gentle mist between the trees, rich greens, cinematic nature photography, highly detailed, wide angle",
+    "seed": "5"
   },
   "assets/worlds/animal/src/ai_python_head_17.png": {
     "license": "AI-generated, no copyright claimed",
