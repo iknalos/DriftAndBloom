@@ -48,6 +48,8 @@ button:active { opacity: 0.75; }
   border-radius: 16px; font-size: 20px; font-weight: bold; padding: 16px 56px;
   cursor: pointer; letter-spacing: 2px; z-index: 2; margin: 0;
 }
+.snd-btn { position: absolute; top: 18px; right: 18px; z-index: 3; margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  font-size: 20px; line-height: 44px; background: rgba(4,16,28,0.55); border: 1px solid rgba(93,202,165,0.35); color: #dff; }
 #credits-btn { position: absolute; bottom: 18px; right: 18px; margin: 0; padding: 8px 12px; background: transparent; color: rgba(160,220,200,0.55); font-size: 13px; font-weight: normal; z-index: 2; }
 #credits-layer { position: absolute; inset: 0; z-index: 80; display: none; background: rgba(4,12,20,0.97); color: #cfe; overflow-y: auto; padding: 64px 22px 30px; font: 13px/1.45 system-ui, sans-serif; }
 #credits-layer.open { display: block; }
@@ -143,6 +145,7 @@ if ('serviceWorker' in navigator) {
     <canvas id="begin-bg" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
     <button id="begin-btn" onclick="goTo('s-charselect')">Begin</button>
     <button id="credits-btn" onclick="showCredits()">Credits</button>
+    <button class="snd-btn" onclick="toggleSound()" aria-label="Sound on or off">🔊</button>
   </div>
 
   <!-- Screen 2: Character Select -->
@@ -163,7 +166,8 @@ if ('serviceWorker' in navigator) {
       <button id="stage-next" class="stage-arrow" aria-label="Next stage">›</button>
     </div>
     <div id="stage-hint"></div>
-    <button id="world-dev-btn" class="btn-back" style="left:auto;right:20px;z-index:3;display:none" onclick="document.getElementById('world-dev').classList.toggle('open')">⚔ Worlds</button>
+    <button class="snd-btn" onclick="toggleSound()" aria-label="Sound on or off">🔊</button>
+    <button id="world-dev-btn" class="btn-back" style="left:auto;right:76px;z-index:3;display:none" onclick="document.getElementById('world-dev').classList.toggle('open')">⚔ Worlds</button>
     <div id="world-dev">
       <button onclick="tryWorld('animal')">🐊 Animal World</button>
       <button onclick="tryWorld('alien')">🛸 Alien World</button>
@@ -189,12 +193,23 @@ if ('serviceWorker' in navigator) {
 <script src="workspace/character/scene_draw.js"></script>
 <!-- Side worlds a catch sends you into: croc/snake -> Animal World, saucer ->
      Alien World, dragon fire -> Hell. Engine + one module per world. -->
+<script src="worlds/audio.js"></script>
 <script src="worlds/world_core.js"></script>
 <script src="worlds/animal.js"></script>
 <script src="worlds/alien.js"></script>
 <script src="worlds/hell.js"></script>
 <script>
 'use strict';
+
+// ── Sound (worlds/audio.js): pond music + effects; the side worlds swap their own music in ──
+const AU = window.DABAudio || null;
+const sfx = (n, o) => { if (AU) AU.play(n, o); };
+if (AU) { AU.music('music_pond'); AU.preload(['hop', 'bloom', 'win', 'lose', 'hurt', 'splash', 'croc_snap', 'hiss', 'beam', 'fire', 'explode', 'select']); }
+function soundIcons(){ document.querySelectorAll('.snd-btn').forEach(b => { b.textContent = AU && AU.muted() ? '🔇' : '🔊'; }); }
+function toggleSound(){ if (!AU) return; AU.toggle(); soundIcons(); sfx('select', { jitter: 0 }); }
+soundIcons();
+// soft click on every button
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button') && !e.target.closest('.snd-btn')) sfx('select', { vol: 0.5, jitter: 0.05 }); }, true);
 
 // Roster used for the select-screen cards (labels + colors). Drawing is done by
 // the shared module's drawSpirit(); these ids must match SPIRIT_CHARS keys.
@@ -710,12 +725,15 @@ let gActive = false;
 
   function hurt(reason,wet,world){
     if(invuln>0||won||failed||respawnT>0||inWorld)return;
+    // what got you, by ear
+    sfx(world==='alien'?'beam':world==='hell'?'fire':/snake/i.test(reason)?'hiss':/croc/i.test(reason)?'croc_snap':/star/i.test(reason)?'explode':wet?'splash':'hurt');
     if(world&&window.DABWorlds&&DABWorlds.has(world)){ catchToWorld(reason,world); return; }
     lives--;hits++;invuln=1.7;shake=0.45;
     burst(sp.x,sp.y,'255,90,90',14,3);
     floatText(sp.x,sp.y-48,reason,'255,170,160');
     if(wet)splash(sp.x,sp.y+4,true);
-    if(lives<=0){failed=true;failReason='lives';sp.hidden=true;return;}
+    if(lives<=0){failed=true;failReason='lives';sp.hidden=true;sfx('lose');return;}
+    sfx('hurt',{vol:0.7});
     // every hit sends the spirit back to the start pad and restores the pond
     sp.hidden=true;respawnT=0.9;
   }
@@ -743,7 +761,7 @@ let gActive = false;
           floatText(sp.x,sp.y-52,'You made it back!','255,220,140');
         } else {
           lives--;
-          if(lives<=0){ failed=true; failReason='lives'; sp.hidden=true; return; }
+          if(lives<=0){ failed=true; failReason='lives'; sp.hidden=true; sfx('lose'); return; }
           respawn();
         }
       });
@@ -921,11 +939,11 @@ let gActive = false;
         sp.jumping=false;
         if(padUp(tp)){
           sp.pad=tp; sp.state='IDLE';
-          ripple(tp.x,tp.y,charRgb()); splash(tp.x,tp.y+2,false);
+          ripple(tp.x,tp.y,charRgb()); splash(tp.x,tp.y+2,false); sfx('hop',{vol:0.8});
           // a fading pad gives itself away only now: it starts to crumble
           if(tp.fades&&!tp.fading&&tp.st==='up'){ tp.fading=true; tp.fadeT=tp.fadeDur=Math.max(0.9,cfg.pad_lifetime||3); burst(tp.x,tp.y,'170,150,80',8,1.8); }
-          if(tp.bloom){ tp.bloom=false; bloomsGot++; sp.state='COLLECTING'; sp.stateT=0.6; burst(tp.x,tp.y-12,'255,220,110',14,2.8); burst(tp.x,tp.y-12,'255,245,200',8,2.2,'star'); ripple(tp.x,tp.y,'245,210,100'); floatText(tp.x,tp.y-40,'+ bloom','245,215,120'); }
-          if(tp.kind==='goal'){ won=true; winT=0; saveProgress(levelN); burst(tp.x,tp.y-10,'255,138,178',26,3.2); }
+          if(tp.bloom){ tp.bloom=false; bloomsGot++; sfx('bloom'); sp.state='COLLECTING'; sp.stateT=0.6; burst(tp.x,tp.y-12,'255,220,110',14,2.8); burst(tp.x,tp.y-12,'255,245,200',8,2.2,'star'); ripple(tp.x,tp.y,'245,210,100'); floatText(tp.x,tp.y-40,'+ bloom','245,215,120'); }
+          if(tp.kind==='goal'){ won=true; winT=0; saveProgress(levelN); sfx('win'); burst(tp.x,tp.y-10,'255,138,178',26,3.2); }
         } else hurt('Fell into the water!',true);
       }
     } else if(sp.pad){
@@ -948,7 +966,7 @@ let gActive = false;
     if(failed||inWorld)return;
     if(!won&&introT<=0){
       timeLeft-=dt;
-      if(timeLeft<=0){timeLeft=0;failed=true;failReason='time';shake=0.3;return;}
+      if(timeLeft<=0){timeLeft=0;failed=true;failReason='time';shake=0.3;sfx('lose');return;}
     }
     if(!won){ updatePads(dt); updateEnemies(dt); }
     updateSpirit(dt);

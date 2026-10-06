@@ -305,12 +305,21 @@
   },
   "assets/worlds/animal/croc.webp": {
     "author": "This Photo was taken by Timothy A. Gonsalves.  Feel free to use my photos, but please mention me as the author.  I would much appreciate if you send me an email tagooty@yahoo.com or write on my talk page, for my information.  Please contact me before commercial use.\n\n\n\nPlease do not upload an edited image here without consulting me.  I would like to make corrections only at my own source to ensure that the changes improve the image and are preserved.Otherwise you may upload an edited image with a new name. Please use one of the templates derivative or extract.",
-    "license": "CC BY-SA 4.0",
+    "license": "AI-generated, no copyright claimed",
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
-    "modified": "background removed, darkened + olive-graded to read as wet",
-    "origin": "Wikimedia Commons photo",
+    "modified": "background removed, graded",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11",
     "source": "https://commons.wikimedia.org/wiki/File:Mugger_Crocodile_Full_Right_Side_Sunning_Kabini_Apr22_D72_23644.jpg",
     "title": "File:Mugger Crocodile Full Right Side Sunning Kabini Apr22 D72 23644.jpg"
+  },
+  "assets/worlds/animal/croc_lunge.webp": {
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed, graded",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "award-winning wildlife photograph of a huge saltwater crocodile lunging out of the water, full body side profile facing right, jaws wide open showing teeth, wet dark olive-black armored scales glistening, tail fully visible, water splashing at its belly, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11"
   },
   "assets/worlds/animal/eagle.webp": {
     "author": "Andy  Morffew from Itchen Abbas, Hampshire, UK",
@@ -356,6 +365,70 @@
     "origin": "Wikimedia Commons photo",
     "source": "https://commons.wikimedia.org/wiki/File:Morelia_viridis_9.jpg",
     "title": "File:Morelia viridis 9.jpg"
+  },
+  "assets/worlds/animal/src/ai_croc_lunge_11.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "award-winning wildlife photograph of a huge saltwater crocodile lunging out of the water, full body side profile facing right, jaws wide open showing teeth, wet dark olive-black armored scales glistening, tail fully visible, water splashing at its belly, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11"
+  },
+  "assets/worlds/animal/src/ai_croc_lunge_23.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "award-winning wildlife photograph of a huge saltwater crocodile lunging out of the water, full body side profile facing right, jaws wide open showing teeth, wet dark olive-black armored scales glistening, tail fully visible, water splashing at its belly, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/animal/src/ai_croc_lunge_37.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "award-winning wildlife photograph of a huge saltwater crocodile lunging out of the water, full body side profile facing right, jaws wide open showing teeth, wet dark olive-black armored scales glistening, tail fully visible, water splashing at its belly, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "37"
+  },
+  "assets/worlds/animal/src/ai_croc_lunge_cut.png": {
+    "derived_from": "ai_croc_lunge_11.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "award-winning wildlife photograph of a huge saltwater crocodile lunging out of the water, full body side profile facing right, jaws wide open showing teeth, wet dark olive-black armored scales glistening, tail fully visible, water splashing at its belly, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11"
+  },
+  "assets/worlds/animal/src/ai_croc_swim_11.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11"
+  },
+  "assets/worlds/animal/src/ai_croc_swim_23.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "23"
+  },
+  "assets/worlds/animal/src/ai_croc_swim_37.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "37"
+  },
+  "assets/worlds/animal/src/ai_croc_swim_cut.png": {
+    "derived_from": "ai_croc_swim_11.png",
+    "license": "AI-generated, no copyright claimed",
+    "modified": "background removed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "wildlife photograph of a saltwater crocodile swimming low, full body side profile facing right, mouth closed, wet dark olive-black armored scales, long tail fully visible, isolated against a plain flat light grey studio background, sharp focus, high detail",
+    "seed": "11"
+  },
+  "assets/worlds/animal/src/ai_python_head_17.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL 3.1)",
+    "prompt": "macro wildlife photograph of a green tree python head in exact side profile facing right, mouth closed, emerald green scales, white dorsal flecks, pale yellow lips, golden eye with vertical pupil, isolated against a plain flat white background, sharp focus",
+    "seed": "17"
+  },
+  "assets/worlds/animal/src/ai_python_head_5.png": {
+    "license": "AI-generated, no copyright claimed",
+    "origin": "AI-generated with AI Horde (AlbedoBase XL (SDXL))",
+    "prompt": "macro wildlife photograph of a green tree python head in exact side profile facing right, mouth closed, emerald green scales, white dorsal flecks, pale yellow lips, golden eye with vertical pupil, isolated against a plain flat white background, sharp focus",
+    "seed": "5"
   },
   "assets/worlds/animal/src/bark.jpg": {
     "author": "Saral Shots",
@@ -585,6 +658,498 @@
     "origin": "Wikimedia Commons photo",
     "source": "https://commons.wikimedia.org/wiki/File:Flying_griffon_vulture.jpg",
     "title": "File:Flying griffon vulture.jpg"
+  },
+  "assets/worlds/audio/alarm.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/arrow_hit.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/beam.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/big_laser.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/bloom.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/boar.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack"
+  },
+  "assets/worlds/audio/boom.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/bow_draw.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio"
+  },
+  "assets/worlds/audio/bow_draw2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio"
+  },
+  "assets/worlds/audio/bow_shot.mp3": {
+    "author": "Kenney (kenney.nl) + artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds + Swishes Sound Pack"
+  },
+  "assets/worlds/audio/brute.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack"
+  },
+  "assets/worlds/audio/croc_snap.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/cut1.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + RPG Audio"
+  },
+  "assets/worlds/audio/cut2.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + RPG Audio"
+  },
+  "assets/worlds/audio/cut_heavy.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + RPG Audio"
+  },
+  "assets/worlds/audio/dash.mp3": {
+    "author": "Kenney (kenney.nl) + artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio + Swishes Sound Pack"
+  },
+  "assets/worlds/audio/eagle.mp3": {
+    "author": "Drift & Bloom",
+    "license": "CC0 1.0",
+    "modified": "trimmed / layered / pitched, normalised",
+    "title": "synthesised with ffmpeg"
+  },
+  "assets/worlds/audio/enemy_laser.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/explode.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/explode2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/fire.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/growl1.mp3": {
+    "author": "StarNinjas",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/16-monster-growls",
+    "title": "16 Monster Growls"
+  },
+  "assets/worlds/audio/growl2.mp3": {
+    "author": "StarNinjas",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/16-monster-growls",
+    "title": "16 Monster Growls"
+  },
+  "assets/worlds/audio/growl3.mp3": {
+    "author": "StarNinjas",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/16-monster-growls",
+    "title": "16 Monster Growls"
+  },
+  "assets/worlds/audio/hiss.mp3": {
+    "author": "Drift & Bloom",
+    "license": "CC0 1.0",
+    "modified": "trimmed / layered / pitched, normalised",
+    "title": "synthesised with ffmpeg"
+  },
+  "assets/worlds/audio/hop.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/hop2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/hound.mp3": {
+    "author": "CaveboyTup",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/wolf-monster-sound",
+    "title": "Wolf Monster Sound"
+  },
+  "assets/worlds/audio/hurt.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/hurt2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/jump.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio"
+  },
+  "assets/worlds/audio/jump2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/rpg-audio",
+    "title": "RPG Audio"
+  },
+  "assets/worlds/audio/land.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/land2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/land_rock.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds"
+  },
+  "assets/worlds/audio/laser.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/laser2.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/lava_loop.mp3": {
+    "author": "rubberduck",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX"
+  },
+  "assets/worlds/audio/lose.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + Interface Sounds"
+  },
+  "assets/worlds/audio/metal_hit.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/missile.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/music_alien.mp3": {
+    "author": "Pro Sensory",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "loudness-matched, re-encoded",
+    "source": "https://opengameart.org/content/space-shooter-loop",
+    "title": "Space Shooter (Loop)"
+  },
+  "assets/worlds/audio/music_animal.mp3": {
+    "author": "Indieteur",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "loudness-matched, re-encoded",
+    "source": "https://opengameart.org/content/epic-at-the-jungle",
+    "title": "Epic at the Jungle"
+  },
+  "assets/worlds/audio/music_hell.mp3": {
+    "author": "Joth",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "loudness-matched, re-encoded",
+    "source": "https://opengameart.org/content/the-9th-circle",
+    "title": "The 9th Circle"
+  },
+  "assets/worlds/audio/music_pond.mp3": {
+    "author": "Écrivain",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "loudness-matched, re-encoded",
+    "source": "https://opengameart.org/content/meadow-thoughts",
+    "title": "Meadow Thoughts"
+  },
+  "assets/worlds/audio/pickup.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/plunge.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/roll.mp3": {
+    "author": "Kenney (kenney.nl) + Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/impact-sounds",
+    "title": "Impact Sounds + RPG Audio"
+  },
+  "assets/worlds/audio/select.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/shield.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds"
+  },
+  "assets/worlds/audio/snake_strike.mp3": {
+    "author": "artisticdude + artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack + Swishes Sound Pack"
+  },
+  "assets/worlds/audio/splash.mp3": {
+    "author": "rubberduck",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX"
+  },
+  "assets/worlds/audio/splash_big.mp3": {
+    "author": "rubberduck",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX"
+  },
+  "assets/worlds/audio/splash_small.mp3": {
+    "author": "rubberduck",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+    "title": "40 CC0 water / splash / slime SFX"
+  },
+  "assets/worlds/audio/start.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
+  },
+  "assets/worlds/audio/swing1.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/swishes-sound-pack",
+    "title": "Swishes Sound Pack"
+  },
+  "assets/worlds/audio/swing2.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/swishes-sound-pack",
+    "title": "Swishes Sound Pack"
+  },
+  "assets/worlds/audio/swing3.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/swishes-sound-pack",
+    "title": "Swishes Sound Pack"
+  },
+  "assets/worlds/audio/swing_big.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/swishes-sound-pack",
+    "title": "Swishes Sound Pack"
+  },
+  "assets/worlds/audio/unsheathe.mp3": {
+    "author": "artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://opengameart.org/content/rpg-sound-pack",
+    "title": "RPG Sound Pack"
+  },
+  "assets/worlds/audio/volley.mp3": {
+    "author": "Kenney (kenney.nl) + artisticdude",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/sci-fi-sounds",
+    "title": "Sci-Fi Sounds + Swishes Sound Pack"
+  },
+  "assets/worlds/audio/win.mp3": {
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "trimmed / layered / pitched, normalised",
+    "source": "https://kenney.nl/assets/interface-sounds",
+    "title": "Interface Sounds"
   },
   "assets/worlds/hell/backdrop.jpg": {
     "author": "Charles Furneaux",

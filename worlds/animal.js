@@ -48,16 +48,16 @@
   ];
   const BIRDS = [{ at: 2100, kind: 'vulture' }, { at: 3420, kind: 'eagle' }, { at: 4300, kind: 'eagle' }];
   const BLOOMS = [1600, 3060, 4130, 4420];
-  const BRANCH_Y = 384, BRANCH_LEN = 128;
+  const BRANCH_Y = 404, BRANCH_LEN = 128;
+  const SN = { N: 34, SEG: 4, K: 20, R: 3.6 };       // tree python: body points, spacing, neck = front K points, body radius
 
   // ── creature rigs (coordinates in the shipped image's pixels) ─────────────
-  const CROC = {                      // croc.webp 1200 x 157, faces right
-    k: 0.24, hinge: [925, 100], snout: [1190, 74],
-    jaw: [[900, 107], [925, 92], [965, 95], [1025, 102], [1075, 106], [1125, 111], [1165, 118], [1180, 131], [1150, 145], [1050, 148], [950, 150], [900, 145]],
-    mouth: [[930, 96], [1000, 93], [1140, 92], [1162, 112], [1050, 124], [930, 122]],
-    wlLurk: 46, wlUp: 150
+  const CROC = {                      // croc.webp 1200 x 226 swimming, croc_lunge.webp 1183 x 394 reared up, both face right
+    k: 0.24, hinge: [980, 74], snout: [1197, 40], jaw0: -0.26, tailEnd: 360,     // jaw0: the photo's mouth is a bit open; this shuts it
+    jaw: [[968, 70], [995, 72], [1030, 78], [1070, 87], [1110, 91], [1148, 88], [1178, 87], [1190, 100], [1180, 109], [1140, 115], [1090, 118], [1040, 129], [1005, 143], [980, 151], [956, 138], [952, 100]],
+    mouth: [[985, 62], [1040, 55], [1100, 50], [1160, 40], [1194, 28], [1194, 102], [1140, 97], [1080, 93], [1020, 83], [985, 77]],
+    wlLurk: 34, wlUp: 158, wlLunge: 292
   };
-  const PY = { k: 0.31, anchor: [214, 62], snout: [45, 279], warpFrom: 130 };       // python.webp 420 x 333, head lower-left
   const BOAR = { k: 0.245, legs: 0.62 };                                               // boar.webp 420 x 317, faces left
   const BIRD = {
     eagle: {                             // eagle.webp 700 x 440 (polys in 1376-px space), faces right, diving pose
@@ -115,6 +115,9 @@ void main(){
 
   DABWorlds.register('animal', {
     title: 'Animal World', opaque: true, roster: 'animal', color: '150,215,110',
+    music: 'music_animal',
+    sounds: ['swing', 'swing_big', 'cut', 'cut_heavy', 'dash', 'plunge', 'jump', 'land', 'hurt', 'hiss', 'snake_strike',
+      'croc_snap', 'splash', 'splash_big', 'splash_small', 'boar', 'eagle', 'bloom'],
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
@@ -123,8 +126,8 @@ void main(){
     controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
       far: A + 'bg_far.webp', mid: A + 'bg_mid.webp', bark: A + 'bark.webp', litter: A + 'litter.webp',
-      croc: A + 'croc.webp', boar: A + 'boar.webp', eagle: A + 'eagle.webp', vulture: A + 'vulture.webp',
-      python: A + 'python.webp', lotus: A + 'lotus.webp', fern: A + 'fern.webp'
+      croc: A + 'croc.webp', crocLunge: A + 'croc_lunge.webp', boar: A + 'boar.webp', eagle: A + 'eagle.webp', vulture: A + 'vulture.webp',
+      lotus: A + 'lotus.webp', fern: A + 'fern.webp', pyskin: A + 'python.webp'
     },
     create(env) { return makeWorld(env); }
   });
@@ -162,7 +165,7 @@ void main(){
       } catch (e) { litterPat = null; }
       return litterPat;
     }
-    const crocTint = tinted(img.croc, [10, 40, 30], 0.55);
+    const crocTint = tinted(img.croc, [10, 40, 30], 0.55), crocLungeTint = img.crocLunge ? tinted(img.crocLunge, [10, 40, 30], 0.55) : null;
     const ferns = [];
     { const r = rng(7); for (let x = 60; x < END + 300; x += 70 + r() * 150) if (!gapAt(x, 30)) ferns.push({ x, s: 0.2 + r() * 0.17, f: r() < 0.5 ? -1 : 1, d: r() < 0.3 }); }
     const rocks = [];
@@ -180,11 +183,11 @@ void main(){
       x: START_X || 110, y: GROUND, vx: 0, vy: 0, ground: true, face: 1, phase: 0, run: 0,
       atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), air: false,
       dashT: 0, dashCD: 0, hurtT: 0, coyote: 0, jumpBuf: 0, carried: null, lastSafe: START_X || 110,
-      fallFrom: null, plungeT: 0, trail: [], landT: 0, plat: null
+      fallFrom: null, plungeT: 0, trail: [], landT: 0, plat: null, rollT: 0   // rollT must start at 0: `undefined <= 0` is false and blocked every attack
     };
     let camX = Math.max(0, hero.x - W * 0.34), camY = 0, won = false, winT = 0;
     const enemies = [];
-    TREES.forEach(t => { if (t.snake) enemies.push(makeSnake(t.x - BRANCH_LEN + 20, BRANCH_Y)); });
+    TREES.forEach(t => { if (t.snake) enemies.push(makeSnake(t)); });
     GAPS.forEach((g, i) => {
       if (i === 1) { enemies.push(makeCroc(g[0] + 40, g[0] + 230)); enemies.push(makeCroc(g[0] + 230, g[1] - 40)); }
       else enemies.push(makeCroc(g[0] + 30, g[1] - 30));
@@ -237,11 +240,22 @@ void main(){
     }
 
     // ── hero ───────────────────────────────────────────────────────────────
-    const ATK_DUR = [0.27, 0.27, 0.40];
-    function hurtHero(n, fromX, kb, text) {
+    const ATK_DUR = [0.34, 0.36, 0.5];     // long enough to SEE the blade travel
+    function floorAt(x) { return gapAt(x) ? WATER + 2 : GROUND + 2; }
+    const sfx = (n, x, o) => env.sfxAt(n, (x === undefined ? hero.x : x) - camX, o);
+    // a cut: droplets thrown along the blow, stains where they land
+    function bleed(x, y, dir, big) {
+      fx.blood(x, y, { dir, n: big ? 15 : 8, speed: big ? 260 : 190, size: big ? 2.6 : 2.1, floor: floorAt(x) });
+    }
+    function hurtHero(n, fromX, kb, text, hitY) {
       if (GOD || won) return false;
       const ok = env.damage(n, { x: hero.x - camX, y: hero.y - 92 - camY, text: text || `-${Math.round(n)}`, invuln: 0.85 });
       if (!ok) return false;
+      if (hitY !== 0) sfx('hurt', hero.x, { vol: 0.9 });
+      if (hitY !== 0) {                                  // (0 = not a wound, e.g. falling in the river)
+        const side = Math.sign(hero.x - fromX) || -hero.face;
+        bleed(hero.x - side * 8, hero.y - (hitY || 70), side > 0 ? -0.5 : Math.PI + 0.5, n >= 10);
+      }
       if (kb && !hero.carried) {
         hero.hurtT = 0.32; hero.vx = Math.sign(hero.x - fromX || -1) * kb; hero.vy = -230; hero.ground = false;
         hero.atk = 0; hero.dashT = 0;
@@ -249,9 +263,10 @@ void main(){
       fx.burst(hero.x, hero.y - 50, { n: 10, speed: 160, rgb: '255,120,110', kind: 'spark', life: 0.4, size: 2.4 });
       return true;
     }
-    function atkDur(step) { return step === 7 ? 0.36 : step === 9 ? 0.46 : ATK_DUR[step - 1]; }
+    function atkDur(step) { return step === 7 ? 0.42 : step === 9 ? 0.5 : ATK_DUR[step - 1]; }
     function startAttack(step) {
       hero.atk = 1; hero.atkStep = step; hero.atkT = 0; hero.atkQ = false; hero.hitSet.clear();
+      sfx(step === 3 || step === 9 ? 'swing_big' : 'swing', hero.x, { vol: 0.85, gap: 0.08 });
       if (hero.ground) hero.vx += hero.face * (step === 3 ? 230 : 120);
       if (step === 7) hero.vy = Math.min(hero.vy, -260);              // the rising slash carries you up a little
       if (step === 9) { hero.vy = 380; hero.plungeAtk = true; }       // the plunge drives you down
@@ -267,6 +282,8 @@ void main(){
             hero.hitSet.add(e);
             const px = (b.x + cx) / 2, py = (b.y + cy) / 2;
             e.hurt(s3 ? 2 : 1, hero.face);
+            bleed(b.x - hero.face * b.r * 0.4, py, hero.face > 0 ? (st === 7 ? -1.1 : -0.3) : Math.PI + (st === 7 ? 1.1 : 0.3), s3);
+            sfx(s3 ? 'cut_heavy' : 'cut', b.x, { gap: 0.05 });
             env.hitstop(s3 ? 0.11 : 0.06); env.shake(s3 ? 0.32 : 0.18);
             fx.burst(px, py, { n: s3 ? 18 : 11, speed: s3 ? 300 : 220, rgb: '255,240,200', kind: 'spark', life: 0.32, size: 2.6 });
             fx.spawn({ x: px, y: py, kind: 'ring', size: 6, grow: 180, life: 0.25, rgb: '255,250,220' });
@@ -284,6 +301,7 @@ void main(){
         for (const b of e.boxes()) {
           if (Math.abs(b.x - h.x) < b.r + 34 && Math.abs(b.y - (h.y - 50)) < b.r + 46) {
             h.dashHit.add(e); e.hurt(2, h.face);
+            bleed(b.x, b.y, h.face > 0 ? -0.2 : Math.PI + 0.2, true); sfx('cut', b.x);
             env.hitstop(0.07); env.shake(0.25);
             fx.burst(b.x, b.y, { n: 16, speed: 280, rgb: '255,245,210', kind: 'spark', life: 0.3, size: 2.6 });
             fx.spawn({ x: b.x, y: b.y, kind: 'ring', size: 6, grow: 200, life: 0.25, rgb: env.charRgb });
@@ -295,17 +313,20 @@ void main(){
     // plunge strike landing: a shockwave that hits everything close on the ground
     function plungeLand() {
       const h = hero;
-      env.shake(0.4); env.hitstop(0.06); dust(h.x, h.y, 12, 0);
+      env.shake(0.4); env.hitstop(0.06); dust(h.x, h.y, 12, 0); sfx('plunge');
       fx.spawn({ x: h.x, y: h.y - 6, kind: 'ring', size: 12, grow: 360, life: 0.35, rgb: '255,240,200' });
       for (const e of enemies) {
         if (e.dead) continue;
-        for (const b of e.boxes()) if (Math.abs(b.x - h.x) < 110 && Math.abs(b.y - h.y) < 90) { e.hurt(2, Math.sign(b.x - h.x) || h.face); break; }
+        for (const b of e.boxes()) if (Math.abs(b.x - h.x) < 110 && Math.abs(b.y - h.y) < 90) {
+          const d = Math.sign(b.x - h.x) || h.face;
+          e.hurt(2, d); bleed(b.x, b.y, d > 0 ? -0.9 : Math.PI + 0.9, true); break;
+        }
       }
     }
     function plunge() {
       hero.plungeT = 0.75; hero.vx = 0; hero.vy = 0; hero.atk = 0; hero.fallFrom = null;
-      splash(hero.x, WATER, true);
-      hurtHero(10, hero.x, 0, 'Splash! -10');
+      splash(hero.x, WATER, true); sfx('splash_big');
+      hurtHero(10, hero.x, 0, 'Splash! -10', 0);
     }
     function splash(x, y, big) {
       const n = big ? 26 : 10;
@@ -342,9 +363,9 @@ void main(){
         const dir = Math.abs(ax) > 0.25 ? Math.sign(ax) : h.face;
         h.face = dir; h.atk = 0; h.dashCD = 0.6;
         if ((I.ay || 0) > 0.55 && h.ground) {
-          h.rollT = 0.5; h.vx = dir * 330; env.invuln(0.45); dust(h.x, h.y, 4, -dir);
+          h.rollT = 0.5; h.vx = dir * 330; env.invuln(0.45); dust(h.x, h.y, 4, -dir); sfx('jump');
         } else {
-          h.dashT = 0.26; h.vx = dir * 560; h.dashHit = new Set(); env.invuln(0.34); dust(h.x, h.y, 6, -dir);
+          h.dashT = 0.26; h.vx = dir * 560; h.dashHit = new Set(); env.invuln(0.34); dust(h.x, h.y, 6, -dir); sfx('dash');
           if (!h.ground) h.vy = Math.min(h.vy, -60);
           fx.spawn({ x: h.x, y: h.y - 50, kind: 'ring', size: 10, grow: 260, life: 0.25, rgb: env.charRgb });
         }
@@ -363,15 +384,18 @@ void main(){
       h.jumpBuf = I.pressed.jump ? 0.13 : h.jumpBuf - dt;
       h.coyote = h.ground ? 0.1 : h.coyote - dt;
       if (h.jumpBuf > 0 && h.coyote > 0 && h.hurtT <= 0) {
-        h.vy = -650; h.ground = false; h.coyote = 0; h.jumpBuf = 0; h.plat = null; dust(h.x, h.y, 4, 0);
+        h.vy = -650; h.ground = false; h.coyote = 0; h.jumpBuf = 0; h.plat = null; dust(h.x, h.y, 4, 0); sfx('jump', h.x, { vol: 0.6 });
       }
       if (I.released.jump && h.vy < -430) h.vy = -430;   // a quick tap still clears a gap
       // attack chain
+      // tap = one swing (taps during a swing queue the next one); HOLD = keep swinging the combo
+      const holdAtk = I.held.attack && !I.pressed.attack && h.ground && h.hurtT <= 0 && h.rollT <= 0;
       if (I.pressed.attack && h.hurtT <= 0 && h.rollT <= 0) {
         if (!h.ground && !h.atk) startAttack(h.vy < 0 ? 7 : 9);          // rising slash / plunge
         else if (!h.atk) startAttack(1);
-        else if (h.atkStep <= 3 && h.atkT > ATK_DUR[h.atkStep - 1] * 0.32) h.atkQ = true;
-      }
+        else if (h.atkStep <= 3 && h.atkT > 0.06) h.atkQ = true;
+      } else if (holdAtk && !h.atk && h.dashT <= 0) startAttack(1);
+      else if (holdAtk && h.atk && h.atkStep < 3 && h.atkT > ATK_DUR[h.atkStep - 1] * 0.5) h.atkQ = true;
       if (h.atk) {
         h.atkT += dt;
         const dur = atkDur(h.atkStep);
@@ -420,7 +444,7 @@ void main(){
     function land(s) {
       const h = hero;
       h.landT = 0.18;
-      dust(h.x, s.y, h.vy > 700 ? 8 : 3, 0);
+      dust(h.x, s.y, h.vy > 700 ? 8 : 3, 0); sfx('land', h.x, { vol: h.vy > 700 ? 1 : 0.6 });
       if (s.p && s.p.kind === 'log') { s.p.kick = 4; splash(h.x, WATER - 2, false); }
       if (h.fallFrom !== null) {
         const height = s.y - h.fallFrom;
@@ -463,12 +487,12 @@ void main(){
             this.ph += dt * 9;
             if (Math.random() < dt * 14) fx.spawn({ x: this.x + this.face * 44, y: this.y - 30, vx: this.face * 40, vy: -20, kind: 'smoke', size: 4, grow: 20, life: 0.5, rgb: '220,220,210', alpha: 0.4 });
             if (Math.random() < dt * 10) dust(this.x - this.face * 20, this.y, 1, -this.face);
-            if (this.t <= 0) { this.st = 'charge'; this.travel = 0; }
+            if (this.t <= 0) { this.st = 'charge'; this.travel = 0; sfx('boar', this.x); }
           } else if (this.st === 'charge') {
             this.vx = approach(this.vx, this.face * 335, 1400 * dt); this.ph += dt * 15; this.travel += Math.abs(this.vx) * dt;
             if (Math.random() < dt * 18) dust(this.x - this.face * 30, this.y, 1, -this.face);
             if (Math.abs(hero.x - this.x) < 46 && hero.y > this.y - 70 && hero.plungeT <= 0) {
-              if (hurtHero(9, this.x, 320)) env.shake(0.4);
+              if (hurtHero(9, this.x, 320, undefined, 40)) env.shake(0.4);    // tusks: thigh height
               this.st = 'skid'; this.t = 0.5;
             }
             if (this.travel > 330 || (this.face > 0 ? this.x > this.seg[1] - 30 : this.x < this.seg[0] + 30)) { this.st = 'skid'; this.t = 0.5; }
@@ -483,68 +507,139 @@ void main(){
       };
     }
 
-    function makeSnake(x, by) {
+    // ── tree python ──
+    // the loop it crawls round its tree, as a dense closed polyline (world px)
+    function snakeLoop(t) {
+      const TX = t.x, tw = 52 + t.v * 7, BL = BRANCH_LEN, BY = BRANCH_Y, R = SN.R;
+      const q = (a, b, c, u) => [(1 - u) * (1 - u) * a[0] + 2 * (1 - u) * u * b[0] + u * u * c[0], (1 - u) * (1 - u) * a[1] + 2 * (1 - u) * u * b[1] + u * u * c[1]];
+      const top = u => q([TX - tw * 0.3, BY - 13 - R], [TX - BL * 0.6, BY - 14 - R], [TX - BL - 40, BY - 4 - R], u);
+      const bot = u => q([TX - tw * 0.3, BY + 14 + R], [TX - BL * 0.6, BY + 8 + R], [TX - BL - 42, BY + 3 + R], u);
+      const raw = [];
+      for (let u = 0; u <= 0.97; u += 0.01) raw.push(top(u));                       // along the top, to the tip
+      const a = top(0.97), b = bot(0.97), mc = [(a[0] + b[0]) / 2 - 4, (a[1] + b[1]) / 2], rr = (b[1] - a[1]) / 2;
+      for (let k = 1; k < 16; k++) { const th = -Math.PI / 2 - Math.PI * k / 16; raw.push([mc[0] + Math.cos(th) * rr, mc[1] + Math.sin(th) * rr]); }   // round the tip
+      for (let u = 0.97; u >= 0; u -= 0.01) raw.push(bot(u));                       // back underneath
+      const j0 = bot(0), j1 = top(0), jc = [(j0[0] + j1[0]) / 2, (j0[1] + j1[1]) / 2], jr = (j0[1] - j1[1]) / 2;
+      for (let k = 1; k < 20; k++) { const th = Math.PI / 2 - Math.PI * k / 20; raw.push([jc[0] + Math.cos(th) * jr * 0.8, jc[1] + Math.sin(th) * jr]); }   // up the trunk face
+      const pts = [], len = [0];
+      for (const r of raw) pts.push({ x: r[0], y: r[1] });
+      for (let i = 1; i <= pts.length; i++) { const p0 = pts[i - 1], p1 = pts[i % pts.length]; len.push(len[i - 1] + Math.hypot(p1.x - p0.x, p1.y - p0.y)); }
+      return { pts, len, total: len[len.length - 1] };
+    }
+    function loopAt(L, s) {
+      s = ((s % L.total) + L.total) % L.total;
+      let lo = 0, hi = L.len.length - 1;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L.len[m] <= s) lo = m; else hi = m; }
+      const p0 = L.pts[lo], p1 = L.pts[(lo + 1) % L.pts.length], u = (s - L.len[lo]) / Math.max(1e-6, L.len[lo + 1] - L.len[lo]);
+      const dx = p1.x - p0.x, dy = p1.y - p0.y, m = Math.hypot(dx, dy) || 1;
+      return { x: p0.x + dx * u, y: p0.y + dy * u, tx: dx / m, ty: dy / m };
+    }
+    function makeSnake(tree) {
+      const L = snakeLoop(tree), N = SN.N;
+      const pts = []; for (let i = 0; i < N; i++) pts.push({ x: 0, y: 0, nx: 0, ny: 1 });
       return {
-        type: 'snake', x, y: by, st: 'idle', t: 0, hp: 2, cd: 0.4, flash: 0, ext: 0, rear: 0, aim: { x: 0, y: 0 }, tongue: 0,
-        fall: null, fade: 1, sway: Math.random() * 6,
-        snout() {
-          const k = PY.k, sx = this.x + (PY.snout[0] - PY.anchor[0]) * k, sy = this.y + (PY.snout[1] - PY.anchor[1]) * k;
-          return { x: sx + this.aim.x * this.ext - 10 * this.rear, y: sy + this.aim.y * this.ext - 14 * this.rear };
-        },
+        type: 'snake', tree, L, pts, s: Math.random() * L.total, x: tree.x, y: BRANCH_Y,
+        st: 'crawl', t: 0, hp: 2, cd: 0.8, flash: 0, drop: 0, ext: 0, jaw: 0, tongue: 0, pace: Math.random() * 6, wave: 0,
+        aim: { x: 0, y: 1 }, coilH: null, strikeH: null, fall: null, fade: 1, moving: 0,
+        head() { return this.pts[0]; },
         boxes() {
           if (this.dead || this.fall) return [];
-          const s = this.snout();
-          return [{ x: s.x + 12, y: s.y - 10, r: 24 }, { x: this.x - 8, y: this.y + 50, r: 28 }];
+          const h = this.pts[0], out = [{ x: h.x, y: h.y, r: 15 }];
+          if (this.drop > 0.5) { const m = this.pts[SN.K >> 1]; out.push({ x: m.x, y: m.y, r: 11 }); }
+          return out;
         },
         hurt(n, dir) {
           if (this.fall) return;
-          this.hp -= n; this.flash = 1; this.rear = Math.min(1, this.rear + 0.6);
-          if (this.st === 'strike' || this.st === 'coil') { this.st = 'hold'; this.t = 0.4; }
+          this.hp -= n; this.flash = 1;
+          if (this.st === 'coil' || this.st === 'strike' || this.st === 'hold') { this.st = 'back'; this.t = 0.3; }
           if (this.hp <= 0) {
-            this.fall = { x: this.x, y: this.y, vx: dir * 70, vy: -80, rot: 0, vr: dir * 2.4, ground: false };
-            env.floatText(this.x - camX, this.y + 60 - camY, 'Snake down!', '255,230,160');
+            this.fall = { t: 0, ground: false, v: this.pts.map((q, i) => ({ vx: dir * (60 + Math.random() * 50) * (1 - i / N * 0.6), vy: -60 - Math.random() * 60 })) };
+            env.floatText(this.pts[0].x - camX, this.pts[0].y - 30 - camY, 'Snake down!', '255,230,160');
           }
         },
         update(dt) {
-          this.t -= dt; this.cd -= dt; this.flash = Math.max(0, this.flash - dt * 5); this.sway += dt;
+          this.t -= dt; this.cd -= dt; this.flash = Math.max(0, this.flash - dt * 5);
           this.tongue = Math.max(0, this.tongue - dt);
-          if (this.fall) {
-            const f = this.fall;
-            this.ext = approach(this.ext, 0, dt * 4); this.rear = approach(this.rear, 0, dt * 4);
-            if (!f.ground) {
-              f.vy += 1500 * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt;
-              if (f.y > GROUND - 110) { f.ground = true; f.y = GROUND - 110; dust(f.x, GROUND, 8, 0); env.shake(0.15); }
-            } else { this.fade -= dt * 0.7; if (this.fade <= 0) this.dead = true; }
-            return;
+          if (this.fall) { this.updateFall(dt); return; }
+          const N_ = N, K = SN.K, SEG = SN.SEG;
+          // 1) where the body lies on the loop (crawling = sliding along it, head first)
+          let speed = 0;
+          if (this.st === 'crawl') {
+            this.pace += dt;
+            speed = 17 * Math.max(0, 0.35 + Math.sin(this.pace * 0.55) * 0.9);       // stop-go, like a real snake
+            this.drop = approach(this.drop, 0, dt * 2.2);
           }
-          const s0 = this.snout();
-          const tx = hero.x, ty = hero.y - 50, dx = tx - s0.x;
-          const inRange = Math.abs(hero.x - (this.x - 30)) < 175 && !hero.carried && hero.plungeT <= 0;
-          if (Math.random() < dt * (this.st === 'coil' ? 9 : 0.9)) this.tongue = 0.22;
-          if (this.st === 'idle') {
-            this.ext = approach(this.ext, 0, dt * 3); this.rear = approach(this.rear, 0, dt * 2);
-            if (inRange && this.cd <= 0) { this.st = 'coil'; this.t = 0.55; }
+          this.moving = approach(this.moving, speed > 3 ? 1 : 0, dt * 3);
+          this.s += speed * dt; this.wave += speed * dt * 0.16;
+          for (let i = 0; i < N_; i++) {
+            const a = loopAt(this.L, this.s - i * SEG), q = this.pts[i];
+            const w = Math.sin(i * 0.55 - this.wave) * 1.3 * this.moving * Math.min(1, i / 5);   // small serpentine waves
+            q.bx = a.x + a.ty * -w; q.by = a.y + a.tx * w;
+            q.nx = a.ty; q.ny = -a.tx;                       // belly side: the inside of the loop (against the bark)
+          }
+          // 2) the attack: front K points leave the branch and hang in an S towards the hero
+          const A = this.pts[K], ax = A.bx, ay = A.by;
+          const tx = hero.x + hero.vx * 0.12, ty = hero.y - 108;
+          const near = !hero.carried && hero.plungeT <= 0 && Math.abs(hero.x - ax) < 125 && hero.y > ay + 60;
+          if (Math.random() < dt * (this.st === 'coil' ? 9 : 0.8)) this.tongue = 0.22;
+          const neckLen = K * SEG;
+          const aimTo = () => { const dx = tx - ax, dy = ty - ay, m = Math.hypot(dx, dy) || 1; return { x: dx / m, y: dy / m, d: m }; };
+          if (this.st === 'crawl') {
+            if (near && this.cd <= 0) { this.st = 'coil'; this.t = 0.6; this.aim = aimTo(); sfx('hiss', ax, { vol: 0.7 }); }
           } else if (this.st === 'coil') {
-            this.rear = approach(this.rear, 1, dt * 3.5);
-            if (this.t <= 0) {
-              const ex = clamp(dx + hero.vx * 0.1, -125, 125), ey = clamp(ty - (s0.y + 14 * this.rear), -40, 95);
-              const m = Math.hypot(ex, ey) || 1, L = Math.min(m, 128);
-              this.aim = { x: ex / m * L, y: ey / m * L }; this.ext = 0; this.st = 'strike'; this.t = 0.15; this.hitDone = false;
-            }
+            const a = aimTo(); this.aim.x += (a.x - this.aim.x) * Math.min(1, dt * 6); this.aim.y += (a.y - this.aim.y) * Math.min(1, dt * 6); this.aim.d = a.d;
+            this.drop = approach(this.drop, 1, dt * 3); this.ext = 0;
+            if (this.t <= 0) { this.st = 'strike'; this.t = 0.15; this.hitDone = false; this.jaw = 1; sfx('snake_strike', ax); }
           } else if (this.st === 'strike') {
-            this.ext = 1 - Math.max(0, this.t) / 0.15; this.rear = approach(this.rear, 0, dt * 9);
-            const s = this.snout();
-            if (!this.hitDone && this.ext > 0.7 && Math.hypot(s.x - hero.x, s.y - (hero.y - 48)) < 36) {
-              this.hitDone = true; hurtHero(7, this.x, 230, 'Bitten! -7');
+            this.drop = 1; this.ext = 1 - Math.max(0, this.t) / 0.15;
+            const hd = this.pts[0];
+            if (!this.hitDone && this.ext > 0.6 && Math.hypot(hd.x - hero.x, hd.y - (hero.y - 100)) < 36) {
+              this.hitDone = true; hurtHero(7, hd.x, 230, 'Bitten! -7', clamp(hero.y - hd.y, 60, 120));
             }
-            if (this.t <= 0) { this.st = 'hold'; this.t = 0.55; }
+            if (this.t <= 0) { this.st = 'hold'; this.t = 0.4; }
           } else if (this.st === 'hold') {
-            this.ext = approach(this.ext, 0.75, dt * 2);
-            if (this.t <= 0) { this.st = 'back'; this.t = 0.35; }
+            this.jaw = approach(this.jaw, 0.25, dt * 3);
+            if (this.t <= 0) { this.st = 'back'; this.t = 0.45; }
           } else if (this.st === 'back') {
-            this.ext = approach(this.ext, 0, dt * 3.4);
-            if (this.ext <= 0) { this.st = 'idle'; this.cd = 1.1; this.aim = { x: 0, y: 0 }; }
+            this.ext = approach(this.ext, 0, dt * 3.2); this.jaw = approach(this.jaw, 0, dt * 4);
+            if (this.ext <= 0 && this.t <= 0) { this.st = 'crawl'; this.cd = 1.3; }
           }
+          // the hanging neck: a curve that first drops off the branch, then aims; slack length
+          // (coiled, before the strike) goes into an S across it
+          const reach = Math.min(this.aim.d, neckLen * 0.94) * (0.42 + 0.58 * this.ext);
+          const Hx = ax + this.aim.x * reach, Hy = ay + this.aim.y * reach;
+          const c1x = ax + this.aim.x * 6, c1y = ay + 24, c2x = Hx - this.aim.x * 16, c2y = Hy - this.aim.y * 16;
+          const chord = Math.hypot(Hx - ax, Hy - ay), slack = 2.5 + Math.sqrt(Math.max(0, neckLen * neckLen - chord * chord * 1.15)) * 0.3;
+          const px = -this.aim.y, py = this.aim.x;
+          for (let i = 0; i <= K; i++) {
+            const q = this.pts[i];
+            if (this.drop <= 0.001) { q.x = q.bx; q.y = q.by; continue; }
+            const u = (K - i) / K, v = 1 - u;
+            const cx = v * v * v * ax + 3 * v * v * u * c1x + 3 * v * u * u * c2x + u * u * u * Hx;
+            const cy = v * v * v * ay + 3 * v * v * u * c1y + 3 * v * u * u * c2y + u * u * u * Hy;
+            const sw = Math.sin(u * Math.PI * 2) * Math.sin(u * Math.PI) * slack;
+            const k = smooth(this.drop * (1.6 - u * 0.6));        // the neck base leaves first
+            q.x = q.bx + (cx + px * sw - q.bx) * k; q.y = q.by + (cy + py * sw - q.by) * k;
+          }
+          for (let i = K + 1; i < N_; i++) { const q = this.pts[i]; q.x = q.bx; q.y = q.by; }
+          this.x = this.pts[0].x; this.y = this.pts[0].y;
+        },
+        updateFall(dt) {
+          const f = this.fall; f.t += dt;
+          const floor = GROUND - 3;
+          for (let i = 0; i < N; i++) {
+            const q = this.pts[i], v = f.v[i];
+            if (q.y < floor) { v.vy += 1300 * dt; q.x += v.vx * dt; q.y += v.vy * dt; if (q.y >= floor) { q.y = floor; v.vx *= 0.3; if (i === 0) { dust(q.x, GROUND, 6, 0); env.shake(0.12); } } }
+            else { q.x += v.vx * dt; v.vx *= 0.9; q.y = floor - Math.max(0, Math.sin(f.t * 9 - i * 0.7)) * 3 * Math.max(0, 1 - f.t / 2.2); }
+          }
+          // keep the body a body: neighbours stay ~SEG apart
+          for (let it = 0; it < 2; it++) for (let i = 1; i < N; i++) {
+            const a = this.pts[i - 1], b = this.pts[i], dx = b.x - a.x, dy = b.y - a.y, m = Math.hypot(dx, dy) || 1, k = (m - SN.SEG) / m * 0.5;
+            a.x += dx * k; a.y += dy * k; b.x -= dx * k; b.y -= dy * k;
+          }
+          if (f.t > 1.6) this.fade -= dt * 0.8;
+          if (this.fade <= 0) this.dead = true;
+          this.x = this.pts[0].x; this.y = this.pts[0].y;
         },
         draw(c) { drawSnake(c, this); }
       };
@@ -570,7 +665,7 @@ void main(){
         hurt(n, dir) {
           if (this.st === 'die') return;
           this.hp -= n; this.flash = 1; this.jaw = 0.5;
-          splash(this.head().x, WATER, false);
+          splash(this.head().x, WATER, false); sfx('splash_small', this.head().x, { vol: 0.6 });
           if (this.st === 'rise' || this.st === 'lunge') { this.st = 'exposed'; this.t = 0.8; }
           if (this.hp <= 0) { this.st = 'die'; this.t = 0; env.floatText(this.x - camX, WATER - 60 - camY, 'Croc down!', '255,230,160'); }
         },
@@ -593,7 +688,7 @@ void main(){
             if (heroNear) this.face = hero.x > this.x ? 1 : -1;
             else if (Math.abs(this.vx) > 6) this.face = Math.sign(this.vx);
             if (Math.random() < dt * 2.5) fx.spawn({ x: hd.x - this.face * 8, y: WATER, kind: 'ring', size: 3, grow: 26, life: 0.9, rgb: '210,235,225' });
-            if (heroNear && this.cd <= 0 && Math.abs(hero.x - hd.x) < 120) { this.st = 'rise'; this.t = 0.62; splash(hd.x, WATER, false); }
+            if (heroNear && this.cd <= 0 && Math.abs(hero.x - hd.x) < 120) { this.st = 'rise'; this.t = 0.62; splash(hd.x, WATER, false); sfx('splash', hd.x); }
           } else if (this.st === 'rise') {
             this.rise = approach(this.rise, 1, dt * 2.4); this.jaw = approach(this.jaw, 0.62, dt * 1.4);
             this.face = hero.x > this.x ? 1 : -1;
@@ -606,8 +701,8 @@ void main(){
             if (!this.hitDone && k > 0.65) {
               this.hitDone = true;
               const h2 = this.head();
-              env.shake(0.22); splash(h2.x, WATER, false);
-              if (Math.abs(hero.x - h2.x) < 52 && hero.y > WATER - 110 && hero.y < WATER + 20) hurtHero(12, this.x, 280, 'Chomp! -12');
+              env.shake(0.22); splash(h2.x, WATER, false); sfx('croc_snap', h2.x);
+              if (Math.abs(hero.x - h2.x) < 52 && hero.y > WATER - 110 && hero.y < WATER + 20) hurtHero(12, this.x, 280, 'Chomp! -12', 30);
             }
             if (this.t <= 0) { this.st = 'exposed'; this.t = 1.35; }
           } else if (this.st === 'exposed') {
@@ -653,7 +748,7 @@ void main(){
             if (won) { this.st = 'flee'; return; }
             if (hero.x > END - 260) { this.st = 'flee'; return; }
             if (this.t <= 0 && !hero.carried && hero.plungeT <= 0 && !arena) {
-              this.st = 'dive'; this.t = 0; this.u = 0;
+              this.st = 'dive'; this.t = 0; this.u = 0; sfx('eagle', this.x, { vol: 0.6, rate: kind === 'vulture' ? 0.75 : 1 });
               const aimX = hero.x + hero.vx * 0.8;
               this.dir = aimX < this.x ? -1 : 1; this.screech = 0.8;
               const tp = this.talonPt();             // aim the talons, not the body, at the hero's shoulders
@@ -757,7 +852,7 @@ void main(){
       for (const b of blooms) {
         b.t += dt;
         if (!b.got && Math.abs(hero.x - b.x) < 30 && Math.abs(hero.y - 40 - b.y) < 50) {
-          b.got = true; env.heal(22);
+          b.got = true; env.heal(22); sfx('bloom', b.x);
           env.floatText(b.x - camX, b.y - 30 - camY, '+22', '255,225,120');
           fx.burst(b.x, b.y, { n: 22, speed: 170, rgb: '255,215,110', kind: 'glow', life: 0.7, size: 2.4 });
           fx.spawn({ x: b.x, y: b.y, kind: 'ring', size: 8, grow: 150, life: 0.5, rgb: '255,225,140' });
@@ -1037,48 +1132,107 @@ void main(){
       c.restore();
     }
 
+    // body: tapered tube drawn segment by segment, tail first — dark rim, emerald body, pale
+    // belly against the bark, a lit ridge on top and the white flecks of a green tree python
+    const SN_FLECK = [3, 6, 8, 11, 13, 16, 19, 21, 24, 27, 29];
+    function snakeW(i) {
+      const u = i / (SN.N - 1);
+      return u < 0.38 ? 4.4 + 2.9 * smooth(u / 0.38) : 1.1 + 6.2 * (1 - Math.pow((u - 0.38) / 0.62, 1.5));
+    }
+    // real tree-python scales (from the python photo), as a fine repeating texture
+    let skinPat = null;
+    function snakeSkin(c) {
+      if (skinPat || !img.pyskin) return skinPat;
+      const d = Math.max(1, Math.min(3, env.dpr || 2)), S = 22, cv = document.createElement('canvas');
+      cv.width = cv.height = Math.round(S * d);
+      const g = cv.getContext('2d');
+      g.drawImage(img.pyskin, 318, 70, 64, 64, 0, 0, cv.width, cv.height);
+      skinPat = c.createPattern(cv, 'repeat');
+      try { skinPat.setTransform(new DOMMatrix([1 / d, 0, 0, 1 / d, 0, 0])); } catch (e) { }
+      return skinPat;
+    }
     function drawSnake(c, s) {
-      const im = img.python; if (!im) return;
-      const k = PY.k, ax = PY.anchor[0], ay = PY.anchor[1];
-      let ox = s.x, oy = s.y, rot = 0, alpha = 1;
-      if (s.fall) { ox = s.fall.x; oy = s.fall.y; rot = s.fall.rot; alpha = s.fade; }
-      c.save(); c.globalAlpha = alpha;
-      c.translate(ox, oy); c.rotate(rot);
-      const sway = Math.sin(s.sway * 1.3) * 3;
-      const strips = 30, sh = im.height / strips;
-      const ex = s.aim.x * s.ext, ey = s.aim.y * s.ext, shiver = s.st === 'coil' ? Math.sin(T * 40) * 0.8 : 0;
-      // piecewise-sheared strips: each strip's top and bottom edges follow the warp,
-      // so the body stays continuous while the lower half lunges at the target
-      const off = y0 => {
-        const wv = smooth((y0 - PY.warpFrom) / (im.height - PY.warpFrom));
-        return [(ex - 10 * s.rear + sway + shiver) * wv, (y0 - ay) * k + (ey - 14 * s.rear) * wv];
+      const P = s.pts, N = P.length;
+      c.save(); c.globalAlpha = s.fade; c.lineCap = 'round';
+      // the body as filled ribbons (no overlapping caps, so no beads at the joints). Bands
+      // shift toward the light (from above) by how much each bit of body faces it.
+      const LX = -0.35, LY = -0.94, nx = new Array(N), ny = new Array(N), lit = new Array(N), wd = new Array(N);
+      for (let i = 0; i < N; i++) {
+        const a = P[Math.max(0, i - 1)], b = P[Math.min(N - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, m = Math.hypot(dx, dy) || 1;
+        nx[i] = -dy / m; ny[i] = dx / m; lit[i] = nx[i] * LX + ny[i] * LY; wd[i] = snakeW(i);
+      }
+      const ribbon = (fill, wk, off) => {
+        c.fillStyle = fill; c.beginPath();
+        for (let i = 0; i < N; i++) {
+          const o = off * wd[i] * lit[i], h = wd[i] * wk / 2, x = P[i].x + nx[i] * (o + h), y = P[i].y + ny[i] * (o + h);
+          i ? c.lineTo(x, y) : c.moveTo(x, y);
+        }
+        for (let i = N - 1; i >= 0; i--) {
+          const o = off * wd[i] * lit[i], h = wd[i] * wk / 2;
+          c.lineTo(P[i].x + nx[i] * (o - h), P[i].y + ny[i] * (o - h));
+        }
+        c.closePath(); c.fill();
       };
-      let a0 = off(0);
-      for (let i = 0; i < strips; i++) {
-        const y0 = i * sh, a1 = off(y0 + sh);
-        const hgt = a1[1] - a0[1];
-        c.save();
-        c.translate(-ax * k + a0[0], a0[1]);
-        c.transform(1, 0, (a1[0] - a0[0]) / Math.max(0.5, hgt), 1, 0, 0);
-        c.drawImage(im, 0, y0, im.width, sh + 0.6, 0, 0, im.width * k, hgt + 0.7);
-        c.restore();
-        a0 = a1;
-      }
+      ribbon('rgba(6,26,10,0.75)', 1.12, 0);                     // soft dark edge
+      ribbon(snakeSkin(c) || '#2a8a3c', 0.98, 0);                // scaled skin
+      ribbon('rgba(14,60,22,0.42)', 0.46, -0.27);                // the shaded underside
+      ribbon('rgba(215,220,140,0.3)', 0.18, -0.4);               // a hint of the pale belly
+      ribbon('rgba(70,170,70,0.26)', 0.62, 0.14);
+      ribbon('rgba(195,250,175,0.3)', 0.22, 0.28);               // wet shine along the back
+      // white dorsal flecks
+      c.fillStyle = 'rgba(235,248,230,0.7)';
+      for (const i of SN_FLECK) { const q = P[i], o = 0.22 * wd[i] * Math.sign(lit[i] || 1); c.beginPath(); c.ellipse(q.x + nx[i] * o, q.y + ny[i] * o, 0.75, 0.55, 0, 0, Math.PI * 2); c.fill(); }
+      drawSnakeHead(c, s);
       if (s.flash > 0) {
-        c.globalCompositeOperation = 'lighter'; c.globalAlpha = s.flash * 0.55 * alpha;
-        c.drawImage(im, -ax * k, -ay * k, im.width * k, im.height * k);
-        c.globalCompositeOperation = 'source-over'; c.globalAlpha = alpha;
+        c.globalAlpha = s.fade * s.flash * 0.6; c.globalCompositeOperation = 'lighter';
+        ribbon('rgba(255,255,255,1)', 0.9, 0);
       }
-      // tongue
+      c.restore();
+    }
+    function drawSnakeHead(c, s) {
+      const P = s.pts, h = P[0], n1 = P[2];
+      const dx = h.x - n1.x, dy = h.y - n1.y, m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m;
+      // head frame: x to the snout; y = the jaw side, always the lower one (the head stays upright)
+      let vx = -uy, vy = ux; if (vy < 0 || (Math.abs(vy) < 0.2 && vx < 0)) { vx = -vx; vy = -vy; }
+      const HL = 12.5, HH = 7.2, j = s.jaw * 0.75;
+      c.save();
+      c.setTransform(c.getTransform().multiply(new DOMMatrix([ux, uy, vx, vy, h.x - ux * 2, h.y - uy * 2])));
+      // tongue (flicks out of the closed mouth, longer while coiled)
       if (s.tongue > 0 && !s.fall) {
-        const sn = { x: (PY.snout[0] - ax) * k + ex - 10 * s.rear + sway, y: (PY.snout[1] - ay) * k + ey - 14 * s.rear };
-        const dir = Math.atan2((hero.y - 50) - (oy + sn.y), hero.x - (ox + sn.x));
-        const L = 9 + 7 * Math.sin((s.tongue / 0.22) * Math.PI);
-        c.save(); c.translate(sn.x, sn.y + 4); c.rotate(dir);
-        c.strokeStyle = '#b3123a'; c.lineWidth = 1.3; c.lineCap = 'round';
-        c.beginPath(); c.moveTo(0, 0); c.lineTo(L, 0); c.lineTo(L + 4, -2.6); c.moveTo(L, 0); c.lineTo(L + 4, 2.6); c.stroke();
-        c.restore();
+        const L = 6 + 9 * Math.sin((s.tongue / 0.22) * Math.PI), fy = 0.6;
+        c.strokeStyle = '#b3123a'; c.lineWidth = 0.9;
+        c.beginPath(); c.moveTo(HL - 1, fy); c.lineTo(HL + L, fy); c.lineTo(HL + L + 3, fy - 1.8); c.moveTo(HL + L, fy); c.lineTo(HL + L + 3, fy + 1.8); c.stroke();
       }
+      // lower jaw on its hinge (behind the eye)
+      if (j > 0.02) {
+        c.save(); c.translate(1.5, 0.5); c.rotate(j); c.translate(-1.5, -0.5);
+        c.fillStyle = '#c04a62';
+        c.beginPath(); c.moveTo(1, 0.4); c.lineTo(HL - 1.5, 0.6); c.lineTo(HL - 2, 2.2); c.lineTo(1, 3.2); c.closePath(); c.fill();
+        c.fillStyle = '#2f9040';
+        c.beginPath(); c.moveTo(0, 0.8); c.quadraticCurveTo(HL * 0.6, 1.4, HL - 1.2, 1.4); c.lineTo(HL - 1.6, 2.6); c.quadraticCurveTo(HL * 0.5, HH * 0.5, 0, HH * 0.42); c.closePath(); c.fill();
+        c.fillStyle = '#f4f0e0';
+        for (const fx_ of [HL - 3.2, HL - 5.5]) { c.beginPath(); c.moveTo(fx_, 1.3); c.lineTo(fx_ + 0.7, -0.6); c.lineTo(fx_ + 1.3, 1.3); c.fill(); }
+        c.restore();
+        c.rotate(-j * 0.3);
+      }
+      // skull: broad at the back, a blunt snout
+      const g = c.createLinearGradient(0, -HH * 0.5, 0, HH * 0.5);
+      g.addColorStop(0, '#58b04c'); g.addColorStop(0.5, '#2c8a3c'); g.addColorStop(0.82, '#b9c06c'); g.addColorStop(1, '#8f9a50');
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(-1, -HH * 0.36);
+      c.bezierCurveTo(HL * 0.25, -HH * 0.62, HL * 0.7, -HH * 0.45, HL, -HH * 0.08);
+      c.quadraticCurveTo(HL + 0.8, HH * 0.12, HL - 0.6, HH * (j > 0.02 ? 0.12 : 0.3));
+      c.bezierCurveTo(HL * 0.6, HH * (j > 0.02 ? 0.1 : 0.42), HL * 0.25, HH * 0.55, -1, HH * 0.4);
+      c.closePath(); c.fill();
+      const sk = snakeSkin(c); if (sk) { c.globalAlpha *= 0.45; c.fillStyle = sk; c.fill(); c.globalAlpha /= 0.45; }
+      c.strokeStyle = 'rgba(6,26,10,0.45)'; c.lineWidth = 0.6; c.stroke();
+      // mouth line, eye (gold, slit pupil), nostril, white lip flecks
+      if (j <= 0.02) { c.strokeStyle = 'rgba(40,60,20,0.8)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(HL - 0.8, HH * 0.18); c.quadraticCurveTo(HL * 0.5, HH * 0.26, HL * 0.12, HH * 0.18); c.stroke(); }
+      c.fillStyle = '#d9a52a'; c.beginPath(); c.arc(HL * 0.62, -HH * 0.14, 1.55, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#0c0c08'; c.beginPath(); c.ellipse(HL * 0.62, -HH * 0.14, 0.38, 1.3, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,240,0.9)'; c.fillRect(HL * 0.62 + 0.4, -HH * 0.14 - 1, 0.6, 0.6);
+      c.fillStyle = '#123018'; c.beginPath(); c.arc(HL - 1.3, -HH * 0.08, 0.45, 0, Math.PI * 2); c.fill();
       c.restore();
     }
 
@@ -1086,13 +1240,13 @@ void main(){
     function drawCrocBody(c, cr, im) {
       // tail strips sway; lower jaw hinged; everything in image px.
       // mouth interior first (behind) — it shows only where the lower jaw swings away
-      if (cr.jaw > 0.06) {
+      if (CROC.jaw0 + cr.jaw * 0.62 > 0.02) {               // only opening wider than the photo shows the throat
         c.save(); crocPath(c, CROC.mouth);
         const mg = c.createLinearGradient(0, 70, 0, 130);
         mg.addColorStop(0, '#5a1e1a'); mg.addColorStop(1, '#2a0b0a');
         c.fillStyle = mg; c.fill(); c.restore();
       }
-      const tailEnd = 470, sw = 22;
+      const tailEnd = CROC.tailEnd, sw = 22;
       c.save();
       c.beginPath(); c.rect(-10, -40, im.width + 20, im.height + 80);
       crocPath(c, CROC.jaw, true);
@@ -1106,27 +1260,33 @@ void main(){
       c.restore();
       // lower jaw on its hinge
       c.save();
-      c.translate(CROC.hinge[0], CROC.hinge[1]); c.rotate(cr.jaw * 0.55); c.translate(-CROC.hinge[0], -CROC.hinge[1]);
+      c.translate(CROC.hinge[0], CROC.hinge[1]); c.rotate(CROC.jaw0 + cr.jaw * 0.62); c.translate(-CROC.hinge[0], -CROC.hinge[1]);
       crocPath(c, CROC.jaw); c.clip();
       c.drawImage(im, 0, 0);
       c.restore();
     }
     function drawCroc(c, cr, part) {
-      const im = img.croc; if (!im) return;
+      if (!img.croc) return;
+      // mid-lunge it's the reared-up photo (jaws wide); the snap shut is the swimming one's hinged jaw
+      const reared = cr.st === 'lunge' && img.crocLunge && 1 - Math.max(0, cr.t) / 0.26 < 0.62;
+      const im = reared ? img.crocLunge : img.croc;
       const k = CROC.k;
-      const wl = lerp(CROC.wlLurk, CROC.wlUp, cr.rise) - cr.sinkY / k * 0.4;
+      const wl = reared ? CROC.wlLunge : lerp(CROC.wlLurk, CROC.wlUp, cr.rise) - cr.sinkY / k * 0.4;
       c.save();
       c.beginPath();
       if (part === 'under') c.rect(cr.x - 400, WATER, 800, 300); else c.rect(cr.x - 400, -2000, 800, WATER - 0.5 + 2000);
       c.clip();
       // pivot at the body's waterline: the head end tilts up, the tail end dips under
       c.translate(cr.x, WATER);
-      c.rotate(-cr.pitch() * (cr.face > 0 ? 1 : -1));
+      c.rotate(-cr.pitch() * (reared ? 0.45 : 1) * (cr.face > 0 ? 1 : -1));
       c.translate(0, -wl * k);
       c.scale(k * (cr.face > 0 ? 1 : -1), k);
       if (cr.roll) { c.translate(600, 80); c.scale(1, 1 - cr.roll * 1.8); c.translate(-600, -80); }
       c.translate(-600, 0);
-      if (part === 'under') { c.globalAlpha = 0.5; drawCrocBody(c, cr, crocTint || im); }
+      if (reared) {
+        if (part === 'under') { c.globalAlpha = 0.5; c.drawImage(crocLungeTint || im, 0, 0); }
+        else c.drawImage(im, 0, 0);
+      } else if (part === 'under') { c.globalAlpha = 0.5; drawCrocBody(c, cr, crocTint || im); }
       else {
         drawCrocBody(c, cr, im);
         if (cr.flash > 0) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = cr.flash * 0.5; c.drawImage(im, 0, 0); }
@@ -1208,9 +1368,55 @@ void main(){
         flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, alpha: blink ? 0.55 : 1, shadow: h.ground && !h.carried
       });
       const dur = h.atkStep ? atkDur(h.atkStep) : 1;
+      if (h.atk) slashTrail(c, h, clamp(h.atkT / dur, 0, 1));
+      if (h.dashT > 0) dashTrail(c, h);
       if (h.atk && h.atkStep === 3 && h.atkT / dur > 0.45 && h.atkT / dur < 0.6 && h.ground) {
         fx.spawn({ x: h.x + h.face * 70, y: h.y - 46, kind: 'ring', size: 8, grow: 220, life: 0.3, rgb: env.charRgb });
       }
+    }
+
+    // ── slash trails: the arc the blade sweeps, so every swing reads at phone size ──
+    // per attack: [start angle, end angle] (radians, 0 = straight ahead, + = down), radius,
+    // vertical squash (horizontal sweeps seen at 3/4 are flat ellipses), pivot height
+    const TRAILS = {
+      1: { a0: 1.2, a1: -1.6, r: 74, sq: 1.0, py: 66 },        // rising cut: low front -> high
+      2: { a0: -2.6, a1: 0.5, r: 86, sq: 0.42, py: 58 },       // horizontal lunge sweep
+      3: { a0: -3.4, a1: 2.0, r: 96, sq: 0.5, py: 60 },        // finisher: a big spinning arc
+      7: { a0: 1.4, a1: -2.2, r: 92, sq: 1.0, py: 84 },        // rising slash in the air
+      9: { a0: -1.9, a1: 1.6, r: 88, sq: 1.0, py: 60 },        // plunge: over the top and down
+    };
+    function slashTrail(c, h, k) {
+      const tr = TRAILS[h.atkStep];
+      if (!tr || k < 0.18) return;
+      const u = clamp((k - 0.18) / 0.5, 0, 1);                  // how far the blade has travelled
+      const fade = k < 0.7 ? 1 : clamp(1 - (k - 0.7) / 0.3, 0, 1);
+      const end = tr.a0 + (tr.a1 - tr.a0) * u, len = (tr.a1 - tr.a0) * Math.min(u, 0.55);
+      const start = end - len, f = h.face, cx = h.x + f * 10, cy = h.y - tr.py;
+      c.save();
+      c.translate(cx, cy); c.scale(f, tr.sq);
+      c.globalCompositeOperation = 'lighter';
+      c.lineCap = 'round';
+      const ccw = tr.a1 < tr.a0;
+      for (let i = 0; i < 5; i++) {                             // outer -> inner, brighter at the edge
+        const rr = tr.r * (1 - i * 0.07);
+        c.strokeStyle = i === 0 ? `rgba(255,255,255,${(0.75 * fade).toFixed(3)})` : `rgba(${env.charRgb},${(0.28 * fade * (1 - i / 6)).toFixed(3)})`;
+        c.lineWidth = (i === 0 ? 3 : 7 - i) / Math.max(tr.sq, 0.6);
+        c.beginPath(); c.arc(0, 0, rr, start, end, ccw); c.stroke();
+      }
+      // a spark at the blade tip
+      c.globalAlpha = fade;
+      const tx = Math.cos(end) * tr.r, ty = Math.sin(end) * tr.r;
+      c.drawImage(env.glowSprite('255,250,230'), tx - 12, ty - 12 / tr.sq, 24, 24 / tr.sq);
+      c.restore();
+    }
+    function dashTrail(c, h) {
+      const k = clamp(h.dashT / 0.26, 0, 1);
+      c.save(); c.globalCompositeOperation = 'lighter';
+      const g = c.createLinearGradient(h.x - h.face * 150, 0, h.x + h.face * 30, 0);
+      g.addColorStop(0, `rgba(${env.charRgb},0)`); g.addColorStop(1, `rgba(255,255,255,${(0.55 * k).toFixed(3)})`);
+      c.fillStyle = g;
+      c.beginPath(); c.ellipse(h.x - h.face * 60, h.y - 56, 95, 6 + 6 * k, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
     }
 
     function drawHeroAll(c) {
@@ -1323,7 +1529,7 @@ void main(){
     function zooUpdate(dt) {
       if (!zoo) {
         camX = 0; camY = 0; hero.x = 70; hero.y = GROUND;
-        zoo = { croc: makeCroc(-200, 600), snake: makeSnake(210, 150), boar: makeBoar(290), eagle: makeBird('eagle', 0), vult: makeBird('vulture', 0) };
+        zoo = { croc: makeCroc(-200, 600), snake: makeSnake({ x: 340, v: 1, snake: true }), boar: makeBoar(290), eagle: makeBird('eagle', 0), vult: makeBird('vulture', 0) };
         zoo.croc.x = 200; zoo.croc.rise = 1; zoo.croc.st = 'zoo';
         zoo.eagle.st = 'zoo'; zoo.eagle.x = 110; zoo.eagle.y = 120; zoo.eagle.dir = 1;
         zoo.vult.st = 'zoo'; zoo.vult.x = 290; zoo.vult.y = 300; zoo.vult.dir = -1;
@@ -1334,14 +1540,12 @@ void main(){
       zoo.eagle.flap += dt * 6; zoo.vult.flap += dt * 4;
       zoo.boar.ph += dt * 15;
       zoo.snake.update(dt);
-      zoo.snake.tongue = 0.2;
-      zoo.snake.rear = 0.5 + 0.5 * Math.sin(T * 1.5);
     }
     function zooRender(c) {
       drawBack(c);
       c.save();
       drawGround(c);
-      c.fillStyle = '#5a4630'; c.fillRect(150, 145, 140, 12);
+      { const a = treeFor(1, true); c.drawImage(a.cv, 340 - a.cx, GROUND + 14 - a.h, a.w, a.h); }
       drawSnake(c, zoo.snake);
       c.save(); c.translate(0, -90); drawWater(c); c.restore();
       drawCroc(c, zoo.croc, 'over');

@@ -194,6 +194,9 @@ void main(){
 
   DABWorlds.register('hell', {
     title: 'Hell', color: '255,122,52', opaque: true, roster: 'hell',
+    music: 'music_hell',
+    sounds: ['bow_draw', 'bow_shot', 'arrow_hit', 'volley', 'roll', 'jump', 'land_rock', 'hurt', 'growl', 'hound', 'brute',
+      'splash_big', 'fire', 'lava_loop', 'explode'],
     subtitle: r => (r && /dragon|scorch/i.test(r) ? r + ' ' : '') + 'You fell through the burning pond into the underworld.',
     hint: 'Run for the exit gate. The horde is right behind you.',
     howto: ['Stick: run · push up to jump · never touch the lava', 'Hold the bow to draw · the stick aims · let go to shoot',
@@ -250,6 +253,7 @@ void main(){
     const wall = { on: false, x: -900, alpha: 0, spawnT: 9 };
     let cam = 0, arena = false, portalOpen = false, portalK = 0, flashT = 7, skyFlash = 0, msgT = 0, msg = '';
     let boss = null, tAll = 0, embAcc = 0, ashAcc = 0, smokeAcc = 0, kills = 0, openT = 0, frameMs = 0;
+    env.loop('lava_loop', 0.32);                     // the lava's slow bubbling under everything
     // every particle gets a draw layer ('back' = behind the rock, 'front' = over everything)
     const spawnP = p => { if (!p.layer) p.layer = 'front'; return env.fx.spawn(p); };
     const burstP = (x, y, o) => { env.fx.burst(x, y, o); const L = env.fx.list; for (let i = Math.max(0, L.length - (o.n || 12)); i < L.length; i++) if (!L[i].layer) L[i].layer = o.layer || 'front'; };
@@ -527,7 +531,7 @@ void main(){
       else if (t.msg) say(t.msg);
       else if (t.arena) {
         arena = true;
-        if (boss && boss.st === 'sleep') { boss.st = 'roar'; boss.t = 1.7; env.shake(0.7); }
+        if (boss && boss.st === 'sleep') { boss.st = 'roar'; boss.t = 1.7; env.shake(0.7); sfx('brute', boss.x, { rate: 0.75, jitter: 0 }); }
         env.hud.objective = 'Defeat the Gatekeeper';
         say('The Gatekeeper wakes!');
       }
@@ -538,6 +542,12 @@ void main(){
     env.hud.objective = 'Reach the exit gate';
     env.hud.progress = 0;
 
+    const sfx = (n, x, o) => env.sfxAt(n, (x === undefined ? hero.x : x) - cam, o);
+    // a wound: droplets thrown along the blow; they stain the rock they land on (lava just takes them)
+    function bleed(x, y, dir, big) {
+      const s = segAt(x, y - 2);
+      env.fx.blood(x, y, { dir, n: big ? 14 : 8, speed: big ? 250 : 180, size: big ? 2.5 : 2, floor: s ? s.y + 1 : undefined, layer: 'front' });
+    }
     // ── hero ──
     function hurtHero(n, srcX, text, kb) {
       if (hero.lavaT > 0 || hero.portalT > 0) return false;
@@ -546,7 +556,8 @@ void main(){
       if (ok) {
         const d = Math.sign(hero.x - srcX) || -hero.face;
         hero.vx = d * (kb === undefined ? 230 : kb); hero.vy = Math.min(hero.vy, kb === undefined ? -250 : -160); hero.onGround = false; hero.hurtT = 0.32;
-        burstP(hero.x, hero.y - 40, { n: 12, speed: 200, rgb: '255,120,80', kind: 'spark', life: 0.45 });
+        burstP(hero.x, hero.y - 40, { n: 6, speed: 160, rgb: '255,120,80', kind: 'spark', life: 0.35 });
+        bleed(hero.x - d * 8, hero.y - 64, d > 0 ? -0.5 : Math.PI + 0.5, n >= 12); sfx('hurt');
         env.hitstop(0.05);
       }
       return ok;
@@ -555,7 +566,7 @@ void main(){
       hero.lavaT = 0.8; hero.hidden = true; hero.drawing = false; hero.draw = 0;
       env.damage(22, { x: hero.x - cam, y: LAVA_Y - 40, text: '-22', invuln: 1.0 });
       if (cheat().god) env.heal(100);
-      splash(hero.x, true);
+      splash(hero.x, true); sfx('splash_big', hero.x, { rate: 0.6 }); sfx('fire', hero.x, { vol: 0.7 });
       env.shake(0.55); env.flash('255,120,40', 0.35);
     }
     function respawnHero() {
@@ -601,14 +612,16 @@ void main(){
     function bowOrigin() {
       return { x: hero.x + hero.face * Math.cos(hero.aim) * 30, y: hero.y - 40 - Math.sin(hero.aim) * 19 };
     }
+    const ARROW_G = 360, AIM_MIN = -0.45, AIM_MAX = 0.87;     // flat, fast arrows; aim -25..50 deg
+    const arrowSpeed = draw => 760 + 640 * draw;
     function solveAim(tg, speed) {
-      const o = bowOrigin(), g = 760;
+      const o = bowOrigin(), g = ARROW_G;
       let tx = tg.x, ty = aimY(tg);
       for (let k = 0; k < 2; k++) {
         const dx = Math.abs(tx - o.x), dy = o.y - ty;
         const v2 = speed * speed, disc = v2 * v2 - g * (g * dx * dx + 2 * dy * v2);
         let th = disc < 0 ? Math.atan2(dy, dx) + 0.25 : Math.atan((v2 - Math.sqrt(disc)) / (g * Math.max(dx, 1)));
-        th = clamp(th, -0.75, 1.05);
+        th = clamp(th, AIM_MIN, AIM_MAX);
         const tf = dx / Math.max(80, speed * Math.cos(th));
         tx = tg.x + (tg.vx || 0) * tf * 0.8;
         if (k === 1) return th;
@@ -616,7 +629,7 @@ void main(){
       return 0.05;
     }
     function shoot(draw, flaming, angOff) {
-      const o = bowOrigin(), sp = 560 + 640 * draw, a = hero.aim + (angOff || 0);
+      const o = bowOrigin(), sp = arrowSpeed(draw), a = hero.aim + (angOff || 0);
       arrows.push({ x: o.x, y: o.y, px: o.x, py: o.y, vx: Math.cos(a) * sp * hero.face, vy: -Math.sin(a) * sp,
         dmg: flaming ? 1.4 : 1 + 2 * draw, fire: !!flaming, life: 2.6, stuck: null, ground: false });
       if (draw > 0.9 || flaming) burstP(o.x, o.y, { n: 6, speed: 90, rgb: flaming ? '255,150,50' : '255,230,190', kind: 'spark', life: 0.25, angle: hero.face > 0 ? -a : Math.PI + a, spread: 0.8 });
@@ -635,35 +648,44 @@ void main(){
       let mv = (I.right ? 1 : 0) - (I.left ? 1 : 0);
       if (h.hurtT > 0) mv = 0;
 
-      // bow: hold ⚔ to draw, let go to loose. While drawing, the stick aims (any direction, and
-      // the hero plants his feet); with the stick centred the bow finds the nearest threat.
-      h.target = pickTarget();
-      const sax = I.ax || 0, say = I.ay || 0, stickAim = Math.hypot(sax, say) > 0.45;
+      // bow: hold ⚔ to draw, let go to loose. While drawing, the stick aims: push it the way you
+      // want to shoot (the hero turns and plants his feet). Stick centred = straight ahead.
+      // Nothing aims for you; the dotted line shows where the arrow will fly.
+      const sax = I.ax || 0, say = I.ay || 0, stickAim = Math.hypot(sax, say) > 0.4;
       if (I.held.attack && h.shootCd <= 0 && h.hurtT <= 0 && !(h.rollT > 0)) {
-        if (!h.drawing) { h.drawing = true; h.draw = 0.05; }
+        if (!h.drawing) { h.drawing = true; h.draw = 0.05; sfx('bow_draw', h.x, { vol: 0.7 }); }
         h.draw = Math.min(1, h.draw + dt / 0.6);
       } else if (h.drawing && !I.held.attack) {
         shoot(Math.max(h.draw, 0.34)); h.drawing = false; h.draw = 0; h.shootCd = 0.14; h.relT = 0.32; h.relAim = h.aim;
+        sfx('bow_shot', h.x, { rate: 0.9 + 0.2 * h.relT });
       }
       env.noStickJump = h.drawing;                       // pushing up to aim must not jump
-      if (h.drawing && stickAim) { if (Math.abs(sax) > 0.15) h.face = Math.sign(sax); mv = 0; }
-      else if (h.drawing && h.target) { const d = Math.sign(h.target.x - h.x); if (d) h.face = d; }
+      h.aimMem = Math.max(0, (h.aimMem || 0) - dt);
+      let wantAim = 0.04;
+      if (I.aimAt != null) {                               // autopilot (scripted tests) only
+        if (I.aimFace) h.face = I.aimFace;
+        wantAim = I.aimAt;
+      } else if (h.drawing && stickAim) {
+        if (Math.abs(sax) > 0.15) h.face = Math.sign(sax);
+        mv = 0;
+        wantAim = h.stickAim = clamp(Math.atan2(-say, Math.abs(sax) + 0.001), AIM_MIN, AIM_MAX);
+        h.aimMem = 0.18;                                   // letting go of stick + button together keeps the aim
+      } else if (h.drawing && h.aimMem > 0) wantAim = h.stickAim;
       else if (mv) h.face = mv;
-      const wantAim = h.drawing && stickAim ? clamp(Math.atan2(-say, Math.abs(sax) + 0.001), -0.45, 1.3)
-                    : h.target ? solveAim(h.target, 560 + 640 * Math.max(h.draw, 0.34)) : 0.06;
-      h.aim = lerp(h.aim, wantAim, 1 - Math.exp(-dt * 14));
+      h.aim = lerp(h.aim, wantAim, 1 - Math.exp(-dt * 22));
       if (h.relT > 0) h.relT -= dt;
       // » dodge roll (brief invulnerability)
       h.rollCd = Math.max(0, (h.rollCd || 0) - dt);
       if (I.pressed.special && h.rollCd <= 0 && h.onGround && h.hurtT <= 0) {
         const dir = Math.abs(sax) > 0.25 ? Math.sign(sax) : h.face;
-        h.rollT = 0.5; h.rollCd = 0.65; h.face = dir; h.vx = dir * 330; h.drawing = false; h.draw = 0; env.invuln(0.45);
+        h.rollT = 0.5; h.rollCd = 0.65; h.face = dir; h.vx = dir * 330; h.drawing = false; h.draw = 0; env.invuln(0.45); sfx('roll');
         burstP(h.x, h.y, { n: 6, speed: 80, rgb: '120,90,80', kind: 'debris', life: 0.4, angle: -Math.PI / 2, spread: 2.2, g: 300, size: 2 });
       }
       if (h.rollT > 0) { h.rollT -= dt; mv = 0; }
       if (I.pressed.special2 && VOLLEY.n > 0 && h.volleyCd <= 0) {
         VOLLEY.n--; h.volleyCd = 0.6;
         for (const off of [-0.13, -0.06, 0.01, 0.08, 0.15]) shoot(1, true, off);
+        sfx('volley');
         env.flash('255,140,40', 0.25); env.shake(0.2);
       }
 
@@ -672,7 +694,7 @@ void main(){
       if ((h.onGround || mv) && !(h.rollT > 0)) h.vx += (mv * top - h.vx) * Math.min(1, dt * (h.onGround ? 14 : 6));
       if (I.pressed.jump) h.jumpBuf = 0.13;
       if (h.jumpBuf > 0 && (h.onGround || h.coyote > 0)) {
-        h.vy = -665; h.onGround = false; h.coyote = 0; h.jumpBuf = 0; h.jumpCut = false;
+        h.vy = -665; h.onGround = false; h.coyote = 0; h.jumpBuf = 0; h.jumpCut = false; sfx('jump', h.x, { vol: 0.6 });
         if (mv) h.vx = mv * Math.max(Math.abs(h.vx), 192);   // a jump always launches at full run speed
         burstP(h.x, h.y, { n: 6, speed: 70, rgb: '120,90,80', kind: 'debris', life: 0.4, angle: -Math.PI / 2, spread: 2.2, g: 300, size: 2 });
       }
@@ -693,7 +715,7 @@ void main(){
         for (const s of segs) {
           if (!solid(s) || h.x < s.x0 - 6 || h.x > s.x1 + 6) continue;
           if (py <= s.y + 1 && h.y >= s.y) {
-            h.y = s.y; h.vy = 0; h.onGround = true; h.seg = s;
+            h.y = s.y; h.vy = 0; h.onGround = true; h.seg = s; sfx('land_rock', h.x, { vol: 0.7 });
             burstP(h.x, h.y, { n: 4, speed: 60, rgb: '110,85,75', kind: 'debris', life: 0.35, angle: -Math.PI / 2, spread: 2.6, g: 300, size: 2 });
             break;
           }
@@ -721,7 +743,7 @@ void main(){
         }
         if (a.ground) { if (a.life <= 0) arrows.splice(i, 1); continue; }
         a.px = a.x; a.py = a.y;
-        a.vy += 760 * dt;
+        a.vy += ARROW_G * dt;
         let hit = false;
         for (let k = 1; k <= 3 && !hit; k++) {
           const x = a.x + a.vx * dt * k / 3, y = a.y + a.vy * dt * k / 3;
@@ -778,6 +800,9 @@ void main(){
       }
       e.hp -= n; e.hitT = 1;
       if (e.type !== 'brute') e.vx += dir * (e.type === 'ghoul' ? 40 : 120);
+      bleed(e.x - dir * 6, aimY(e), dir > 0 ? -0.25 : Math.PI + 0.25, e.hp <= 0 || e.type === 'brute');
+      sfx('arrow_hit', e.x, { vol: 0.8, gap: 0.04 });
+      if (e.hp <= 0 || Math.random() < 0.35) sfx(e.type === 'hound' ? 'hound' : e.type === 'brute' ? 'brute' : 'growl', e.x, { vol: 0.55, rate: e.type === 'bat' || e.type === 'imp' ? 1.5 : 1, gap: 0.3 });
       burstP(e.x, aimY(e), { n: flaming ? 16 : 10, speed: 200, rgb: flaming ? '255,150,50' : '255,200,140', kind: 'spark', life: 0.4 });
       burstP(e.x, aimY(e), { n: 6, speed: 60, rgb: '255,110,30', kind: 'glow', life: 0.6, size: 2 });
       if (flaming) e.burn = 2.2;
@@ -829,7 +854,7 @@ void main(){
         if (overlapHero(e, 10) && e.cd <= 0) { if (hurtHero(7, e.x)) { e.st = 'recover'; e.t = 0.5; e.vx = -dir * 150; e.cd = 1; } }
       } else if (e.st === 'crouch') {
         e.vx *= Math.pow(0.02, dt);
-        if ((e.t -= dt) <= 0) { e.st = 'pounce'; e.vx = dir * 440; e.vy = -470; e.onGround = false; e.cd = 1.3; e.bit = false; }
+        if ((e.t -= dt) <= 0) { e.st = 'pounce'; e.vx = dir * 440; e.vy = -470; e.onGround = false; e.cd = 1.3; e.bit = false; sfx('hound', e.x, { vol: 0.7, gap: 0.6 }); }
       } else if (e.st === 'pounce' || e.st === 'air') {
         if (!e.bit && overlapHero(e, 6) && e.st === 'pounce') { e.bit = true; if (hurtHero(9, e.x)) e.vx = -e.vx * 0.3; }
         if (e.onGround) { e.t = e.st === 'air' ? 0.05 : 0.38; e.st = 'recover'; }
@@ -894,7 +919,7 @@ void main(){
         e.vx *= Math.pow(0.05, dt); e.vy *= Math.pow(0.05, dt);
         if ((e.t -= dt) <= 0) {
           const d = Math.hypot(hx - e.x, hy - e.y) || 1;
-          e.vx = (hx - e.x) / d * 460; e.vy = (hy - e.y) / d * 460; e.st = 'dive'; e.t = 1.0; e.bit = false;
+          e.vx = (hx - e.x) / d * 460; e.vy = (hy - e.y) / d * 460; e.st = 'dive'; e.t = 1.0; e.bit = false; sfx('growl', e.x, { vol: 0.5, rate: 1.6, gap: 0.5 });
         }
       } else if (e.st === 'dive') {
         if (!e.bit && overlapHero(e, 4)) { e.bit = true; hurtHero(7, e.x, undefined, 120); }
@@ -916,7 +941,7 @@ void main(){
       env.hud.boss = { name: 'THE GATEKEEPER', hp: Math.max(0, e.hp / e.maxHp) };
       e.t -= dt;
       if (rage && !e.raged && e.st === 'walk') {
-        e.raged = true; e.st = 'roar'; e.t = 1.0; env.shake(0.6); say('The Gatekeeper is enraged!');
+        e.raged = true; e.st = 'roar'; e.t = 1.0; env.shake(0.6); say('The Gatekeeper is enraged!'); sfx('brute', e.x, { rate: 0.8 });
         pickups.push({ x: clamp(hero.x - 70, ARENA_X + 40, PORTAL_X - 120), y: 548, kind: 'heal', taken: false, ph: 0 });  // a soul flame falls
       }
       switch (e.st) {
@@ -960,6 +985,7 @@ void main(){
       if (e.st !== 'charge' && overlapHero(e, 14)) hurtHero(8, e.x);
     }
     function slam(e) {
+      sfx('explode', e.x, { rate: 0.6, vol: 0.8 });
       env.shake(0.75); env.flash('255,130,50', 0.2);
       for (const d of [-1, 1]) waves.push({ x: e.x + d * 40, dir: d, life: 1.7, hit: false });
       burstP(e.x - e.face * 40, e.y, { n: 26, speed: 260, rgb: '100,70,60', kind: 'debris', life: 0.9, g: 700, angle: -Math.PI / 2, spread: 2.4, size: 4 });
@@ -995,7 +1021,7 @@ void main(){
         if (z.t <= 0) {
           z.st = 'leap'; z.lt = 0; z.dur = 1.3;
           z.s = { hx: z.sx, hy: LAVA_Y + 10, trail: [], hp: 3, dead: false, hitT: 0 };
-          splash(z.sx, true); env.shake(0.25);
+          splash(z.sx, true); env.shake(0.25); sfx('splash_big', z.sx, { rate: 0.55, vol: 0.8 });
         }
       } else if (z.st === 'leap') {
         const s = z.s;
@@ -1135,6 +1161,8 @@ void main(){
       const fighting = arena && boss && !boss.dying;
       if (threat || fighting) {
         if (!(h.drawing && h.draw >= 0.9)) I.held.attack = true;
+        const aimT = fighting ? boss : tgt;
+        if (aimT) { I.aimFace = Math.sign(aimT.x - h.x) || h.face; I.aimAt = solveAim(aimT, arrowSpeed(Math.max(h.draw, 0.34))); }
 
         const blocker = tgt && (tgt.type === 'ghoul' || tgt.type === 'brute') && tdx > 0 && tdx < 270;
         if (!blocker && !fighting) I.right = true;
@@ -1777,7 +1805,7 @@ void main(){
       c.drawImage(env.glowSprite('255,110,40'), x - 40, y - 16, 80, 26); c.restore();
       if (env.hero.ready) {
         const HA = env.hero, has = n => HA.has(n);
-        const AIMS = [-25, 0, 25, 50, 75];
+        const AIMS = [-25, 0, 25, 50];
         const aimTag = rad => { const d = rad * 180 / Math.PI; let best = 0; for (const v of AIMS) if (Math.abs(v - d) < Math.abs(best - d)) best = v; return String(best).replace('-', 'm'); };
         let anim = 'idle', at = tAll;
         if (h.rollT > 0 && has('roll')) { anim = 'roll'; at = HA.dur('roll') * clamp(1 - h.rollT / 0.5, 0, 0.98); }
@@ -1794,10 +1822,27 @@ void main(){
         else if (Math.abs(h.vx) > 34) { anim = 'run'; at = h.runClock; }
         if (!has(anim)) anim = 'idle';
         HA.draw(c, x, y, { anim, t: at, facing: h.face, height: 132, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
+        if (h.drawing) aimGuide(c);
       } else env.drawHero(c, x, y, {
         facing: h.face, run: clamp(Math.abs(h.vx) / 192, 0, 1), phase: h.phase, air: !h.onGround, vy: h.vy,
         weapon: 'bow', draw: h.drawing ? h.draw : 0, aim: h.aim, hurt: h.hurtT / 0.32, scale: 1.02
       });
+      c.restore();
+    }
+
+    // where the arrow will go: dots along its real flight path, brighter as the bow bends
+    function aimGuide(c) {
+      const h = hero, o = bowOrigin(), sp = arrowSpeed(Math.max(h.draw, 0.34));
+      const vx = Math.cos(h.aim) * sp * h.face, vy = -Math.sin(h.aim) * sp;
+      const a0 = 0.25 + 0.55 * h.draw;
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (let i = 1; i <= 14; i++) {
+        const t = i * 0.026, px = o.x + vx * t - cam, py = o.y + vy * t + 0.5 * ARROW_G * t * t;
+        const k = 1 - i / 15, r = 1.4 + 1.6 * k;
+        c.globalAlpha = a0 * k;
+        c.fillStyle = h.draw >= 0.97 ? '#ffe7a8' : '#ffd0a0';
+        c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
+      }
       c.restore();
     }
 

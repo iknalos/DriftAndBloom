@@ -129,7 +129,8 @@
   // ── Particles ─────────────────────────────────────────────────────────────
   // kinds: 'glow' (additive dot), 'spark' (additive streak along velocity),
   //        'smoke' (soft dark puff that grows), 'debris' (spinning chip, gravity),
-  //        'ring' (expanding shockwave ring)
+  //        'ring' (expanding shockwave ring), 'blood' (droplet: flies, falls, and where it
+  //        has a floor it lands as a 'stain' that fades), 'mist' (soft red puff)
   function makeFx() {
     const list = [];
     const fx = {
@@ -159,6 +160,21 @@
           });
         }
       },
+      // blood(x, y, {dir, spread, n, speed, size, floor, layer}) — a short spurt of droplets
+      // thrown along dir (radians), a little red mist, and stains where drops land on floor
+      blood(x, y, o) {
+        o = o || {};
+        const n = o.n || 10, dir = o.dir === undefined ? -Math.PI / 2 : o.dir, spread = o.spread === undefined ? 1.3 : o.spread;
+        for (let i = 0; i < n; i++) {
+          const a = dir + (Math.random() - 0.5) * spread, v = (o.speed || 210) * (0.3 + Math.random() * 0.9);
+          fx.spawn({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 900, drag: 0.6, kind: 'blood',
+            rgb: Math.random() < 0.5 ? '128,6,10' : '160,16,20', size: (o.size || 2.2) * (0.5 + Math.random() * 0.9),
+            life: 0.9 + Math.random() * 0.5, floor: o.floor, layer: o.layer });
+        }
+        for (let i = 0; i < 2; i++) fx.spawn({ x: x + (Math.random() - 0.5) * 8, y: y + (Math.random() - 0.5) * 8,
+          vx: Math.cos(dir) * 40, vy: Math.sin(dir) * 40, kind: 'mist', rgb: '150,10,14', size: 5 + Math.random() * 4,
+          grow: 22, life: 0.35, alpha: 0.5, drag: 3, layer: o.layer });
+      },
       update(dt) {
         for (let i = list.length - 1; i >= 0; i--) {
           const p = list[i];
@@ -168,6 +184,10 @@
           p.vx *= d; p.vy = p.vy * d + p.g * dt;
           p.x += p.vx * dt; p.y += p.vy * dt;
           p.size += p.grow * dt; p.rot += p.spin * dt;
+          if (p.kind === 'blood' && p.floor !== undefined && p.vy > 0 && p.y >= p.floor) {
+            p.kind = 'stain'; p.y = p.floor; p.vx = p.vy = p.g = 0; p.age = 0; p.life = 2.2 + Math.random();
+            p.size *= 1.5 + Math.random(); p.rot = Math.random() * 0.5;
+          }
         }
       },
       // layer: draw only particles with p.layer === layer (default undefined = all)
@@ -190,6 +210,22 @@
             c.fillStyle = `rgba(${p.rgb},${Math.min(1, a * 1.5).toFixed(3)})`;
             c.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66);
             c.restore();
+          } else if (p.kind === 'blood') {
+            c.globalCompositeOperation = 'source-over';
+            const sp = Math.hypot(p.vx, p.vy) || 1, len = clamp(sp * 0.012, 1, 5);
+            c.fillStyle = `rgba(${p.rgb},${Math.min(1, a * 1.6).toFixed(3)})`;
+            c.save(); c.translate(x, y); c.rotate(Math.atan2(p.vy, p.vx));
+            c.beginPath(); c.ellipse(-len / 2, 0, p.size * 0.5 + len, p.size * 0.5, 0, 0, TAU); c.fill();
+            c.restore();
+          } else if (p.kind === 'stain') {
+            c.globalCompositeOperation = 'source-over';
+            c.fillStyle = `rgba(90,4,8,${Math.min(0.85, k * 1.4).toFixed(3)})`;
+            c.beginPath(); c.ellipse(x, y, p.size, p.size * 0.32, p.rot * 0.2, 0, TAU); c.fill();
+          } else if (p.kind === 'mist') {
+            c.globalCompositeOperation = 'source-over';
+            const r = p.size, g = c.createRadialGradient(x, y, 0, x, y, r);
+            g.addColorStop(0, `rgba(${p.rgb},${(a * 0.55).toFixed(3)})`); g.addColorStop(1, `rgba(${p.rgb},0)`);
+            c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
           } else if (p.kind === 'ring') {
             c.globalCompositeOperation = 'lighter';
             c.beginPath(); c.arc(x, y, p.size, 0, TAU);
@@ -666,7 +702,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       }
       if (active.phase === 'result') { if (active.resultT > 0.9) active.finish(); return; }
       if (active.paused) { active.pauseTap(p); return; }
-      if (Math.hypot(p.x - 362, p.y - 46) < 26) { active.paused = true; return; }
+      if (Math.hypot(p.x - 362, p.y - 46) < 26) { active.paused = true; if (window.DABAudio) DABAudio.duck(true); return; }
       const hit = active.hitControl(p);
       if (hit) {
         try { cv.setPointerCapture(e.pointerId); } catch (err) { /* old browsers */ }
@@ -708,7 +744,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   const keysDown = new Set();
   addEventListener('keydown', e => {
     if (!active) return;
-    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (active.phase === 'play') active.paused = !active.paused; return; }
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (active.phase === 'play') { active.paused = !active.paused; if (window.DABAudio) DABAudio.duck(active.paused); } return; }
     if (active.phase === 'intro' && active.roster.length && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       const i = active.roster.findIndex(h => h.id === active.heroId), n = active.roster.length;
       active.pickHero(active.roster[(i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n].id); e.preventDefault(); return;
@@ -793,7 +829,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
 
   function Session(id, def, opts, resolve) {
     const S = this;
-    S.id = id; S.def = def; S.resolve = resolve;
+    S.id = id; S.def = def; S.resolve = resolve; S.opts = opts || {};
     S.charId = opts.charId || 'spirit';
     const chEntry = window.SPIRIT_CHARS && SPIRIT_CHARS[S.charId];
     S.charRgb = chEntry && chEntry.col ? chEntry.col.join(',') : '93,202,165';
@@ -809,6 +845,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.hud = { objective: def.hint || '', progress: null, boss: null, counters: [] };
     S.controls = def.controls || { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }, { id: 'attack', icon: 'sword' }] };
     S.reason = opts.reason || '';
+    // sound: the world's music + its effects decoded ahead (DABAudio, worlds/audio.js)
+    const AU = window.DABAudio;
+    S.loops = [];
+    if (AU) { AU.music(def.music || null); AU.preload(['start', 'select', 'win', 'lose', 'hurt'].concat(def.sounds || [])); }
     S.dprMax = dpr(); S.dprCap = S.dprMax;          // adaptive: drops when frames run slow
     S.ftAvg = 16; S.ftSlowT = 0; S.ftFastT = 0;
     S.dpr = sizeCanvas();
@@ -837,8 +877,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       heal(n) { S.health = Math.min(S.maxHealth, S.health + n); },
       invuln(sec) { S.invulnT = Math.max(S.invulnT, sec); },
       get invulnerable() { return S.invulnT > 0; },
-      win() { if (S.phase === 'play') { S.phase = 'result'; S.won = true; S.resultT = 0; } },
-      lose() { if (S.phase === 'play') { S.phase = 'result'; S.won = false; S.resultT = 0; } },
+      win() { if (S.phase === 'play') { S.phase = 'result'; S.won = true; S.resultT = 0; if (AU) AU.play('win', { jitter: 0 }); } },
+      lose() { if (S.phase === 'play') { S.phase = 'result'; S.won = false; S.resultT = 0; if (AU) AU.play('lose', { jitter: 0 }); } },
+      // sound effects: sfx(name, {vol, rate, pan}); x (world px on screen) pans it a little
+      sfx(name, o) { if (AU) AU.play(name, o); },
+      sfxAt(name, sx, o) { if (AU) AU.play(name, Object.assign({ pan: clamp((sx - W / 2) / W, -0.6, 0.6) }, o)); },
+      loop(name, vol) { const h = AU ? AU.loop(name, vol) : { stop() { } }; S.loops.push(h); return h; },
       shake(a) { S.shakeA = Math.max(S.shakeA, a); },
       flash(rgb, a) { S.flashRgb = rgb || '255,255,255'; S.flashA = Math.max(S.flashA, a === undefined ? 0.6 : a); },
       hitstop(sec) { S.stop = Math.max(S.stop, sec); },
@@ -860,7 +904,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     loadAll(def.assets, k => { S.loadK = k * (def.hero || def.roster ? 0.85 : 1); }).then(a => heroP.then(H => {
       S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
-      try { S.world = def.create(S.env); } catch (e) { console.error('[worlds] create failed', e); S.world = null; }
+      try { S.world = def.create(S.env); } catch (e) { console.error('[worlds] create failed', e && e.stack ? e.stack : e); S.world = null; }
       S.ready = true;
     }));
 
@@ -868,11 +912,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.raf = requestAnimationFrame(S.loop.bind(S));
   }
 
-  Session.prototype.startPlay = function () { this.phase = 'play'; this.playT = 0; };
+  Session.prototype.startPlay = function () { this.phase = 'play'; this.playT = 0; if (window.DABAudio) DABAudio.play('start', { vol: 0.7, jitter: 0 }); };
   // choose a hero on the intro card (re-loads that hero's sprite sheets)
   Session.prototype.pickHero = function (id) {
     if (!id || id === this.heroId) return;
     this.heroId = id; this.heroLoading = true;
+    if (window.DABAudio) DABAudio.play('select', { jitter: 0 });
     lsSet('dab_hero_' + this.def.roster, id);
     loadHeroSet(id).then(H => { if (this.heroId === id) { this.env.hero = makeHeroApi(H); this.warmed = false; this.heroLoading = false; } });
   };
@@ -958,8 +1003,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   };
 
   Session.prototype.pauseTap = function (p) {
-    if (p.y > 400 && p.y < 456 && Math.abs(p.x - W / 2) < 110) this.paused = false;            // Resume
-    else if (p.y > 470 && p.y < 526 && Math.abs(p.x - W / 2) < 110) { this.paused = false; this.env.lose(); this.gaveUp = true; }
+    const AU = window.DABAudio;
+    if (p.y > 400 && p.y < 456 && Math.abs(p.x - W / 2) < 110) { this.paused = false; if (AU) AU.duck(false); }            // Resume
+    else if (p.y > 470 && p.y < 526 && Math.abs(p.x - W / 2) < 110) { this.paused = false; if (AU) AU.duck(false); this.env.lose(); this.gaveUp = true; }
+    else if (p.y > 540 && p.y < 596 && Math.abs(p.x - W / 2) < 110 && AU) { AU.toggle(); AU.play('select', { jitter: 0 }); }   // Sound on / off
   };
 
   Session.prototype.loop = function (now) {
@@ -1189,6 +1236,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.fillStyle = '#071828'; c.font = 'bold 17px system-ui'; c.textBaseline = 'middle'; c.fillText(txt, W / 2, y + 26); c.textBaseline = 'alphabetic';
     };
     btn(403, 'Resume', '93,202,165'); btn(473, 'Give up (lose a heart)', '255,140,120');
+    if (window.DABAudio) btn(543, DABAudio.muted() ? '🔇  Sound: off' : '🔊  Sound: on', '200,210,230');
     c.restore();
   };
 
@@ -1197,6 +1245,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (active !== this) return;
     active = null;
     cancelAnimationFrame(this.raf);
+    for (const h of this.loops) h.stop(0.5);
+    if (window.DABAudio) { DABAudio.duck(false); DABAudio.music(this.opts.music === undefined ? 'music_pond' : this.opts.music); }
     try { this.world && this.world.destroy && this.world.destroy(); } catch (e) { /* ignore */ }
     keysDown.clear();
     layer.style.transition = 'opacity .3s ease'; layer.style.opacity = '0';

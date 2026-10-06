@@ -487,6 +487,8 @@ void main(){
   // ── REGISTER ──────────────────────────────────────────────────────────────
   DABWorlds.register('alien', {
     title: 'Alien World', color: '120,255,190',
+    music: 'music_alien',
+    sounds: ['laser', 'enemy_laser', 'big_laser', 'missile', 'explode', 'boom', 'metal_hit', 'shield', 'alarm', 'pickup', 'hurt'],
     subtitle: () => 'The saucer beamed you up into its mothership. You stole one of their fighters.',
     hint: 'Break out, survive the fleet, destroy the mothership',
     howto: ['Stick: fly  ·  Fire: hold (ammo is limited)', 'Missile: homing  ·  Shield: protective bubble', 'Grab ammo, missiles and power-ups'],
@@ -512,6 +514,7 @@ void main(){
 
   function create(env) {
     const W = env.W, H = env.H, fx = env.fx;
+    const sfx = (n, x, o) => env.sfxAt(n, x === undefined ? W / 2 : x, o);
     const charRgb = env.charRgb;
     // generated art is built once and reused on every later catch (only the ship takes the spirit's colour)
     if (!BASE) {
@@ -600,13 +603,14 @@ void main(){
     function shipDamage(n, x, y, what) {
       if (!S.ship.alive) return;
       if (S.shieldT > 0) {                            // the bubble eats it
+        sfx('shield', x, { vol: 0.45, gap: 0.25 });
         fx.burst(x, y, { n: 8, speed: 160, rgb: '140,200,255', kind: 'spark', life: 0.35 });
         S.shieldHit = 1;
         return;
       }
       if (GOD) { S.ship.flash = 1; return; }
       if (env.damage(n, { x: S.ship.x, y: S.ship.y - 20, invuln: what === 'laser' ? 0.9 : 0.45 })) {
-        S.ship.flash = 1; S.dmgTaken += n;
+        S.ship.flash = 1; S.dmgTaken += n; sfx('metal_hit', x); sfx('hurt', x, { vol: 0.7 });
         fx.burst(S.ship.x, S.ship.y, { n: 12, speed: 200, rgb: '255,190,120', kind: 'spark', life: 0.45 });
         env.hitstop(0.05);
       }
@@ -614,6 +618,7 @@ void main(){
     function boom(x, y, r, opt) {
       opt = opt || {};
       S.booms.push({ x, y, r, age: 0, life: opt.life || (0.8 + r / 90), seed: Math.random() * 100, vx: opt.vx || 0, vy: opt.vy || 0, n: Math.round(5 + r / 6) });
+      sfx(r > 60 ? 'boom' : 'explode', x, { vol: Math.min(1, 0.45 + r / 70), rate: r > 60 ? 1 : 1.25 - Math.min(0.4, r / 120), gap: 0.05 });
       fx.burst(x, y, { n: Math.round(8 + r / 3), speed: 120 + r * 4, rgb: '255,210,140', kind: 'spark', life: 0.5 + r / 120, drag: 2.2 });
       fx.burst(x, y, { n: Math.round(3 + r / 8), speed: 60 + r * 2.5, rgb: '120,124,130', kind: 'debris', life: 0.9 + r / 80, size: 2 + r / 18, drag: 0.6 });
       fx.spawn({ x, y, kind: 'ring', size: r * 0.4, grow: r * 3.2, life: 0.45, rgb: opt.ring || '255,220,170', alpha: 0.9 });
@@ -688,7 +693,7 @@ void main(){
         laser: null, dying: 0, chain: 0, flash: 0
       };
       env.hud.objective = 'Destroy the mothership!';
-      toast('MOTHERSHIP', 'Knock out both turrets to expose the core', '255,120,120', true);
+      toast('MOTHERSHIP', 'Knock out both turrets to expose the core', '255,120,120', true); sfx('alarm', W / 2, { vol: 0.7, jitter: 0 });
     }
     function bossHP() {
       const B = S.boss; if (!B) return 0;
@@ -699,6 +704,7 @@ void main(){
     // ── projectiles ──
     function fireEnemy(x, y, ang, spd, kind) {
       if (S.eb.length > 240) return;
+      sfx('enemy_laser', x, { vol: 0.16, rate: kind === 'orb' ? 0.7 : 1, gap: 0.09 });
       const k = kind || 'bolt';
       S.eb.push({ x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, kind: k,
         r: k === 'orb' ? 7 : k === 'ring' ? 5 : 4.5, dmg: k === 'orb' ? 8 : k === 'ring' ? 5 : 6,
@@ -706,12 +712,12 @@ void main(){
     }
     function aimAt(x, y) { return Math.atan2(S.ship.y - y, S.ship.x - x); }
     function enemyMissile(x, y) {
-      S.em.push({ x, y, vx: 0, vy: 90, ang: Math.PI / 2, spd: 90, life: 4.6, hp: 1, smokeT: 0 });
+      S.em.push({ x, y, vx: 0, vy: 90, ang: Math.PI / 2, spd: 90, life: 4.6, hp: 1, smokeT: 0 }); sfx('missile', x, { vol: 0.4, rate: 0.8 });
     }
     function playerMissile() {
       const sh = S.ship;
       if (S.missiles <= 0) return;
-      S.missiles--;
+      S.missiles--; sfx('missile', sh.x, { vol: 0.6 });
       const side = S.missiles % 2 ? 1 : -1;
       S.pm.push({ x: sh.x + side * 18, y: sh.y + 4, vx: side * 90, vy: -60, ang: -Math.PI / 2, spd: 120, life: 3.6, target: pickTarget(), smokeT: 0 });
     }
@@ -740,6 +746,7 @@ void main(){
     // ── damage to the world ──
     function hitEnemy(e, dmg) {
       e.hp -= dmg; e.flash = 1;
+      if (e.hp > 0) sfx('metal_hit', e.x, { vol: 0.22, rate: 1.3, gap: 0.06 });
       if (e.hp <= 0 && !e.dead) {
         e.dead = true; S.kills++;
         if (e.type === 'mine') { mineBlast(e); return; }
@@ -901,6 +908,7 @@ void main(){
           S.pb.push({ x: sh.x + ox, y: sh.y - 34, vx: Math.sin(a) * 900, vy: -Math.cos(a) * 900, dmg, weak: empty, life: 1 });
         }
         if (!empty) S.ammo--;
+        sfx('laser', sh.x, { vol: empty ? 0.18 : 0.26, rate: empty ? 1.35 : 1, gap: 0.05 });
         fx.spawn({ x: sh.x + alt * 5, y: sh.y - 36, kind: 'glow', rgb: charRgb, size: 4, life: 0.08 });
       }
       if (S.ammo <= 0 && firing) { S.lowAmmoT += dt; if (S.lowAmmoT > 1.5) { S.lowAmmoT = -4; toast('OUT OF AMMO', 'Backup blaster only. Grab yellow A pickups', '255,214,90'); } }
@@ -908,7 +916,7 @@ void main(){
       S.missileCd -= dt;
       if (I.pressed.special && S.missiles > 0 && S.missileCd <= 0) { playerMissile(); S.missileCd = 0.35; }
       // shield
-      if (I.pressed.special2 && S.shields > 0 && S.shieldT <= 0) { S.shields--; S.shieldT = 5.5; fx.spawn({ x: sh.x, y: sh.y, kind: 'ring', size: 10, grow: 140, life: 0.4, rgb: '140,200,255' }); }
+      if (I.pressed.special2 && S.shields > 0 && S.shieldT <= 0) { S.shields--; S.shieldT = 5.5; sfx('shield', sh.x); fx.spawn({ x: sh.x, y: sh.y, kind: 'ring', size: 10, grow: 140, life: 0.4, rgb: '140,200,255' }); }
 
       // engine trail
       if (Math.random() < 0.9) for (const [nx, ny] of art.ship.nozzles) fx.spawn({ x: sh.x + nx + rand(-1, 1), y: sh.y + ny, vx: rand(-10, 10), vy: rand(160, 260), kind: 'glow', rgb: charRgb, size: rand(1.5, 3) * (0.5 + sh.thrust), life: rand(0.12, 0.25) });
@@ -1049,7 +1057,7 @@ void main(){
         }
       } else {
         B.laserCd -= dt;
-        if (B.laserCd <= 0 && !B.laser) { const dir = sh.x < B.x ? 1 : -1; B.laser = { t: 0, a0: dir * -0.62, a1: dir * 0.62 }; B.laserCd = B.phase === 3 ? 6.4 : 7.2; }
+        if (B.laserCd <= 0 && !B.laser) { const dir = sh.x < B.x ? 1 : -1; B.laser = { t: 0, a0: dir * -0.62, a1: dir * 0.62 }; B.laserCd = B.phase === 3 ? 6.4 : 7.2; sfx('big_laser', B.x, { vol: 0.8 }); }
         B.missileCd -= dt;
         if (B.missileCd <= 0) { B.missileCd = B.phase === 3 ? 4.2 : 5.4; enemyMissile(B.x - 70, B.y + 70); enemyMissile(B.x + 70, B.y + 70); }
         B.spreadCd -= dt;
@@ -1181,6 +1189,7 @@ void main(){
     }
     function collect(p) {
       const P = PICK[p.kind];
+      sfx('pickup', p.x, { vol: 0.8 });
       if (p.kind === 'ammo') S.ammo += 100;
       else if (p.kind === 'missile') S.missiles += 2;
       else if (p.kind === 'repair') env.heal(25);
