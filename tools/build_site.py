@@ -145,8 +145,10 @@ def main():
     write("index.html", html.replace("</head>", HEAD + "</head>", 1))
 
     core = ["index.html"] + GAME_FILES + world_js + WEB_FILES
+    # hero sprite sheets (~1.5 MB per hero) are cached when a hero is first picked, not all up front
+    background = [a for a in assets if not (a.startswith("assets/hero/") and "/hero_" in a and a.endswith(".webp"))]
     sw = (SW.replace("__CORE_V__", digest(core)).replace("__ASSET_V__", digest(assets) if assets else "none")
-            .replace("__CORE__", json.dumps(["./"] + core, indent=2)).replace("__ASSETS__", json.dumps(assets, indent=2)))
+            .replace("__CORE__", json.dumps(["./"] + core, indent=2)).replace("__ASSETS__", json.dumps(background, indent=2)))
     write("sw.js", sw)
 
     size = sum((ROOT / f).stat().st_size for f in assets) / 1e6
