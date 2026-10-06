@@ -378,7 +378,7 @@ void main(){
       } else {
         const maxV = (h.atk && h.ground ? 0.32 : 1) * 200;
         if (h.rollT <= 0) h.vx = approach(h.vx, mv * maxV, (h.ground ? 1500 : 950) * dt);
-        if (mv && !h.atk && h.hurtT <= 0) h.face = mv;
+        if (mv && !h.atk && h.hurtT <= 0) h.face = Math.sign(mv);   // face is a flip (±1), never the stick's analog value — that squashed the sprite to a line mid-turn
       }
       // jump (buffer + coyote + variable height)
       h.jumpBuf = I.pressed.jump ? 0.13 : h.jumpBuf - dt;

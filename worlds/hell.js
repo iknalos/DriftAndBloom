@@ -609,8 +609,38 @@ void main(){
       if (e.type === 'ghoul') return e.y - 45;
       return e.y - 38;
     }
+    // The archer sprite has 7 aim poses (hold_<deg>); each frame carries where its nocked arrow is
+    // drawn (nock / tip, exported from the 3D render). The arrow is fired from that exact spot, and
+    // the pose shown is the one whose drawn arrow is closest to the stick's angle.
+    const HERO_H = 132;
+    let aimVars = null, arrowLen = 37;
+    function aimVariants() {
+      if (aimVars) return aimVars;
+      const HA = env.hero, out = [];
+      if (!HA.ready) return [{ tag: '0', ang: 0 }];
+      for (const n of HA.names()) {
+        if (!n.startsWith('hold_')) continue;
+        const pose = { anim: n, t: 0, facing: 1, height: HERO_H }, a = HA.point(pose, 'nock'), b = HA.point(pose, 'tip');
+        const ang = a && b ? Math.atan2(-(b.y - a.y), b.x - a.x) : (+n.slice(5).replace('m', '-') || 0) * Math.PI / 180;
+        if (a && b && n === 'hold_0') arrowLen = Math.hypot(b.x - a.x, b.y - a.y);
+        out.push({ tag: n.slice(5), ang });
+      }
+      return (aimVars = out.length ? out : [{ tag: '0', ang: 0 }]);
+    }
+    function aimTag(rad) {
+      let best = null;
+      for (const v of aimVariants()) if (!best || Math.abs(v.ang - rad) < Math.abs(best.ang - rad)) best = v;
+      return best.tag;
+    }
     function bowOrigin() {
-      return { x: hero.x + hero.face * Math.cos(hero.aim) * 30, y: hero.y - 40 - Math.sin(hero.aim) * 19 };
+      const h = hero, HA = env.hero;
+      if (HA.ready) {
+        const pose = { anim: 'hold_' + aimTag(h.aim), t: tAll, facing: h.face, height: HERO_H };
+        const tip = HA.point(pose, 'tip');
+        // the flying arrow's point sits 10 px behind its drawn head, so it leaves the bow exactly where the nocked one was
+        if (tip) return { x: h.x + tip.x - h.face * Math.cos(h.aim) * 10, y: h.y + tip.y + Math.sin(h.aim) * 10 };
+      }
+      return { x: h.x + h.face * Math.cos(h.aim) * 30, y: h.y - 40 - Math.sin(h.aim) * 19 };
     }
     const ARROW_G = 360, AIM_MIN = -0.45, AIM_MAX = 0.87;     // flat, fast arrows; aim -25..50 deg
     const arrowSpeed = draw => 760 + 640 * draw;
@@ -1731,15 +1761,15 @@ void main(){
         c.save(); c.translate(x, y); c.rotate(ang);
         c.globalAlpha = a.ground || a.stuck ? clamp(a.life / 0.6, 0, 1) : 1;
         if (a.fire && !a.ground) { c.globalCompositeOperation = 'lighter'; c.drawImage(env.glowSprite('255,140,40'), -26, -9, 40, 18); c.globalCompositeOperation = 'source-over'; }
-        const back = a.stuck || a.ground ? 0 : 0;
-        c.strokeStyle = '#c9a26a'; c.lineWidth = 1.8;
-        c.beginPath(); c.moveTo(-22 + back, 0); c.lineTo(a.stuck || a.ground ? 2 : 4, 0); c.stroke();
-        if (!a.stuck && !a.ground) { c.fillStyle = '#e1e5ea'; c.beginPath(); c.moveTo(4, -2.6); c.lineTo(10, 0); c.lineTo(4, 2.6); c.closePath(); c.fill(); }
-        c.fillStyle = a.fire ? '#ffb347' : '#b8322a';
-        c.beginPath(); c.moveTo(-22, 0); c.lineTo(-27, -3.2); c.lineTo(-19, 0); c.lineTo(-27, 3.2); c.closePath(); c.fill();
+        const tail = -(Math.max(26, arrowLen) - 10);            // same length as the arrow drawn on the bow
+        c.strokeStyle = '#8a5a34'; c.lineWidth = 1.8;
+        c.beginPath(); c.moveTo(tail, 0); c.lineTo(a.stuck || a.ground ? 2 : 4, 0); c.stroke();
+        if (!a.stuck && !a.ground) { c.fillStyle = '#9aa3ad'; c.beginPath(); c.moveTo(4, -2.6); c.lineTo(10, 0); c.lineTo(4, 2.6); c.closePath(); c.fill(); }
+        c.fillStyle = a.fire ? '#ffb347' : '#3f7fd0';                        // blue fletching, like the rendered arrow
+        c.beginPath(); c.moveTo(tail + 6, 0); c.lineTo(tail - 1, -3.4); c.lineTo(tail + 1, 0); c.lineTo(tail - 1, 3.4); c.closePath(); c.fill();
         if (!a.stuck && !a.ground) {
           c.globalCompositeOperation = 'lighter'; c.strokeStyle = a.fire ? 'rgba(255,150,50,0.5)' : 'rgba(255,240,220,0.22)'; c.lineWidth = 2;
-          c.beginPath(); c.moveTo(-40, 0); c.lineTo(-22, 0); c.stroke();
+          c.beginPath(); c.moveTo(tail - 18, 0); c.lineTo(tail, 0); c.stroke();
         }
         c.restore();
       }
@@ -1805,8 +1835,6 @@ void main(){
       c.drawImage(env.glowSprite('255,110,40'), x - 40, y - 16, 80, 26); c.restore();
       if (env.hero.ready) {
         const HA = env.hero, has = n => HA.has(n);
-        const AIMS = [-25, 0, 25, 50];
-        const aimTag = rad => { const d = rad * 180 / Math.PI; let best = 0; for (const v of AIMS) if (Math.abs(v - d) < Math.abs(best - d)) best = v; return String(best).replace('-', 'm'); };
         let anim = 'idle', at = tAll;
         if (h.rollT > 0 && has('roll')) { anim = 'roll'; at = HA.dur('roll') * clamp(1 - h.rollT / 0.5, 0, 0.98); }
         else if (h.drawing) {
@@ -1821,7 +1849,7 @@ void main(){
         }
         else if (Math.abs(h.vx) > 34) { anim = 'run'; at = h.runClock; }
         if (!has(anim)) anim = 'idle';
-        HA.draw(c, x, y, { anim, t: at, facing: h.face, height: 132, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
+        HA.draw(c, x, y, { anim, t: at, facing: h.face, height: HERO_H, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
         if (h.drawing) aimGuide(c);
       } else env.drawHero(c, x, y, {
         facing: h.face, run: clamp(Math.abs(h.vx) / 192, 0, 1), phase: h.phase, air: !h.onGround, vy: h.vy,

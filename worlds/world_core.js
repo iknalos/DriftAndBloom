@@ -612,14 +612,15 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     heroSets[set] = H;
     return H.p;
   }
+  function heroFrameIndex(an, t) {
+    const n = an.f.length, f = Math.floor(Math.max(0, t) * an.fps);
+    if (an.loop) return f % n;
+    if (an.pingpong && n > 1) { const p = f % (2 * n - 2); return p < n ? p : 2 * n - 2 - p; }
+    return Math.min(n - 1, f);
+  }
   function heroFrame(H, name, t) {
     const an = H.meta.anims[name] || H.meta.anims.idle;
-    const n = an.f.length, f = Math.floor(Math.max(0, t) * an.fps);
-    let i;
-    if (an.loop) i = f % n;
-    else if (an.pingpong && n > 1) { const p = f % (2 * n - 2); i = p < n ? p : 2 * n - 2 - p; }
-    else i = Math.min(n - 1, f);
-    return an.f[i];
+    return an.f[heroFrameIndex(an, t)];
   }
   function makeHeroApi(H) {
     return {
@@ -657,6 +658,18 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
         c.restore();
         return true;
       },
+      // a named point of the frame drawn for o (e.g. the archer's 'tip' / 'nock' / 'grip'), as an
+      // offset from the feet in app px, mirrored with o.facing — null if the frame has none
+      point(o, name) {
+        const an = H && H.ready && H.meta.anims[o.anim || 'idle'];
+        if (!an || !an.p) return null;
+        const q = an.p[heroFrameIndex(an, o.t || 0)], v = q && q[name];
+        if (!v) return null;
+        const k = (o.height || 110) / H.meta.charPx;
+        return { x: v[0] * k * (o.facing || 1), y: v[1] * k };
+      },
+      // anim names (to find e.g. every hold_<aim> variant)
+      names() { return H && H.ready ? Object.keys(H.meta.anims) : []; },
       // touch every sheet once so the first attack doesn't stall on a texture upload
       warm(c) { if (H && H.ready) for (const sh of H.sheets) c.drawImage(sh, 0, 0, 1, 1, -10, -10, 1, 1); }
     };
