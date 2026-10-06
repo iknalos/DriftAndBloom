@@ -1,7 +1,7 @@
 {
-  "build": 10,
-  "tag": "dev-10",
-  "date": "2026-10-06T23:43:24Z",
+  "build": 11,
+  "tag": "dev-11",
+  "date": "2026-10-06T23:50:23Z",
   "apk": "https://github.com/iknalos/DriftAndBloom/releases/download/app-latest/DriftAndBloom-dev.apk",
-  "page": "https://github.com/iknalos/DriftAndBloom-Android/releases/tag/dev-10"
+  "page": "https://github.com/iknalos/DriftAndBloom-Android/releases/tag/dev-11"
 }
