@@ -10,13 +10,13 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # one Pages deploy at a time, but the slow iPhone check below doesn't hold the next one up
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
