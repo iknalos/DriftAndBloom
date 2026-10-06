@@ -59,14 +59,30 @@
     "source": "https://commons.wikimedia.org/wiki/File:Canis_lupus_baileyi_running.jpg",
     "title": "File:Canis lupus baileyi running.jpg"
   },
-  "assets/hero/day/hero_0.webp": {
+  "assets/hero/_kaykit": {
     "author": "Kay Lousberg (kaylousberg.com)",
     "license": "CC0 1.0",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "modified": "shield removed, rendered side-on, relit",
-    "origin": "3D model, rendered into sprite sheets",
-    "source": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
-    "title": "Knight (KayKit Adventurers Character Pack 1.0)"
+    "origin": "3D weapon models",
+    "source": "https://kaylousberg.com",
+    "title": "Swords, bows and arrows: KayKit Fantasy Weapons Bits 1.0"
+  },
+  "assets/hero/_mesh2motion": {
+    "author": "Mesh2Motion (mesh2motion.org)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "origin": "animations, retargeted onto the heroes",
+    "source": "https://github.com/Mesh2Motion/mesh2motion-assets",
+    "title": "Bow and air-attack animations: Mesh2Motion assets"
+  },
+  "assets/hero/_quaternius": {
+    "author": "Quaternius (quaternius.com)",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "modified": "outfits recoloured, rendered side-on",
+    "origin": "3D characters + animations, rendered into sprite sheets",
+    "source": "https://quaternius.com",
+    "title": "Heroes: Universal Base Characters, Modular Character Outfits - Fantasy, Universal Animation Library 1 + 2"
   },
   "assets/worlds/alien/boss.png": {
     "license": "AI-generated, no copyright claimed",

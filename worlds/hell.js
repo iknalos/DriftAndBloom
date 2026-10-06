@@ -55,7 +55,7 @@
   ];
   const TRIGGERS = [
     { at: 120, spawn: 'hound', x: 830 },
-    { at: 120, msg: 'Tap ⚔ to slash · hold ⚔, let go = whirlwind' },
+    { at: 120, msg: 'Hold the bow to draw · stick aims · let go to shoot' },
     { at: 640, spawn: 'bat', x: 1180, y: 370 },
     { at: 1040, wall: true },
     { at: 1280, spawn: 'hound', from: 'wall' },
@@ -193,13 +193,15 @@ void main(){
   }
 
   DABWorlds.register('hell', {
-    title: 'Hell', color: '255,122,52', opaque: true, hero: 'hell',
+    title: 'Hell', color: '255,122,52', opaque: true, roster: 'hell',
     subtitle: r => (r && /dragon|scorch/i.test(r) ? r + ' ' : '') + 'You fell through the burning pond into the underworld.',
     hint: 'Run for the exit gate. The horde is right behind you.',
-    howto: ['◀ ▶ run · ⤒ jump · never touch the lava', 'tap ⚔ to slash · hold ⚔ and let go = whirlwind', '🔥 = flaming storm'],
+    howto: ['Stick: run · push up to jump · never touch the lava', 'Hold the bow to draw · the stick aims · let go to shoot',
+            '» dodge roll · 🔥 = flaming volley'],
     controls: {
-      dirs: 'lr',
-      buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: '\uD83D\uDD25', count: () => VOLLEY.n }]
+      dirs: 'stick',
+      stickJump: true,
+      buttons: [{ id: 'attack', icon: 'bow' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }, { id: 'special2', icon: '\uD83D\uDD25', count: () => VOLLEY.n }]
     },
     assets: {
       rock: A + 'rock.jpg', backdrop: A + 'backdrop.jpg', volcano: A + 'volcano.jpg', canyon: A + 'canyon.jpg',
@@ -633,44 +635,41 @@ void main(){
       let mv = (I.right ? 1 : 0) - (I.left ? 1 : 0);
       if (h.hurtT > 0) mv = 0;
 
-      // sword: a tap slashes at once (3-hit combo); keep holding to charge the whirlwind,
-      // let go to send the tornado at the nearest threat. 🔥 = a big flaming storm.
+      // bow: hold ⚔ to draw, let go to loose. While drawing, the stick aims (any direction, and
+      // the hero plants his feet); with the stick centred the bow finds the nearest threat.
       h.target = pickTarget();
-      if (I.pressed.attack && h.hurtT <= 0) {
-        h.holdT = 0;
-        if (!h.atk) startSlash(1);
-        else if (h.atkT > SLASH_DUR[h.atkStep - 1] * 0.32) h.atkQ = true;
+      const sax = I.ax || 0, say = I.ay || 0, stickAim = Math.hypot(sax, say) > 0.45;
+      if (I.held.attack && h.shootCd <= 0 && h.hurtT <= 0 && !(h.rollT > 0)) {
+        if (!h.drawing) { h.drawing = true; h.draw = 0.05; }
+        h.draw = Math.min(1, h.draw + dt / 0.6);
+      } else if (h.drawing && !I.held.attack) {
+        shoot(Math.max(h.draw, 0.34)); h.drawing = false; h.draw = 0; h.shootCd = 0.14; h.relT = 0.32; h.relAim = h.aim;
       }
-      if (I.held.attack && h.hurtT <= 0) {
-        h.holdT += dt;
-        if (h.holdT > 0.3) {
-          const was = h.charge;
-          h.charge = Math.min(1, (h.holdT - 0.3) / 0.5);
-          if (was < 1 && h.charge >= 1) { spawnP({ x: h.x, y: h.y - 52, kind: 'ring', rgb: '210,235,255', size: 8, grow: 160, life: 0.3, layer: 'front' }); env.shake(0.12); }
-          if (Math.random() < 0.8) { const a = rand(0, TAU), r = rand(24, 40);
-            spawnP({ x: h.x + Math.cos(a) * r, y: h.y - 52 + Math.sin(a) * r * 0.7, vx: -Math.sin(a) * 160, vy: Math.cos(a) * 110 - 30,
-              kind: 'glow', rgb: '205,232,255', size: rand(1.6, 2.8), life: 0.3, drag: 2, layer: 'front' }); }
-        }
+      env.noStickJump = h.drawing;                       // pushing up to aim must not jump
+      if (h.drawing && stickAim) { if (Math.abs(sax) > 0.15) h.face = Math.sign(sax); mv = 0; }
+      else if (h.drawing && h.target) { const d = Math.sign(h.target.x - h.x); if (d) h.face = d; }
+      else if (mv) h.face = mv;
+      const wantAim = h.drawing && stickAim ? clamp(Math.atan2(-say, Math.abs(sax) + 0.001), -0.45, 1.3)
+                    : h.target ? solveAim(h.target, 560 + 640 * Math.max(h.draw, 0.34)) : 0.06;
+      h.aim = lerp(h.aim, wantAim, 1 - Math.exp(-dt * 14));
+      if (h.relT > 0) h.relT -= dt;
+      // » dodge roll (brief invulnerability)
+      h.rollCd = Math.max(0, (h.rollCd || 0) - dt);
+      if (I.pressed.special && h.rollCd <= 0 && h.onGround && h.hurtT <= 0) {
+        const dir = Math.abs(sax) > 0.25 ? Math.sign(sax) : h.face;
+        h.rollT = 0.5; h.rollCd = 0.65; h.face = dir; h.vx = dir * 330; h.drawing = false; h.draw = 0; env.invuln(0.45);
+        burstP(h.x, h.y, { n: 6, speed: 80, rgb: '120,90,80', kind: 'debris', life: 0.4, angle: -Math.PI / 2, spread: 2.2, g: 300, size: 2 });
       }
-      if (I.released.attack) { if (h.charge > 0.15) castWind(h.charge, false); h.charge = 0; h.holdT = 0; }
-      if (h.atk) {
-        h.atkT += dt;
-        const dur = h.onGround ? SLASH_DUR[h.atkStep - 1] : 0.3, k = h.atkT / dur;
-        if (k > 0.28 && k < 0.66) slashHits();
-        if (k >= 1) { if (h.atkQ && h.atkStep < 3) startSlash(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; } }
-      }
-      if (h.castT > 0) h.castT -= dt;
-      if (h.target && (h.charge > 0 || h.castT > 0)) { const d = Math.sign(h.target.x - h.x); if (d) h.face = d; }
-      else if (mv && !h.atk) h.face = mv;
-      if (I.pressed.special && VOLLEY.n > 0 && h.volleyCd <= 0) {
+      if (h.rollT > 0) { h.rollT -= dt; mv = 0; }
+      if (I.pressed.special2 && VOLLEY.n > 0 && h.volleyCd <= 0) {
         VOLLEY.n--; h.volleyCd = 0.6;
-        castWind(1, true);
-        env.flash('255,140,40', 0.25); env.shake(0.28);
+        for (const off of [-0.13, -0.06, 0.01, 0.08, 0.15]) shoot(1, true, off);
+        env.flash('255,140,40', 0.25); env.shake(0.2);
       }
 
       // run + jump
-      const top = h.onGround ? (h.charge > 0 ? 95 : h.atk ? 70 : 192) : 192;   // slashing / charging slows you on foot
-      if (h.onGround || mv) h.vx += (mv * top - h.vx) * Math.min(1, dt * (h.onGround ? 14 : 6));
+      const top = h.drawing && h.onGround ? 85 : 192;     // drawing slows you on foot, never mid-jump
+      if ((h.onGround || mv) && !(h.rollT > 0)) h.vx += (mv * top - h.vx) * Math.min(1, dt * (h.onGround ? 14 : 6));
       if (I.pressed.jump) h.jumpBuf = 0.13;
       if (h.jumpBuf > 0 && (h.onGround || h.coyote > 0)) {
         h.vy = -665; h.onGround = false; h.coyote = 0; h.jumpBuf = 0; h.jumpCut = false;
@@ -708,101 +707,6 @@ void main(){
       if (h.y > LAVA_Y + 6) lavaDeath();
       h.phase += dt * Math.abs(h.vx) / 13;
       h.runClock += dt * clamp(Math.abs(h.vx) / 192, 0.45, 1.25);   // sprite run cycle keeps pace with the feet
-    }
-
-    // ── sword + whirlwind ──
-    const SLASH_DUR = [0.27, 0.27, 0.40];
-    function startSlash(step) {
-      const h = hero;
-      h.atk = 1; h.atkStep = step; h.atkT = 0; h.atkQ = false; h.hitSet = new Set();
-      if (h.onGround) h.vx += h.face * (step === 3 ? 200 : 100);
-    }
-    function slashHits() {
-      const h = hero, s3 = h.atkStep === 3;
-      const cx = h.x + h.face * 46, cy = h.y - 56, r = s3 ? 66 : 56;
-      for (const e of enemies) {
-        if (e.dying || e.st === 'sleep' || h.hitSet.has(e)) continue;
-        const b = box(e);
-        const nx = clamp(cx, b[0], b[2]), ny = clamp(cy, b[1], b[3]);
-        if (Math.hypot(nx - cx, ny - cy) > r) continue;
-        h.hitSet.add(e);
-        if (damageEnemy(e, s3 ? 2.6 : 1.5, h.face, false)) {
-          env.hitstop(s3 ? 0.1 : 0.05); env.shake(s3 ? 0.3 : 0.16);
-          burstP(nx, ny, { n: s3 ? 18 : 11, speed: s3 ? 300 : 220, rgb: '255,235,190', kind: 'spark', life: 0.3, size: 2.6 });
-          spawnP({ x: nx, y: ny, kind: 'ring', rgb: '255,240,210', size: 6, grow: 180, life: 0.22 });
-        }
-      }
-      for (const z of zones) {
-        const s = z.s;
-        if (s && !s.dead && z.st === 'leap' && !h.hitSet.has(s) && serpentHit(s, cx, cy, r)) { h.hitSet.add(s); hurtSerpent(z, s3 ? 2.6 : 1.5, false); }
-      }
-    }
-    function castWind(power, storm) {
-      const h = hero, t = h.target;
-      h.castT = 0.42; h.atk = 0; h.atkStep = 0;
-      const sp = storm ? 520 : 430 + 260 * power;
-      winds.push({ x: h.x + h.face * 34, yc: h.y - 52, ty: t ? aimY(t) : h.y - 52, vx: h.face * sp, age: 0,
-        life: storm ? 1.9 : 1.1 + 0.6 * power, r: storm ? 44 : 22 + 18 * power, h: storm ? 190 : 100 + 60 * power,
-        dmg: storm ? 3.2 : 1.2 + 1.9 * power, fire: !!storm, hit: new Set(), spin: rand(0, TAU) });
-      burstP(h.x + h.face * 40, h.y - 52, { n: storm ? 22 : 12, speed: 240, rgb: storm ? '255,150,60' : '220,240,255', kind: 'spark', life: 0.3, angle: h.face > 0 ? 0 : Math.PI, spread: 1.1 });
-      env.shake(storm ? 0.3 : 0.12 + 0.12 * power);
-    }
-    function updateWinds(dt) {
-      for (let i = winds.length - 1; i >= 0; i--) {
-        const w = winds[i];
-        w.age += dt; w.life -= dt; w.spin += dt * 14;
-        w.x += w.vx * dt;
-        w.yc += clamp(w.ty - w.yc, -320 * dt, 320 * dt);            // drifts up toward a flying target
-        const s = segAt(w.x);
-        if (!w.fire && Math.random() < 0.7) spawnP({ x: w.x + rand(-w.r, w.r), y: (s ? s.y : w.yc + w.h * 0.45), vx: rand(-60, 60) - w.vx * 0.1, vy: rand(-200, -80), g: 300,
-          kind: Math.random() < 0.6 ? 'debris' : 'glow', rgb: Math.random() < 0.6 ? '90,70,60' : '220,240,255', size: rand(1.6, 3), life: 0.5 });
-        if (w.fire && Math.random() < 0.95) spawnP({ x: w.x + rand(-w.r, w.r) * 0.8, y: w.yc + rand(-w.h, w.h) * 0.45, vx: rand(-40, 40), vy: rand(-140, -40),
-          kind: 'glow', rgb: Math.random() < 0.5 ? '255,170,60' : '255,90,20', size: rand(1.8, 3.4), life: 0.5, layer: 'front' });
-        for (const e of enemies) {
-          if (e.dying || e.st === 'sleep' || w.hit.has(e)) continue;
-          const b = box(e);
-          if (b[2] < w.x - w.r || b[0] > w.x + w.r || b[3] < w.yc - w.h / 2 || b[1] > w.yc + w.h / 2) continue;
-          w.hit.add(e);
-          if (damageEnemy(e, w.dmg, Math.sign(w.vx), w.fire)) {
-            if (e.type === 'hound' || e.type === 'ghoul') { e.vy = -380; e.onGround = false; }   // tossed into the air
-            env.hitstop(0.05);
-          } else if (!w.fire) w.life = Math.min(w.life, 0.15);       // the brute's ward breaks a plain whirlwind
-        }
-        for (const z of zones) {
-          const sn = z.s;
-          if (sn && !sn.dead && z.st === 'leap' && !w.hit.has(sn) && serpentHit(sn, w.x, w.yc, w.r + 20)) { w.hit.add(sn); hurtSerpent(z, w.dmg, w.fire); }
-        }
-        if (w.life <= 0 || w.x < cam - 140 || w.x > cam + W + 160) winds.splice(i, 1);
-      }
-    }
-    function drawWinds(c) {
-      for (const w of winds) {
-        const x = w.x - cam, k = Math.min(1, w.age / 0.1) * Math.min(1, w.life / 0.3);
-        const col = w.fire ? '255,140,50' : '214,236,255';
-        c.save(); c.globalCompositeOperation = 'lighter';
-        // soft body of spinning air
-        c.globalAlpha = 0.4 * k;
-        c.drawImage(env.glowSprite(w.fire ? '255,110,30' : '160,200,255'), x - w.r * 1.7, w.yc - w.h * 0.66, w.r * 3.4, w.h * 1.32);
-        // banded funnel: narrow at the ground, wide at the top, two counter-phased streaks per band
-        const N = 14;
-        c.lineCap = 'round'; c.strokeStyle = `rgb(${col})`;
-        for (let i = 0; i < N; i++) {
-          const u = i / (N - 1);
-          const yy = w.yc + w.h * 0.5 - u * w.h;
-          const rx = w.r * (0.2 + 0.45 * u + 0.55 * u * u) * (0.9 + 0.1 * Math.sin(w.age * 9 + i * 1.7));
-          const sway = Math.sin(w.age * 6 + u * 3.5) * 8 * u;
-          for (let j = 0; j < 2; j++) {
-            const a0 = w.spin * (1 + 0.18 * j) + i * 0.7 + j * Math.PI;
-            c.globalAlpha = (0.2 + 0.34 * (1 - u)) * k * (j ? 0.6 : 1);
-            c.lineWidth = (1.6 + 5 * (1 - u)) * (j ? 0.6 : 1);
-            c.beginPath(); c.ellipse(x + sway, yy, rx, rx * 0.32, 0, a0, a0 + 2.7); c.stroke();
-          }
-        }
-        // bright core
-        c.globalAlpha = 0.55 * k;
-        c.drawImage(env.glowSprite(w.fire ? '255,210,140' : '255,255,255'), x - w.r * 0.45, w.yc - w.h * 0.52, w.r * 0.9, w.h * 1.04);
-        c.restore();
-      }
     }
 
     // ── arrows ──
@@ -1230,10 +1134,7 @@ void main(){
       const threat = tgt && (tgt.serpent ? Math.abs(tdx) < 150 : Math.abs(tdx) < 430);
       const fighting = arena && boss && !boss.dying;
       if (threat || fighting) {
-        const close = tgt && !tgt.serpent && Math.abs(tdx) < 120 && (tgt.type === 'hound' || tgt.type === 'ghoul' || tgt.type === 'brute' || Math.abs(aimY(tgt) - h.y) < 120);
-        autoHold++;
-        if (close) { if (autoHold % 4 < 2) I.held.attack = true; }               // tap-tap-tap: the combo
-        else if (h.charge < 0.85) I.held.attack = true;                          // charge, then let go
+        if (!(h.drawing && h.draw >= 0.9)) I.held.attack = true;
 
         const blocker = tgt && (tgt.type === 'ghoul' || tgt.type === 'brute') && tdx > 0 && tdx < 270;
         if (!blocker && !fighting) I.right = true;
@@ -1243,7 +1144,7 @@ void main(){
         const d = boss.x - h.x;
         if (d < 210) I.left = true; else if (d > 340) I.right = true;
       }
-      if (VOLLEY.n > 0 && tgt && (tgt.type === 'brute' || tgt.type === 'ghoul') && Math.abs(tgt.x - h.x) < 360) I.held.special = true;
+      if (VOLLEY.n > 0 && tgt && (tgt.type === 'brute' || tgt.type === 'ghoul') && Math.abs(tgt.x - h.x) < 360) I.held.special2 = true;
       if (h.onGround) {
         const ahead = h.x + 26;
         const gap = !segAt(ahead, h.y);
@@ -1307,7 +1208,7 @@ void main(){
         else if (e.type === 'brute') updateBrute(e, dt);
         if (e.gone) enemies.splice(i, 1);
       }
-      updateArrows(dt); updateWinds(dt); updateShots(dt); updatePickups(dt);
+      updateArrows(dt); updateShots(dt); updatePickups(dt);
 
       // camera: hero a third in, a little lead; the arena is framed
       let want = hero.x - 140 + hero.face * 18;
@@ -1875,21 +1776,27 @@ void main(){
       c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.28;
       c.drawImage(env.glowSprite('255,110,40'), x - 40, y - 16, 80, 26); c.restore();
       if (env.hero.ready) {
-        const HA = env.hero;
+        const HA = env.hero, has = n => HA.has(n);
+        const AIMS = [-25, 0, 25, 50, 75];
+        const aimTag = rad => { const d = rad * 180 / Math.PI; let best = 0; for (const v of AIMS) if (Math.abs(v - d) < Math.abs(best - d)) best = v; return String(best).replace('-', 'm'); };
         let anim = 'idle', at = tAll;
-        if (h.castT > 0) { anim = 'thrust'; at = HA.dur('thrust') * (0.25 + 0.65 * (1 - h.castT / 0.42)); }
-        else if (h.atk) {
-          const dur = h.onGround ? SLASH_DUR[h.atkStep - 1] : 0.3, k = clamp(h.atkT / dur, 0, 1);
-          anim = !h.onGround ? 'slash3' : h.atkStep === 3 ? 'thrust' : h.atkStep === 2 ? 'slash2' : 'slash1';
-          at = HA.dur(anim) * k * 0.86;
+        if (h.rollT > 0 && has('roll')) { anim = 'roll'; at = HA.dur('roll') * clamp(1 - h.rollT / 0.5, 0, 0.98); }
+        else if (h.drawing) {
+          if (h.draw < 0.97 && has('draw')) { anim = 'draw'; at = HA.dur('draw') * h.draw; }
+          else { anim = 'hold_' + aimTag(h.aim); at = tAll; }
         }
-        else if (h.charge > 0) { anim = 'slash1'; at = 0; }                 // sword raised, gathering the wind
-        else if (!h.onGround) { anim = 'air'; at = (h.vy < -260 ? 0 : h.vy < 220 ? 1 : 2) / 12; }
+        else if (h.relT > 0) { anim = 'release_' + aimTag(h.relAim || 0); at = HA.dur(anim) * clamp(1 - h.relT / 0.32, 0, 0.98); }
+        else if (h.hurtT > 0 && has('hit')) { anim = 'hit'; at = HA.dur('hit') * clamp(1 - h.hurtT / 0.32, 0, 0.98); }
+        else if (!h.onGround) {
+          anim = h.vy < -120 && has('jump') ? 'jump' : 'air';
+          at = anim === 'jump' ? HA.dur('jump') * clamp(0.25 + 0.5 * (1 + h.vy / 665), 0.25, 0.85) : tAll;
+        }
         else if (Math.abs(h.vx) > 34) { anim = 'run'; at = h.runClock; }
-        HA.draw(c, x, y, { anim, t: at, facing: h.face, height: 112, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
+        if (!has(anim)) anim = 'idle';
+        HA.draw(c, x, y, { anim, t: at, facing: h.face, height: 132, flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, shadow: h.onGround });
       } else env.drawHero(c, x, y, {
         facing: h.face, run: clamp(Math.abs(h.vx) / 192, 0, 1), phase: h.phase, air: !h.onGround, vy: h.vy,
-        weapon: 'sword', attack: h.atk ? clamp(h.atkT / SLASH_DUR[Math.max(0, h.atkStep - 1)], 0.001, 1) : 0, hurt: h.hurtT / 0.32, scale: 1.02
+        weapon: 'bow', draw: h.drawing ? h.draw : 0, aim: h.aim, hurt: h.hurtT / 0.32, scale: 1.02
       });
       c.restore();
     }
@@ -1926,7 +1833,6 @@ void main(){
       }
       drawHeroLayer(c);
       drawArrows(c);
-      drawWinds(c);
       drawShots(c);
       drawWall(c);
       env.fx.draw(c, 'front', cam, 0);

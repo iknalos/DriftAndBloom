@@ -124,33 +124,21 @@ def main():
                 shutil.copyfile(f, ROOT / rel)
                 assets.append(rel)
 
-    # the 3D swordsman: the PUBLIC hero only (CC0 KayKit Knight from assets/hero_public).
-    # assets/hero in the working folder is the private Yasuo-based swordsman — never published.
+    # the heroes: CC0 sprite sheets (Quaternius characters + animations, KayKit weapons,
+    # Mesh2Motion bow moves) in assets/hero/<id>/ + roster.json. The old Yasuo sets ('day',
+    # 'hell') were private-only and must never be published.
     if (ROOT / "assets/hero").exists():
         shutil.rmtree(ROOT / "assets/hero")
-    private = {f.relative_to(SRC / "assets/hero").as_posix(): hashlib.sha256(f.read_bytes()).hexdigest()
-               for f in (SRC / "assets/hero").rglob("*") if f.is_file()} if (SRC / "assets/hero").exists() else {}
-    for f in sorted((SRC / "assets/hero_public").rglob("*")) if (SRC / "assets/hero_public").exists() else []:
-        if not f.is_file() or f.suffix.lower() not in (".webp", ".json"):
-            continue
-        rel = f.relative_to(SRC / "assets/hero_public").as_posix()
-        if private.get(rel) == hashlib.sha256(f.read_bytes()).hexdigest():
-            sys.exit(f"refusing to publish: assets/hero_public/{rel} is identical to the private hero")
-        out = ROOT / "assets/hero" / rel
-        out.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(f, out)
-        assets.append(f"assets/hero/{rel}")
-    # credit the public hero in the site's credits file
-    cred_path = ROOT / "assets/worlds/CREDITS.json"
-    if cred_path.exists():
-        cred = json.loads(cred_path.read_text(encoding="utf-8"))
-        cred["assets/hero/day/hero_0.webp"] = {
-            "title": "Knight (KayKit Adventurers Character Pack 1.0)", "author": "Kay Lousberg (kaylousberg.com)",
-            "license": "CC0 1.0", "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-            "source": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
-            "origin": "3D model, rendered into sprite sheets", "modified": "shield removed, rendered side-on, relit"}
-        cred_path.write_text(json.dumps(cred, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
-
+    hero_src = SRC / "assets/hero"
+    for bad in ("day", "hell"):
+        if (hero_src / bad).exists():
+            sys.exit(f"refusing to publish: assets/hero/{bad} (old private hero set) is still in the working folder")
+    for f in sorted(hero_src.rglob("*")) if hero_src.exists() else []:
+        if f.is_file() and f.suffix.lower() in (".webp", ".json"):
+            rel = f.relative_to(SRC).as_posix()
+            (ROOT / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(f, ROOT / rel)
+            assets.append(rel)
     html = (SRC / "game.html").read_text(encoding="utf-8")
     if "</head>" not in html:
         sys.exit("game.html has no </head>")

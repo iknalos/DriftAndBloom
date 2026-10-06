@@ -1,0 +1,56 @@
+{
+ "animal": [
+  {
+   "id": "kael",
+   "name": "Kael",
+   "tag": "Wandering blade of the green hills"
+  },
+  {
+   "id": "mira",
+   "name": "Mira",
+   "tag": "Crimson duelist, fastest edge alive"
+  },
+  {
+   "id": "brann",
+   "name": "Brann",
+   "tag": "Bearded wall of the north"
+  },
+  {
+   "id": "sera",
+   "name": "Sera",
+   "tag": "Sunlit knight of the river towns"
+  },
+  {
+   "id": "darius",
+   "name": "Darius",
+   "tag": "Hooded hunter of the midnight wood"
+  }
+ ],
+ "hell": [
+  {
+   "id": "rowan",
+   "name": "Rowan",
+   "tag": "Hooded ranger, never misses twice"
+  },
+  {
+   "id": "lyra",
+   "name": "Lyra",
+   "tag": "Midnight archer of the ash wastes"
+  },
+  {
+   "id": "ash",
+   "name": "Ash",
+   "tag": "Wild-haired bowman, born in fire"
+  },
+  {
+   "id": "wren",
+   "name": "Wren",
+   "tag": "Desert scout with a hawk's eye"
+  },
+  {
+   "id": "vex",
+   "name": "Vex",
+   "tag": "Royal huntress of the high keep"
+  }
+ ]
+}

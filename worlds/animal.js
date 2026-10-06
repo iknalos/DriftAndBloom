@@ -114,12 +114,13 @@ void main(){
   function polyPath(g, pts, s) { g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0] * s, p[1] * s) : g.moveTo(p[0] * s, p[1] * s))); g.closePath(); }
 
   DABWorlds.register('animal', {
-    title: 'Animal World', opaque: true, hero: 'day', color: '150,215,110',
+    title: 'Animal World', opaque: true, roster: 'animal', color: '150,215,110',
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
-    howto: ['◀ ▶ move · ⤒ jump · ⚔ slash (tap again to combo)', '» dash dodges any attack', 'Eagle got you? Tap ⚔ fast to break free'],
-    controls: { dirs: 'lr', buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
+    howto: ['Stick: run · push up to jump · ⚔ combo (tap, tap, tap)', 'In the air: ⚔ rising slash, falling = plunge strike',
+            '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free'],
+    controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
       far: A + 'bg_far.webp', mid: A + 'bg_mid.webp', bark: A + 'bark.webp', litter: A + 'litter.webp',
       croc: A + 'croc.webp', boar: A + 'boar.webp', eagle: A + 'eagle.webp', vulture: A + 'vulture.webp',
@@ -248,13 +249,16 @@ void main(){
       fx.burst(hero.x, hero.y - 50, { n: 10, speed: 160, rgb: '255,120,110', kind: 'spark', life: 0.4, size: 2.4 });
       return true;
     }
+    function atkDur(step) { return step === 7 ? 0.36 : step === 9 ? 0.46 : ATK_DUR[step - 1]; }
     function startAttack(step) {
       hero.atk = 1; hero.atkStep = step; hero.atkT = 0; hero.atkQ = false; hero.hitSet.clear();
-      if (hero.ground) hero.vx += hero.face * (step === 3 ? 210 : 110);
+      if (hero.ground) hero.vx += hero.face * (step === 3 ? 230 : 120);
+      if (step === 7) hero.vy = Math.min(hero.vy, -260);              // the rising slash carries you up a little
+      if (step === 9) { hero.vy = 380; hero.plungeAtk = true; }       // the plunge drives you down
     }
     function swordHits() {
-      const s3 = hero.atkStep === 3;
-      const cx = hero.x + hero.face * 42, cy = hero.y - 56, r = s3 ? 64 : 55;
+      const st = hero.atkStep, s3 = st === 3 || st === 9;
+      const cx = hero.x + hero.face * (st === 7 ? 26 : 46), cy = hero.y - (st === 7 ? 108 : st === 9 ? 34 : 58), r = s3 ? 66 : st === 7 ? 62 : 56;
       for (const e of enemies) {
         if (e.dead || hero.hitSet.has(e)) continue;
         const boxes = e.boxes();
@@ -270,6 +274,32 @@ void main(){
             break;
           }
         }
+      }
+    }
+    // the dash cuts every enemy it passes through (once per dash)
+    function dashHits() {
+      const h = hero;
+      for (const e of enemies) {
+        if (e.dead || h.dashHit.has(e)) continue;
+        for (const b of e.boxes()) {
+          if (Math.abs(b.x - h.x) < b.r + 34 && Math.abs(b.y - (h.y - 50)) < b.r + 46) {
+            h.dashHit.add(e); e.hurt(2, h.face);
+            env.hitstop(0.07); env.shake(0.25);
+            fx.burst(b.x, b.y, { n: 16, speed: 280, rgb: '255,245,210', kind: 'spark', life: 0.3, size: 2.6 });
+            fx.spawn({ x: b.x, y: b.y, kind: 'ring', size: 6, grow: 200, life: 0.25, rgb: env.charRgb });
+            break;
+          }
+        }
+      }
+    }
+    // plunge strike landing: a shockwave that hits everything close on the ground
+    function plungeLand() {
+      const h = hero;
+      env.shake(0.4); env.hitstop(0.06); dust(h.x, h.y, 12, 0);
+      fx.spawn({ x: h.x, y: h.y - 6, kind: 'ring', size: 12, grow: 360, life: 0.35, rgb: '255,240,200' });
+      for (const e of enemies) {
+        if (e.dead) continue;
+        for (const b of e.boxes()) if (Math.abs(b.x - h.x) < 110 && Math.abs(b.y - h.y) < 90) { e.hurt(2, Math.sign(b.x - h.x) || h.face); break; }
       }
     }
     function plunge() {
@@ -303,20 +333,30 @@ void main(){
         }
         return;
       }
-      let mv = (I.right ? 1 : 0) - (I.left ? 1 : 0);
+      const ax = I.ax || 0;
+      let mv = Math.abs(ax) > 0.18 ? clamp(ax * 1.2, -1, 1) : 0;        // analog stick: walk → sprint
       if (h.hurtT > 0) { h.hurtT -= dt; mv = 0; }
-      // dash (brief invulnerability)
+      if (h.rollT > 0) { h.rollT -= dt; mv = 0; }
+      // » dash-strike (League style: cut through everything in the way), stick down = dodge roll
       if (I.pressed.special && h.dashCD <= 0 && h.hurtT <= 0) {
-        h.dashT = 0.22; h.dashCD = 0.7; if (mv) h.face = mv; h.vx = h.face * 440; h.atk = 0;
-        env.invuln(0.32); dust(h.x, h.y, 5, -h.face);
+        const dir = Math.abs(ax) > 0.25 ? Math.sign(ax) : h.face;
+        h.face = dir; h.atk = 0; h.dashCD = 0.6;
+        if ((I.ay || 0) > 0.55 && h.ground) {
+          h.rollT = 0.5; h.vx = dir * 330; env.invuln(0.45); dust(h.x, h.y, 4, -dir);
+        } else {
+          h.dashT = 0.26; h.vx = dir * 560; h.dashHit = new Set(); env.invuln(0.34); dust(h.x, h.y, 6, -dir);
+          if (!h.ground) h.vy = Math.min(h.vy, -60);
+          fx.spawn({ x: h.x, y: h.y - 50, kind: 'ring', size: 10, grow: 260, life: 0.25, rgb: env.charRgb });
+        }
       }
       if (h.dashT > 0) {
+        dashHits();
         h.dashT -= dt;
         if (Math.random() < 0.6) fx.spawn({ x: h.x - h.face * 10, y: h.y - rand(10, 60), vx: -h.face * 60, kind: 'glow', size: 3, life: 0.3, rgb: env.charRgb });
         if (h.dashT <= 0) h.vx *= 0.4;
       } else {
-        const maxV = (h.atk && h.ground ? 0.32 : 1) * 188;
-        h.vx = approach(h.vx, mv * maxV, (h.ground ? 1500 : 950) * dt);
+        const maxV = (h.atk && h.ground ? 0.32 : 1) * 200;
+        if (h.rollT <= 0) h.vx = approach(h.vx, mv * maxV, (h.ground ? 1500 : 950) * dt);
         if (mv && !h.atk && h.hurtT <= 0) h.face = mv;
       }
       // jump (buffer + coyote + variable height)
@@ -327,16 +367,18 @@ void main(){
       }
       if (I.released.jump && h.vy < -430) h.vy = -430;   // a quick tap still clears a gap
       // attack chain
-      if (I.pressed.attack && h.hurtT <= 0) {
-        if (!h.atk) startAttack(1);
-        else if (h.atkT > ATK_DUR[h.atkStep - 1] * 0.32) h.atkQ = true;
+      if (I.pressed.attack && h.hurtT <= 0 && h.rollT <= 0) {
+        if (!h.ground && !h.atk) startAttack(h.vy < 0 ? 7 : 9);          // rising slash / plunge
+        else if (!h.atk) startAttack(1);
+        else if (h.atkStep <= 3 && h.atkT > ATK_DUR[h.atkStep - 1] * 0.32) h.atkQ = true;
       }
       if (h.atk) {
         h.atkT += dt;
-        const dur = h.ground ? ATK_DUR[h.atkStep - 1] : 0.3;
+        const dur = atkDur(h.atkStep);
         const k = h.atkT / dur;
-        if (k > 0.28 && k < 0.66) swordHits();
-        if (k >= 1) { if (h.atkQ && h.atkStep < 3) startAttack(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; } }
+        if (k > 0.24 && k < (h.atkStep === 9 ? 0.98 : 0.66)) swordHits();
+        if (k >= 1) { if (h.atkQ && h.atkStep < 3 && h.ground) startAttack(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; } }
+        else if (h.atkStep === 9 && h.ground) { h.atk = 0; h.atkStep = 0; plungeLand(); }
       }
       // physics
       h.vy += (h.vy > 0 ? 1900 : 1650) * dt;
@@ -1133,17 +1175,24 @@ void main(){
     }
 
     // ── the 3D swordsman (pre-rendered sprite sheets, env.hero) ──────────────
-    const HERO_H = 116;                     // standing height on screen (app px)
+    const HERO_H = 136;                     // standing height on screen (app px)
     function heroPose(h) {
-      const HA = env.hero;
-      if (h.carried) return { anim: 'air', t: 1 / 12, rot: Math.sin(T * 7) * 0.09 * h.face };
-      if (h.dashT > 0) return { anim: 'dash', t: HA.dur('dash') * (0.22 + 0.5 * (1 - h.dashT / 0.22)) };
+      const HA = env.hero, has = n => HA.has(n);
+      if (h.carried) return { anim: has('air') ? 'air' : 'idle', t: T, rot: Math.sin(T * 7) * 0.09 * h.face };
+      if (h.rollT > 0 && has('roll')) return { anim: 'roll', t: HA.dur('roll') * clamp(1 - h.rollT / 0.5, 0, 0.98) };
+      if (h.dashT > 0) return { anim: 'dash', t: HA.dur('dash') * (0.15 + 0.6 * (1 - h.dashT / 0.26)) };
       if (h.atk) {
-        const dur = h.ground ? ATK_DUR[h.atkStep - 1] : 0.3, k = clamp(h.atkT / dur, 0, 1);
-        const anim = !h.ground ? 'slash3' : h.atkStep === 3 ? 'thrust' : h.atkStep === 2 ? 'slash2' : 'slash1';
-        return { anim, t: HA.dur(anim) * k * 0.86 };
+        const k = clamp(h.atkT / atkDur(h.atkStep), 0, 1), st = h.atkStep;
+        let anim = st === 7 ? 'upslash' : st === 9 ? 'airslash' : 'slash' + st;
+        if (!has(anim)) anim = st === 3 && has('thrust') ? 'thrust' : 'slash1';
+        return { anim, t: HA.dur(anim) * k * 0.92 };
       }
-      if (!h.ground) return { anim: 'air', t: (h.vy < -260 ? 0 : h.vy < 220 ? 1 : 2) / 12 };
+      if (h.hurtT > 0 && has('hit')) return { anim: 'hit', t: HA.dur('hit') * clamp(1 - h.hurtT / 0.32, 0, 0.98) };
+      if (!h.ground) {
+        if (h.vy < -120 && has('jump')) return { anim: 'jump', t: HA.dur('jump') * clamp(0.25 + 0.5 * (1 + h.vy / 650), 0.25, 0.85) };
+        return { anim: has('air') ? 'air' : 'jump', t: T };
+      }
+      if (h.landT > 0 && has('land')) return { anim: 'land', t: HA.dur('land') * clamp(1 - h.landT / 0.18, 0, 0.98) };
       if (h.run > 0.18) return { anim: 'run', t: h.runClock };
       return { anim: 'idle', t: T };
     }
@@ -1158,7 +1207,7 @@ void main(){
         anim: p.anim, t: p.t, rot: (p.rot || 0) - (h.hurtT > 0 ? 0.1 * h.face : 0), facing: h.face, height: HERO_H,
         flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, alpha: blink ? 0.55 : 1, shadow: h.ground && !h.carried
       });
-      const dur = h.atkStep ? (h.ground ? ATK_DUR[h.atkStep - 1] : 0.3) : 1;
+      const dur = h.atkStep ? atkDur(h.atkStep) : 1;
       if (h.atk && h.atkStep === 3 && h.atkT / dur > 0.45 && h.atkT / dur < 0.6 && h.ground) {
         fx.spawn({ x: h.x + h.face * 70, y: h.y - 46, kind: 'ring', size: 8, grow: 220, life: 0.3, rgb: env.charRgb });
       }

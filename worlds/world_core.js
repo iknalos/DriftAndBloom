@@ -557,6 +557,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   // set is missing (or fetch fails, e.g. file://), env.hero.ready stays false and
   // the world keeps using env.drawHero (the drawn rig).
   const heroSets = {};
+  let rosterP = null;
+  function loadRoster() {
+    if (!rosterP) rosterP = fetch('assets/hero/roster.json').then(r => (r.ok ? r.json() : {})).catch(() => ({}));
+    return rosterP;
+  }
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
   function loadHeroSet(set) {
     if (heroSets[set]) return heroSets[set].p;
     const H = { set, ready: false, meta: null, sheets: [] };
@@ -651,7 +658,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       if (!active) return;
       e.preventDefault();
       const p = appPoint(e);
-      if (active.phase === 'intro') { if (active.ready) active.startPlay(); return; }
+      if (active.phase === 'intro') {
+        const pid = active.portraitAt(p);
+        if (pid) { active.pickHero(pid); return; }
+        if (active.ready && !active.heroLoading && (!active.roster.length || p.y > 690)) active.startPlay();
+        return;
+      }
       if (active.phase === 'result') { if (active.resultT > 0.9) active.finish(); return; }
       if (active.paused) { active.pauseTap(p); return; }
       if (Math.hypot(p.x - 362, p.y - 46) < 26) { active.paused = true; return; }
@@ -697,6 +709,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   addEventListener('keydown', e => {
     if (!active) return;
     if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (active.phase === 'play') active.paused = !active.paused; return; }
+    if (active.phase === 'intro' && active.roster.length && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      const i = active.roster.findIndex(h => h.id === active.heroId), n = active.roster.length;
+      active.pickHero(active.roster[(i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n].id); e.preventDefault(); return;
+    }
     if (active.phase === 'intro' && active.ready && (e.key === ' ' || e.key === 'Enter')) { active.startPlay(); e.preventDefault(); return; }
     if (active.phase === 'result' && active.resultT > 0.9 && (e.key === ' ' || e.key === 'Enter')) { active.finish(); e.preventDefault(); return; }
     const k = KEYMAP[e.key];
@@ -832,8 +848,16 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       setControls(cfg) { S.controls = cfg; }
     };
 
-    const heroP = def.hero ? loadHeroSet(def.hero) : Promise.resolve(null);
-    loadAll(def.assets, k => { S.loadK = k * (def.hero ? 0.85 : 1); }).then(a => heroP.then(H => {
+    // def.roster = 'animal' | 'hell' -> the player picks one of that world's heroes on the intro card
+    S.roster = []; S.heroId = null; S.portraits = {};
+    const heroP = def.roster ? loadRoster().then(R => {
+      S.roster = R[def.roster] || [];
+      const saved = lsGet('dab_hero_' + def.roster);
+      S.heroId = (S.roster.find(h => h.id === saved) || S.roster[0] || {}).id || null;
+      S.roster.forEach(h => loadImage(`assets/hero/${h.id}/portrait.webp`).then(im => { S.portraits[h.id] = im; }));
+      return S.heroId ? loadHeroSet(S.heroId) : null;
+    }) : def.hero ? loadHeroSet(def.hero) : Promise.resolve(null);
+    loadAll(def.assets, k => { S.loadK = k * (def.hero || def.roster ? 0.85 : 1); }).then(a => heroP.then(H => {
       S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
       try { S.world = def.create(S.env); } catch (e) { console.error('[worlds] create failed', e); S.world = null; }
@@ -845,6 +869,23 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   }
 
   Session.prototype.startPlay = function () { this.phase = 'play'; this.playT = 0; };
+  // choose a hero on the intro card (re-loads that hero's sprite sheets)
+  Session.prototype.pickHero = function (id) {
+    if (!id || id === this.heroId) return;
+    this.heroId = id; this.heroLoading = true;
+    lsSet('dab_hero_' + this.def.roster, id);
+    loadHeroSet(id).then(H => { if (this.heroId === id) { this.env.hero = makeHeroApi(H); this.warmed = false; this.heroLoading = false; } });
+  };
+  const PICK = { y: 330, w: 66, h: 96, gap: 8 };
+  Session.prototype.portraitAt = function (p) {
+    const n = this.roster.length; if (!n) return null;
+    const x0 = W / 2 - (n * PICK.w + (n - 1) * PICK.gap) / 2;
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * (PICK.w + PICK.gap);
+      if (p.x > x && p.x < x + PICK.w && p.y > PICK.y && p.y < PICK.y + PICK.h) return this.roster[i].id;
+    }
+    return null;
+  };
 
   // Keep it smooth on slower phones: if frames keep taking > 21 ms, render the
   // world at a lower canvas resolution (down to 1.25 px per app px); creep back up
@@ -902,6 +943,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     for (const k of K) if (k !== 'left' && k !== 'right' && k !== 'down') held[k] = true;
     // in a side-scroller ↑ / W also jumps
     if (this.controls.dirs === 'lr' && K.has('up')) held.jump = true;
+    if (this.controls.stickJump && I.ay < -0.6 && !this.env.noStickJump) held.jump = true;   // (a world can pause it, e.g. while aiming)
     if (window.__dabWorldKeys) for (const k in window.__dabWorldKeys) if (window.__dabWorldKeys[k]) held[k] = true;
     I.pressed = {}; I.released = {};
     for (const id in held) if (!this.prevHeld[id]) I.pressed[id] = true;
@@ -935,7 +977,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (this.phase === 'intro') {
       this.introT += dt;
       if (this.ready && !this.warmed) { this.warmed = true; this.env.hero.warm(c); }
-      if (this.ready && this.introT > 3.2) this.startPlay();
+      if (this.ready && !this.heroLoading && this.introT > (this.roster.length ? 12 : 3.2)) this.startPlay();
     }
     const input = this.buildInput();
     if (this.phase === 'play' || this.phase === 'result') {
@@ -1070,24 +1112,56 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     c.globalAlpha = k;
     c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const R = this.roster.length;
+    const ty = R ? 236 : 470;                                  // with a hero picker the text moves up
     c.fillStyle = `rgb(${this.rgb})`; c.font = 'bold 34px Georgia, serif';
-    c.fillText(this.def.title, W / 2, 470);
+    c.fillText(this.def.title, W / 2, ty);
     c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '15px system-ui';
     const sub = typeof this.def.subtitle === 'function' ? this.def.subtitle(this.reason) : (this.def.subtitle || '');
-    wrap(c, sub, W / 2, 505, 320, 21);
-    c.fillStyle = 'rgba(255,230,160,0.95)'; c.font = 'bold 15px system-ui';
-    wrap(c, this.def.hint || '', W / 2, 580, 320, 21);
-    c.fillStyle = 'rgba(255,255,255,0.55)'; c.font = '13px system-ui';
-    (this.def.howto || []).forEach((line, i) => c.fillText(line, W / 2, 630 + i * 20));
+    wrap(c, sub, W / 2, ty + 32, 320, 20);
+    if (R) this.drawPicker(c);
+    c.fillStyle = 'rgba(255,230,160,0.95)'; c.font = 'bold 14px system-ui';
+    wrap(c, this.def.hint || '', W / 2, R ? 540 : 580, 330, 20);
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.font = '12.5px system-ui';
+    (this.def.howto || []).forEach((line, i) => c.fillText(line, W / 2, (R ? 584 : 630) + i * 19));
     // loading bar / tap to start
     if (!this.ready) {
       c.fillStyle = 'rgba(255,255,255,0.15)'; roundRect(c, W / 2 - 80, 740, 160, 6, 3); c.fill();
       c.fillStyle = `rgb(${this.rgb})`; roundRect(c, W / 2 - 80, 740, 160 * this.loadK, 6, 3); c.fill();
     } else {
       c.globalAlpha = k * (0.55 + 0.45 * Math.sin(this.t * 4));
-      c.fillStyle = '#fff'; c.font = 'bold 15px system-ui'; c.fillText('Tap to start', W / 2, 752);
+      if (R) {                                                  // a real Start button under the picker
+        c.globalAlpha = k;
+        c.fillStyle = this.heroLoading ? 'rgba(255,255,255,0.18)' : `rgba(${this.rgb},0.9)`;
+        roundRect(c, W / 2 - 100, 712, 200, 52, 16); c.fill();
+        c.fillStyle = '#071828'; c.font = 'bold 19px system-ui'; c.textBaseline = 'middle';
+        c.fillText(this.heroLoading ? 'Loading…' : 'Start', W / 2, 739); c.textBaseline = 'alphabetic';
+      } else { c.fillStyle = '#fff'; c.font = 'bold 15px system-ui'; c.fillText('Tap to start', W / 2, 752); }
     }
     c.restore();
+  };
+
+  Session.prototype.drawPicker = function (c) {
+    const n = this.roster.length, x0 = W / 2 - (n * PICK.w + (n - 1) * PICK.gap) / 2;
+    c.fillStyle = 'rgba(255,255,255,0.7)'; c.font = 'bold 12px system-ui';
+    c.fillText('CHOOSE YOUR HERO', W / 2, PICK.y - 12);
+    let sel = null;
+    for (let i = 0; i < n; i++) {
+      const h = this.roster[i], x = x0 + i * (PICK.w + PICK.gap), on = h.id === this.heroId;
+      if (on) sel = h;
+      c.fillStyle = on ? `rgba(${this.rgb},0.32)` : 'rgba(255,255,255,0.07)';
+      roundRect(c, x, PICK.y, PICK.w, PICK.h, 12); c.fill();
+      c.lineWidth = on ? 2.5 : 1; c.strokeStyle = on ? `rgb(${this.rgb})` : 'rgba(255,255,255,0.2)'; c.stroke();
+      const im = this.portraits[h.id];
+      if (im) {
+        const s = Math.min((PICK.w - 8) / im.width, (PICK.h - 8) / im.height);
+        c.drawImage(im, x + PICK.w / 2 - im.width * s / 2, PICK.y + PICK.h - 4 - im.height * s, im.width * s, im.height * s);
+      }
+    }
+    if (sel) {
+      c.fillStyle = '#fff'; c.font = 'bold 17px Georgia, serif'; c.fillText(sel.name, W / 2, PICK.y + PICK.h + 26);
+      c.fillStyle = 'rgba(255,255,255,0.65)'; c.font = 'italic 12.5px system-ui'; c.fillText(sel.tag || '', W / 2, PICK.y + PICK.h + 45);
+    }
   };
 
   Session.prototype.drawResult = function (c) {
