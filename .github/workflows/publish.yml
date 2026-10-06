@@ -32,6 +32,8 @@ jobs:
           mkdir _site
           cp -r index.html sw.js manifest.webmanifest icons workspace assets _site/
           if [ -d worlds ]; then cp -r worlds _site/; fi
+          # app/latest.json: the newest phone-app build (written by the app repo's CI) — the apps check it
+          if [ -d app ]; then cp -r app _site/; fi
 
       - uses: actions/configure-pages@v5
 
@@ -46,6 +48,8 @@ jobs:
   # what it looks like in Safari on an iPhone (screenshots in the run's artifacts)
   iphone-safari:
     needs: deploy
+    # not for the app repo's "App build dev-N is out" commits (only app/latest.json changed)
+    if: ${{ !startsWith(github.event.head_commit.message, 'App build') }}
     runs-on: macos-15
     steps:
       - name: Checkout
