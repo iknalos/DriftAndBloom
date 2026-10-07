@@ -283,6 +283,9 @@
         for (let x = 0; x <= W; x += 20) c.lineTo(x, 112 - k * 4 + Math.sin(x * 0.02 + k * 2) * 10 + k * 8);
         c.lineTo(W, 140); c.lineTo(0, 140); c.closePath(); c.fill();
       }
+      const hb = c.createLinearGradient(0, 0, 0, 126);              // keep the HUD readable on the bright sky
+      hb.addColorStop(0, 'rgba(70,30,10,0.78)'); hb.addColorStop(0.75, 'rgba(70,30,10,0.5)'); hb.addColorStop(1, 'rgba(70,30,10,0)');
+      c.fillStyle = hb; c.fillRect(0, 0, W, 126);
       // board shadow + tiles
       c.fillStyle = 'rgba(90,50,20,0.35)'; c.beginPath(); c.roundRect(OX - 4 + 5, OY - 4 + 7, L.cols * CELL + 8, L.rows * CELL + 8, 12); c.fill();
       c.fillStyle = '#b97d47'; c.beginPath(); c.roundRect(OX - 4, OY - 4, L.cols * CELL + 8, L.rows * CELL + 8, 12); c.fill();
