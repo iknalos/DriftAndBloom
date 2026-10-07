@@ -897,6 +897,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       W, H, TAU, clamp, lerp, rand, ease,
       get land() { return S.land; },
       get view() { return S.view; },              // world rows on screen: top .. top + h
+      get heroInfo() { return (S.roster || []).find(h => h.id === S.heroId) || null; },   // roster entry (name, saber colour…)
       get t() { return S.t; },
       get dpr() { return S.dpr; },               // current canvas pixels per app px (adaptive)
       charId: S.charId, charRgb: S.charRgb,

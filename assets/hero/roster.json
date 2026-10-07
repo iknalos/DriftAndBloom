@@ -3,7 +3,8 @@
   {
    "id": "kael",
    "name": "Kael",
-   "tag": "Wandering blade of the green hills"
+   "tag": "Wandering blade of the green hills",
+   "saber": "70,160,255"
   },
   {
    "id": "mira",
@@ -18,12 +19,14 @@
   {
    "id": "sera",
    "name": "Sera",
-   "tag": "Sunlit knight of the river towns"
+   "tag": "Sunlit knight of the river towns",
+   "saber": "80,255,110"
   },
   {
    "id": "darius",
    "name": "Darius",
-   "tag": "Hooded hunter of the midnight wood"
+   "tag": "Hooded hunter of the midnight wood",
+   "saber": "255,55,55"
   }
  ],
  "hell": [

@@ -200,7 +200,7 @@ void main(){
       'splash_big', 'fire', 'lava_loop', 'explode'],
     subtitle: r => (r && /dragon|scorch/i.test(r) ? r + ' ' : '') + 'You fell through the burning pond into the underworld.',
     hint: 'Run for the exit gate. The horde is right behind you.',
-    howto: ['Stick: run · push up to jump · down = crouch · down + move = crawl', 'Hold ⚔: pull an arrow, draw · the stick aims · let go to shoot',
+    howto: ['Stick: run · push up to jump · down = crouch · down + move = crawl', 'Hold ⚔: pull an arrow, draw (kneeling when low) · stick aims · let go',
             '» dodge roll · 🔥 = flaming volley · crouch / crawl ducks under bats and fire'],
     controls: {
       dirs: 'stick',
@@ -244,7 +244,7 @@ void main(){
       draw: 0, drawing: false, aim: 0.05, shootCd: 0, hurtT: 0, phase: 0, lavaT: 0, hidden: false,
       portalT: 0, safe: { x: 60, seg: null }, target: null, volleyCd: 0,
       atk: 0, atkT: 0, atkStep: 0, atkQ: false, hitSet: new Set(), holdT: 0, charge: 0, castT: 0, runClock: 0,
-      crouch: false, crawl: false, crawlClock: 0, quick: false
+      crouch: false, crawl: false, crawlClock: 0, quick: false, kneel: false, relKneel: false, relLegs: '', walkClock: 0
     };
     // how tall the archer is right now: crouching / crawling ducks what flies at a standing archer
     const heroTall = () => (hero.crawl ? 22 : hero.crouch ? 40 : 64);
@@ -637,10 +637,20 @@ void main(){
       for (const v of aimVariants()) if (!best || Math.abs(v.ang - rad) < Math.abs(best.ang - rad)) best = v;
       return best.tag;
     }
+    // the bow pose's legs: 'k' kneeling, 'a' mid-jump, 'w' walking, '' standing (if that set was rendered)
+    function bowLegs() {
+      const h = hero, HA = env.hero, tag = aimTag(h.aim);
+      if (h.kneel && HA.has('khold_' + tag)) return 'k';
+      if (!h.onGround && HA.has('ahold_' + tag)) return 'a';
+      if (h.onGround && Math.abs(h.vx) > 30 && HA.has('whold_' + tag)) return 'w';
+      return '';
+    }
+    const holdTime = legs => (legs === 'w' ? hero.walkClock : tAll);       // the walking hold steps with the feet
     function bowOrigin() {
       const h = hero, HA = env.hero;
       if (HA.ready) {
-        const pose = { anim: 'hold_' + aimTag(h.aim), t: tAll, facing: h.face, height: HERO_H };
+        const legs = bowLegs();
+        const pose = { anim: legs + 'hold_' + aimTag(h.aim), t: holdTime(legs), facing: h.face, height: HERO_H };
         const tip = HA.point(pose, 'tip');
         // the flying arrow's point sits 10 px behind its drawn head, so it leaves the bow exactly where the nocked one was
         if (tip) return { x: h.x + tip.x - h.face * Math.cos(h.aim) * 10, y: h.y + tip.y + Math.sin(h.aim) * 10 };
@@ -692,11 +702,16 @@ void main(){
       // the draw follows the sprite: 0 .. NOCKED = reach back to the quiver and nock an arrow,
       // NOCKED .. 1 = pull the string to the jaw. Let go early and he still nocks, then looses a quick shot.
       const loose = () => {
-        shoot(bowPower()); h.drawing = false; h.draw = 0; h.quick = false; h.shootCd = 0.1; h.relT = 0.32; h.relAim = h.aim;
+        h.relLegs = bowLegs(); shoot(bowPower()); h.relKneel = h.kneel; h.drawing = false; h.kneel = false; h.draw = 0; h.quick = false; h.shootCd = 0.1; h.relT = 0.32; h.relAim = h.aim;
         sfx('bow_shot', h.x, { rate: 0.9 + 0.2 * h.relT });
       };
       if ((I.held.attack || h.quick) && h.shootCd <= 0 && h.hurtT <= 0 && !(h.rollT > 0)) {
-        if (!h.drawing) { h.drawing = true; h.draw = 0; h.quick = false; h.crouch = h.crawl = false; sfx('jump', h.x, { vol: 0.25, rate: 1.4 }); }
+        if (!h.drawing) {
+          h.drawing = true; h.draw = 0; h.quick = false;
+          h.kneel = h.onGround && (h.crouch || h.crawl || say > 0.55);   // from low: shoot kneeling (out of a crawl too)
+          h.crawl = false; h.crouch = h.kneel;
+          sfx('jump', h.x, { vol: 0.25, rate: 1.4 });
+        }
         const was = h.draw;
         h.draw = Math.min(1, h.draw + dt / DRAW_T);
         if (was < NOCKED && h.draw >= NOCKED) sfx('bow_draw', h.x, { vol: 0.7 });
@@ -712,7 +727,7 @@ void main(){
         wantAim = I.aimAt;
       } else if (h.drawing && stickAim) {
         if (Math.abs(sax) > 0.15) h.face = Math.sign(sax);
-        mv = 0;
+        if (h.kneel) mv = 0;                               // walking while aiming (kneeling stays put)
         wantAim = h.stickAim = clamp(Math.atan2(-say, Math.abs(sax) + 0.001), AIM_MIN, AIM_MAX);
         h.aimMem = 0.18;                                   // letting go of stick + button together keeps the aim
       } else if (h.drawing && h.aimMem > 0) wantAim = h.stickAim;
@@ -721,7 +736,7 @@ void main(){
       if (h.relT > 0) h.relT -= dt;
       // » dodge roll (brief invulnerability)
       h.rollCd = Math.max(0, (h.rollCd || 0) - dt);
-      if (I.pressed.special && h.rollCd <= 0 && h.onGround && h.hurtT <= 0) {
+      if (I.pressed.special && h.rollCd <= 0 && h.onGround && h.hurtT <= 0) { h.kneel = false;
         const dir = Math.abs(sax) > 0.25 ? Math.sign(sax) : h.face;
         h.rollT = 0.5; h.rollCd = 0.65; h.face = dir; h.vx = dir * 330; h.drawing = false; h.draw = 0; env.invuln(0.45); sfx('roll');
         burstP(h.x, h.y, { n: 6, speed: 80, rgb: '120,90,80', kind: 'debris', life: 0.4, angle: -Math.PI / 2, spread: 2.2, g: 300, size: 2 });
@@ -735,8 +750,11 @@ void main(){
       }
 
       // crouch (stick down) / crawl (down + left or right): low under bats, spit and fire
-      h.crouch = h.onGround && !h.drawing && !(h.rollT > 0) && h.hurtT <= 0 && say > 0.55 && !I.held.attack && !I.pressed.jump;
-      h.crawl = h.crouch && Math.abs(sax) > 0.3;
+      if (h.drawing && h.kneel) { h.crouch = true; h.crawl = false; }    // kneeling until the arrow is loosed
+      else {
+        h.crouch = h.onGround && !h.drawing && !(h.rollT > 0) && h.hurtT <= 0 && say > 0.55 && !I.held.attack && !I.pressed.jump;
+        h.crawl = h.crouch && Math.abs(sax) > 0.3;
+      }
       if (h.crouch && !h.crawl) mv = 0;
       if (h.crawl) h.crawlClock += dt * Math.abs(h.vx) / 60;
       // run + jump
@@ -779,6 +797,7 @@ void main(){
       if (h.y > LAVA_Y + 6) lavaDeath();
       h.phase += dt * Math.abs(h.vx) / 13;
       h.runClock += dt * clamp(Math.abs(h.vx) / 192, 0.45, 1.25);   // sprite run cycle keeps pace with the feet
+      h.walkClock += dt * Math.abs(h.vx) / 70;                          // the walking draw's stride
     }
 
     // ── arrows ──
@@ -1858,10 +1877,15 @@ void main(){
         let anim = 'idle', at = tAll;
         if (h.rollT > 0 && has('roll')) { anim = 'roll'; at = HA.dur('roll') * clamp(1 - h.rollT / 0.5, 0, 0.98); }
         else if (h.drawing) {
-          if (h.draw < 0.97 && has('draw')) { anim = 'draw'; at = HA.dur('draw') * h.draw; }
-          else { anim = 'hold_' + aimTag(h.aim); at = tAll; }
+          const k = bowLegs();
+          if (h.draw < 0.97 && has(k + 'draw')) { anim = k + 'draw'; at = HA.dur(k + 'draw') * h.draw; }
+          else { anim = k + 'hold_' + aimTag(h.aim); at = holdTime(k); }
         }
-        else if (h.relT > 0) { anim = 'release_' + aimTag(h.relAim || 0); at = HA.dur(anim) * clamp(1 - h.relT / 0.32, 0, 0.98); }
+        else if (h.relT > 0) {
+          const rl = h.relLegs && has(h.relLegs + 'release_' + aimTag(h.relAim || 0)) ? h.relLegs : '';
+          anim = rl + 'release_' + aimTag(h.relAim || 0);
+          at = HA.dur(anim) * clamp(1 - h.relT / 0.32, 0, 0.98);
+        }
         else if (h.hurtT > 0 && has('hit')) { anim = 'hit'; at = HA.dur('hit') * clamp(1 - h.hurtT / 0.32, 0, 0.98); }
         else if (!h.onGround) {
           anim = h.vy < -120 && has('jump') ? 'jump' : 'air';

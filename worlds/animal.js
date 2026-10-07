@@ -123,7 +123,7 @@ void main(){
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
-    howto: ['Stick: run · up = jump · down = crouch · down + move = crawl · ⚔ combo', 'In the air: ⚔ rising slash, falling = plunge strike',
+    howto: ['Stick: run · up = jump · down = crouch · down + move = crawl · ⚔ combo (also kneeling)', 'In the air: ⚔ rising slash, falling = plunge strike',
             '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free'],
     controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
@@ -263,17 +263,25 @@ void main(){
       fx.burst(hero.x, hero.y - 50, { n: 10, speed: 160, rgb: '255,120,110', kind: 'spark', life: 0.4, size: 2.4 });
       return true;
     }
-    function atkDur(step) { return step === 7 ? 0.42 : step === 9 ? 0.5 : ATK_DUR[step - 1]; }
+    function atkDur(step) { return step === 7 ? 0.42 : step === 9 ? 0.5 : step === 5 ? 0.36 : ATK_DUR[step - 1]; }   // 5 = kneeling slash
     function startAttack(step) {
       hero.atk = 1; hero.atkStep = step; hero.atkT = 0; hero.atkQ = false; hero.hitSet.clear();
+      // swinging on the run (League / PUBG style): the legs keep running under the swing
+      hero.runAtk = null;
+      const HA = env.hero;
+      if (hero.ground && step >= 1 && step <= 3 && hero.run > 0.5 && HA.has('rslash' + step + 'a')) {
+        const D = HA.dur('run') || 0.67, ph = ((hero.runClock % D) + D) % D / D;
+        const tag = ph < 0.25 || ph >= 0.75 ? 'a' : 'b';
+        hero.runAtk = { anim: 'rslash' + step + tag, ph0: tag === 'a' ? 0 : 0.5 };
+      }
       sfx(step === 3 || step === 9 ? 'swing_big' : 'swing', hero.x, { vol: 0.85, gap: 0.08 });
-      if (hero.ground) hero.vx += hero.face * (step === 3 ? 230 : 120);
+      if (hero.ground && step !== 5 && !hero.runAtk) hero.vx += hero.face * (step === 3 ? 230 : 120);   // the kneeling slash stays put
       if (step === 7) hero.vy = Math.min(hero.vy, -260);              // the rising slash carries you up a little
       if (step === 9) { hero.vy = 380; hero.plungeAtk = true; }       // the plunge drives you down
     }
     function swordHits() {
       const st = hero.atkStep, s3 = st === 3 || st === 9;
-      const cx = hero.x + hero.face * (st === 7 ? 26 : 46), cy = hero.y - (st === 7 ? 108 : st === 9 ? 34 : 58), r = s3 ? 66 : st === 7 ? 62 : 56;
+      const cx = hero.x + hero.face * (st === 7 ? 26 : 46), cy = hero.y - (st === 7 ? 108 : st === 9 ? 34 : st === 5 ? 30 : 58), r = s3 ? 66 : st === 7 ? 62 : 56;
       for (const e of enemies) {
         if (e.dead || hero.hitSet.has(e)) continue;
         const boxes = e.boxes();
@@ -377,11 +385,12 @@ void main(){
         if (h.dashT <= 0) h.vx *= 0.4;
       } else {
         // crouch (stick down) / crawl (down + left or right), slow and low
-        h.crouch = h.ground && !h.atk && h.rollT <= 0 && h.hurtT <= 0 && !h.carried && (I.ay || 0) > 0.55 && !I.held.attack && !I.pressed.jump;
-        h.crawl = h.crouch && Math.abs(ax) > 0.3;
+        const low = h.ground && h.rollT <= 0 && h.hurtT <= 0 && !h.carried && (I.ay || 0) > 0.55 && !I.pressed.jump;
+        h.crouch = low && (!h.atk || h.atkStep === 5);
+        h.crawl = h.crouch && !h.atk && !I.held.attack && Math.abs(ax) > 0.3;
         if (h.crouch) mv = h.crawl ? Math.sign(ax) * 0.3 : 0;
         if (h.crawl) h.crawlClock += dt * Math.abs(h.vx) / 60;
-        const maxV = (h.atk && h.ground ? 0.32 : 1) * 200;
+        const maxV = (h.atk && h.ground ? (h.runAtk ? 0.85 : 0.32) : 1) * 200;
         if (h.rollT <= 0) h.vx = approach(h.vx, mv * maxV, (h.ground ? 1500 : 950) * dt);
         if (mv && !h.atk && h.hurtT <= 0) h.face = Math.sign(mv);   // face is a flip (±1), never the stick's analog value — that squashed the sprite to a line mid-turn
       }
@@ -395,7 +404,8 @@ void main(){
       // attack chain
       // tap = one swing (taps during a swing queue the next one); HOLD = keep swinging the combo
       const holdAtk = I.held.attack && !I.pressed.attack && h.ground && h.hurtT <= 0 && h.rollT <= 0;
-      if (I.pressed.attack && h.hurtT <= 0 && h.rollT <= 0) {
+      if (h.crouch && !h.atk && (I.pressed.attack || I.held.attack) && h.hurtT <= 0) startAttack(5);   // low: kneeling slash
+      else if (I.pressed.attack && h.hurtT <= 0 && h.rollT <= 0) {
         if (!h.ground && !h.atk) startAttack(h.vy < 0 ? 7 : 9);          // rising slash / plunge
         else if (!h.atk) startAttack(1);
         else if (h.atkStep <= 3 && h.atkT > 0.06) h.atkQ = true;
@@ -406,7 +416,10 @@ void main(){
         const dur = atkDur(h.atkStep);
         const k = h.atkT / dur;
         if (k > 0.24 && k < (h.atkStep === 9 ? 0.98 : 0.66)) swordHits();
-        if (k >= 1) { if (h.atkQ && h.atkStep < 3 && h.ground) startAttack(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; } }
+        if (k >= 1) {
+          if (h.runAtk) { const D = env.hero.dur('run') || 0.67; h.runClock = h.runAtk.ph0 * D + env.hero.dur(h.runAtk.anim); }
+          if (h.atkQ && h.atkStep < 3 && h.ground) startAttack(h.atkStep + 1); else { h.atk = 0; h.atkStep = 0; h.runAtk = null; }
+        }
         else if (h.atkStep === 9 && h.ground) { h.atk = 0; h.atkStep = 0; plungeLand(); }
       }
       // physics
@@ -1339,7 +1352,7 @@ void main(){
       if (h.dashT > 0) return { anim: 'dash', t: HA.dur('dash') * (0.15 + 0.6 * (1 - h.dashT / 0.26)) };
       if (h.atk) {
         const k = clamp(h.atkT / atkDur(h.atkStep), 0, 1), st = h.atkStep;
-        let anim = st === 7 ? 'upslash' : st === 9 ? 'airslash' : 'slash' + st;
+        let anim = h.runAtk && has(h.runAtk.anim) ? h.runAtk.anim : st === 7 ? 'upslash' : st === 9 ? 'airslash' : st === 5 ? 'cslash' : 'slash' + st;
         if (!has(anim)) anim = st === 3 && has('thrust') ? 'thrust' : 'slash1';
         return { anim, t: HA.dur(anim) * k * 0.92 };
       }
@@ -1361,10 +1374,12 @@ void main(){
         env.hero.draw(c, tr.x, tr.y, { anim: 'dash', t: env.hero.dur('dash') * 0.45, facing: h.face, height: HERO_H, alpha: tr.a * 0.55, shadow: false });
       const blink = env.invulnerable && h.dashT <= 0 && !h.carried && Math.floor(T * 18) % 2 === 0;
       const p = heroPose(h);
-      env.hero.draw(c, h.x, h.y + (h.landT > 0 ? h.landT * 10 : 0), {
+      const hy = h.y + (h.landT > 0 ? h.landT * 10 : 0);
+      env.hero.draw(c, h.x, hy, {
         anim: p.anim, t: p.t, rot: (p.rot || 0) - (h.hurtT > 0 ? 0.1 * h.face : 0), facing: h.face, height: HERO_H,
         flash: h.hurtT > 0 ? h.hurtT / 0.32 : 0, alpha: blink ? 0.55 : 1, shadow: h.ground && !h.carried
       });
+      if (!p.rot) saberGlow(c, p, h.x, hy, blink ? 0.55 : 1);
       const dur = h.atkStep ? atkDur(h.atkStep) : 1;
       if (h.atk) slashTrail(c, h, clamp(h.atkT / dur, 0, 1));
       if (h.dashT > 0) dashTrail(c, h);
@@ -1382,7 +1397,25 @@ void main(){
       3: { a0: -3.4, a1: 2.0, r: 96, sq: 0.5, py: 60 },        // finisher: a big spinning arc
       7: { a0: 1.4, a1: -2.2, r: 92, sq: 1.0, py: 84 },        // rising slash in the air
       9: { a0: -1.9, a1: 1.6, r: 88, sq: 1.0, py: 60 },        // plunge: over the top and down
+      5: { a0: -2.5, a1: 0.7, r: 82, sq: 0.45, py: 34 },       // kneeling: a low horizontal sweep
     };
+    const saberRgb = () => (env.heroInfo && env.heroInfo.saber) || null;
+    const trailRgb = () => saberRgb() || env.charRgb;
+    // lightsaber heroes: an additive bloom along the rendered blade (hilt -> tip, exported per frame)
+    function saberGlow(c, pose, x, y, k) {
+      const rgb = saberRgb(); if (!rgb) return;
+      const o = { anim: pose.anim, t: pose.t, facing: hero.face, height: HERO_H };
+      const a = env.hero.point(o, 'hilt'), b = env.hero.point(o, 'tip');
+      if (!a || !b) return;
+      const flick = 0.85 + 0.15 * Math.sin(T * 47) * Math.sin(T * 13);
+      c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+      for (const [w, al] of [[12, 0.12], [6, 0.22]]) {
+        c.strokeStyle = `rgba(${rgb},${(al * flick * k).toFixed(3)})`; c.lineWidth = w;
+        c.beginPath(); c.moveTo(x + a.x, y + a.y); c.lineTo(x + b.x, y + b.y); c.stroke();
+      }
+      c.globalAlpha = 0.5 * flick * k; c.drawImage(env.glowSprite(rgb), x + b.x - 14, y + b.y - 14, 28, 28);
+      c.restore();
+    }
     function slashTrail(c, h, k) {
       const tr = TRAILS[h.atkStep];
       if (!tr || k < 0.18) return;
@@ -1397,7 +1430,7 @@ void main(){
       const ccw = tr.a1 < tr.a0;
       for (let i = 0; i < 5; i++) {                             // outer -> inner, brighter at the edge
         const rr = tr.r * (1 - i * 0.07);
-        c.strokeStyle = i === 0 ? `rgba(255,255,255,${(0.75 * fade).toFixed(3)})` : `rgba(${env.charRgb},${(0.28 * fade * (1 - i / 6)).toFixed(3)})`;
+        c.strokeStyle = i === 0 ? `rgba(255,255,255,${(0.75 * fade).toFixed(3)})` : `rgba(${trailRgb()},${((saberRgb() ? 0.45 : 0.28) * fade * (1 - i / 6)).toFixed(3)})`;
         c.lineWidth = (i === 0 ? 3 : 7 - i) / Math.max(tr.sq, 0.6);
         c.beginPath(); c.arc(0, 0, rr, start, end, ccw); c.stroke();
       }
