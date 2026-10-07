@@ -10,12 +10,15 @@
 //     opaque: true,          // optional: the world paints every pixel each frame (skips the clear)
 //     subtitle: reason => 'The croc dragged you into the wild...',
 //     hint: 'Fight your way to the lotus gate',
-//     controls: { dirs: 'lr' | 'stick', buttons: [{ id, icon, label?, count?() }] },
+//     controls: { dirs: 'lr' | 'stick' | 'none', buttons: [{ id, icon, label?, count?() }],
+//                 touch: true },  // touch: taps / swipes / drags on the play field reach the world
 //     assets: { key: 'assets/worlds/animal/croc.png', ... },   // preloaded
 //     create(env) { return { update(dt, input), render(ctx), debug?(), destroy?() }; }
 //   });
-// and game.html enters it with   DABWorlds.enter('animal', { charId, reason })
-// which resolves { won: true|false, aborted? } once the world is over.
+// and game.html enters it with   DABWorlds.enter('animal', { charId, reason, level, badge, round })
+// which resolves { won: true|false, aborted?, stars 1..3 } once the world is over.
+// Adventure mode (10 stages x 10 rounds) passes level 1..10 (the stage: difficulty), a badge
+// ('STAGE 3 · ROUND 4') for the intro card and round: true (round-style result card).
 //
 // The env handed to create():
 //   W, H (390×844 app px), t (seconds), charId, charRgb ('r,g,b'), assets{key: img}
@@ -34,9 +37,14 @@
 //   glowSprite('r,g,b') → cached soft radial sprite for additive glows
 //   rand(a, b), clamp, lerp, TAU
 //
+//   level (1..10, the Adventure stage = difficulty) · round (true in Adventure)
+//   setStars(1..3) — the world's own rating (default: from health left)
 // input (per frame): input.left/right/up/down (held booleans),
 //   input.ax / input.ay (analog -1..1, stick or keys), input.held[id],
 //   input.pressed[id] (went down this frame), input.released[id]
+// with controls.touch: input.touch {down, x, y, x0, y0, t} (world px, the live finger),
+//   input.taps [{x, y}], input.swipes [{dir: 'left'|'right'|'up'|'down', x, y, dx, dy}],
+//   input.releases [{x, y, x0, y0, dt}] — this frame only
 // Keyboard: arrows / WASD move, Space or W/↑ = 'jump', J or X = 'attack',
 //   K or C = 'special', L or V = 'special2', Esc / P = pause.
 //
@@ -791,7 +799,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   function makeInput() {
     return {
       left: false, right: false, up: false, down: false, ax: 0, ay: 0,
-      held: {}, pressed: {}, released: {}
+      held: {}, pressed: {}, released: {},
+      touch: { down: false }, taps: [], swipes: [], releases: []
     };
   }
 
@@ -812,7 +821,11 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       if (active.paused) { active.pauseTap(p); return; }
       const pp = pausePos();
       if (Math.hypot(p.x - pp.x, p.y - pp.y) < 26) { active.paused = true; if (window.DABAudio) DABAudio.duck(true); return; }
-      const hit = active.hitControl(p);
+      let hit = active.hitControl(p);
+      if (!hit && active.controls.touch) {                       // the play field itself
+        const q = active.toWorld(p);
+        hit = { kind: 'field', x: q.x, y: q.y, x0: q.x, y0: q.y, t0: performance.now() };
+      }
       if (hit) {
         try { cv.setPointerCapture(e.pointerId); } catch (err) { /* old browsers */ }
         active.pointers.set(e.pointerId, hit);
@@ -826,6 +839,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       if (!hit) return;
       const p = appPoint(e);
       if (hit.kind === 'stick') active.stickMove(hit, p);
+      else if (hit.kind === 'field') { const q = active.toWorld(p); hit.x = q.x; hit.y = q.y; }
       else if (hit.kind === 'dir') {                 // slide between ◀ and ▶
         const nh = active.hitControl(p, true);
         if (nh && nh.kind === 'dir') active.pointers.set(e.pointerId, nh);
@@ -834,6 +848,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     };
     const up = e => {
       if (!active) return;
+      const hit = active.pointers.get(e.pointerId);
+      if (hit && hit.kind === 'field') active.fieldUp(hit);
       if (active.pointers.delete(e.pointerId)) active.updateTouchInput();
     };
     cv.addEventListener('pointerdown', down);
@@ -898,6 +914,24 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
         c.beginPath(); c.moveTo(-u * 0.3, -u * 0.25); c.lineTo(-u * 0.75, -u * 0.6); c.lineTo(-u * 0.6, 0); c.lineTo(-u * 0.75, u * 0.6); c.lineTo(-u * 0.3, u * 0.25); c.fill(); break;
       case 'shield':
         c.beginPath(); c.moveTo(0, -u * 0.9); c.lineTo(u * 0.75, -u * 0.55); c.quadraticCurveTo(u * 0.7, u * 0.5, 0, u * 0.95); c.quadraticCurveTo(-u * 0.7, u * 0.5, -u * 0.75, -u * 0.55); c.closePath(); c.stroke(); break;
+      case 'snow':                                              // snowflake (frost breath)
+        for (let i = 0; i < 3; i++) {
+          c.save(); c.rotate(i * Math.PI / 3);
+          c.beginPath(); c.moveTo(0, -u * 0.95); c.lineTo(0, u * 0.95);
+          for (const s of [-1, 1]) { c.moveTo(0, s * u * 0.55); c.lineTo(u * 0.28, s * u * 0.8); c.moveTo(0, s * u * 0.55); c.lineTo(-u * 0.28, s * u * 0.8); }
+          c.stroke(); c.restore();
+        }
+        break;
+      case 'restart':                                           // circular arrow
+        c.beginPath(); c.arc(0, 0, u * 0.7, -0.4, Math.PI * 1.55); c.stroke();
+        c.beginPath(); c.moveTo(u * 0.7 * Math.cos(-0.4) + u * 0.3, u * 0.7 * Math.sin(-0.4) - u * 0.05); c.lineTo(u * 0.7 * Math.cos(-0.4), u * 0.7 * Math.sin(-0.4)); c.lineTo(u * 0.7 * Math.cos(-0.4) - u * 0.12, u * 0.7 * Math.sin(-0.4) - u * 0.4); c.stroke();
+        break;
+      case 'bomb':
+        c.beginPath(); c.arc(0, u * 0.15, u * 0.62, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.moveTo(u * 0.35, -u * 0.35); c.quadraticCurveTo(u * 0.6, -u * 0.95, u * 0.95, -u * 0.7); c.stroke(); break;
+      case 'dig':
+        c.rotate(Math.PI / 4); c.fillRect(-u * 0.08, -u * 0.95, u * 0.16, u * 1.2);
+        c.beginPath(); c.moveTo(-u * 0.45, u * 0.25); c.lineTo(u * 0.45, u * 0.25); c.lineTo(0, u * 0.95); c.closePath(); c.fill(); break;
       case 'dash':
         c.beginPath(); c.moveTo(-u * 0.9, -u * 0.4); c.lineTo(u * 0.2, -u * 0.4); c.moveTo(-u * 0.6, 0); c.lineTo(u * 0.5, 0); c.moveTo(-u * 0.9, u * 0.4); c.lineTo(u * 0.2, u * 0.4); c.stroke();
         c.beginPath(); c.moveTo(u * 0.4, -u * 0.7); c.lineTo(u * 0.95, 0); c.lineTo(u * 0.4, u * 0.7); c.stroke(); break;
@@ -948,6 +982,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.paused = false; S.resultT = 0; S.won = false;
     S.input = makeInput(); S.prevHeld = {};
     S.pointers = new Map(); S.touch = { dirs: {}, held: {}, ax: 0, ay: 0 }; S.stick = null;
+    S.fieldQ = { taps: [], swipes: [], releases: [] };
+    S.level = Math.max(1, Math.min(10, +opts.level || 1)); S.badge = opts.badge || ''; S.round = !!opts.round; S.stars = 0;
     S.shakeA = 0; S.flashA = 0; S.flashRgb = '255,255,255'; S.stop = 0;
     S.health = 100; S.maxHealth = 100; S.ghost = 100; S.invulnT = 0; S.dmgFlash = 0;
     S.floaters = [];
@@ -977,10 +1013,15 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       charId: S.charId, charRgb: S.charRgb,
       assets: {},
       get health() { return S.health; }, get maxHealth() { return S.maxHealth; },
+      get level() { return S.level; }, get round() { return S.round; },
+      // Adventure toughness: enemy / boss health x tough (stage 1 0.82 .. stage 10 1.45); 1 outside Adventure
+      get tough() { return S.round ? 0.75 + 0.07 * S.level : 1; },
+      setStars(n) { S.stars = Math.max(1, Math.min(3, n | 0)); },
       fx: S.fx, hud: S.hud,
       damage(n, o) {
         if (S.phase !== 'play' || S.invulnT > 0 || n <= 0) return false;
         o = o || {};
+        if (S.round) n *= 0.62 + 0.07 * S.level;             // Adventure: hits sting more each stage
         S.health = Math.max(0, S.health - n);
         S.dmgFlash = 1; S.invulnT = o.invuln !== undefined ? o.invuln : 0.35;
         S.shakeA = Math.max(S.shakeA, Math.min(1, 0.25 + n / 30));
@@ -1116,18 +1157,32 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     }
     return null;
   };
+  // screen (app) px -> world px (landscape camera: scale ws, rows from view.top)
+  Session.prototype.toWorld = function (p) { return { x: p.x / this.ws, y: p.y / this.ws + this.view.top }; };
+  // a finger left the play field: a tap (short + still), a swipe (a flick), and always a release
+  Session.prototype.fieldUp = function (h) {
+    const dx = h.x - h.x0, dy = h.y - h.y0, d = Math.hypot(dx, dy), dt = (performance.now() - h.t0) / 1000;
+    const Q = this.fieldQ;
+    Q.releases.push({ x: h.x, y: h.y, x0: h.x0, y0: h.y0, dt });
+    if (d < 14 && dt < 0.45) Q.taps.push({ x: h.x0, y: h.y0 });
+    else if (d >= 28 && dt < 0.6) {
+      const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      Q.swipes.push({ dir, x: h.x0, y: h.y0, dx, dy });
+    }
+  };
   Session.prototype.stickMove = function (hit, p) {
     const dx = p.x - hit.ox, dy = p.y - hit.oy, m = Math.hypot(dx, dy), R = 46;
     const k = m > R ? R / m : 1;
     hit.dx = dx * k; hit.dy = dy * k;
   };
   Session.prototype.updateTouchInput = function () {
-    const T = { dirs: {}, held: {}, ax: 0, ay: 0 };
+    const T = { dirs: {}, held: {}, ax: 0, ay: 0, field: null };
     let stick = null;
     for (const hit of this.pointers.values()) {
       if (hit.kind === 'dir') T.dirs[hit.id] = true;
       else if (hit.kind === 'btn') T.held[hit.id] = true;
       else if (hit.kind === 'stick') { stick = hit; T.ax = (hit.dx || 0) / 46; T.ay = (hit.dy || 0) / 46; }
+      else if (hit.kind === 'field') T.field = hit;
     }
     this.touch = T; this.stick = stick;
   };
@@ -1150,6 +1205,13 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     for (const id in held) if (!this.prevHeld[id]) I.pressed[id] = true;
     for (const id in this.prevHeld) if (!held[id]) I.released[id] = true;
     I.held = held; this.prevHeld = held;
+    // play-field touch (controls.touch): the live finger + this frame's taps / swipes / releases
+    const F = T.field;
+    I.touch = F ? { down: true, x: F.x, y: F.y, x0: F.x0, y0: F.y0, t: (performance.now() - F.t0) / 1000 } : { down: false };
+    I.taps = this.fieldQ.taps; I.swipes = this.fieldQ.swipes; I.releases = this.fieldQ.releases;
+    this.fieldQ = { taps: [], swipes: [], releases: [] };
+    if (window.__dabWorldTaps && window.__dabWorldTaps.length) { I.taps = I.taps.concat(window.__dabWorldTaps.splice(0)); }   // test hook
+    if (window.__dabWorldSwipes && window.__dabWorldSwipes.length) { I.swipes = I.swipes.concat(window.__dabWorldSwipes.splice(0)); }
     if (window.__dabWorldKeys) {
       const w = window.__dabWorldKeys;
       if (w.left) { I.left = true; I.ax = -1; } if (w.right) { I.right = true; I.ax = 1; }
@@ -1330,6 +1392,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     const R = this.roster.length;
     const ty = R ? 236 : 470;                                  // with a hero picker the text moves up
+    if (this.badge) {                                          // Adventure: STAGE n · ROUND m
+      c.font = 'bold 13px system-ui'; const bw = c.measureText(this.badge).width + 34;
+      c.fillStyle = `rgba(${this.rgb},0.18)`; roundRect(c, W / 2 - bw / 2, ty - 74, bw, 30, 15); c.fill();
+      c.strokeStyle = `rgba(${this.rgb},0.7)`; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.fillText(this.badge, W / 2, ty - 58); c.textBaseline = 'alphabetic';
+    }
     c.fillStyle = `rgb(${this.rgb})`; c.font = 'bold 34px Georgia, serif';
     c.fillText(this.def.title, W / 2, ty);
     c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '15px system-ui';
@@ -1411,9 +1479,18 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     const sc = 0.8 + 0.2 * ease(k);
     c.translate(SW / 2, SW !== W ? SH * 0.4 : 380); c.scale(sc, sc);
     c.fillStyle = this.won ? '#ffd86b' : '#ff6b6b'; c.font = 'bold 40px Georgia, serif';
-    c.fillText(this.won ? 'Escaped!' : (this.gaveUp ? 'You gave up' : 'Knocked out'), 0, 0);
-    c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '16px system-ui';
-    c.fillText(this.won ? 'Back to the pond, right where you were' : 'You lose a heart and wake at the start pad', 0, 40);
+    if (this.round) {
+      c.fillText(this.won ? 'Round clear!' : (this.gaveUp ? 'You gave up' : 'Knocked out'), 0, 0);
+      if (this.won) {
+        const st = this.starsFinal(), shown = Math.min(st, Math.floor(this.resultT / 0.35));
+        c.font = '44px system-ui';
+        for (let i = 0; i < 3; i++) { c.fillStyle = i < shown ? '#ffd86b' : 'rgba(255,216,107,0.18)'; c.fillText(i < shown ? '★' : '☆', (i - 1) * 46, 56); }
+      } else { c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '16px system-ui'; c.fillText('You lose a life', 0, 40); }
+    } else {
+      c.fillText(this.won ? 'Escaped!' : (this.gaveUp ? 'You gave up' : 'Knocked out'), 0, 0);
+      c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '16px system-ui';
+      c.fillText(this.won ? 'Back to the pond, right where you were' : 'You lose a heart and wake at the start pad', 0, 40);
+    }
     if (this.resultT > 0.9) { c.globalAlpha = 0.55 + 0.45 * Math.sin(this.t * 4); c.fillStyle = '#fff'; c.font = 'bold 15px system-ui'; c.fillText('Tap to continue', 0, 110); }
     c.restore();
     if (this.resultT > 3.2) this.finish();
@@ -1428,11 +1505,17 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.fillStyle = `rgba(${rgb},0.85)`; roundRect(c, SW / 2 - 110, y, 220, 50, 14); c.fill();
       c.fillStyle = '#071828'; c.font = 'bold 17px system-ui'; c.textBaseline = 'middle'; c.fillText(txt, SW / 2, y + 26); c.textBaseline = 'alphabetic';
     };
-    btn(o.rows[0], 'Resume', '93,202,165'); btn(o.rows[1], 'Give up (lose a heart)', '255,140,120');
+    btn(o.rows[0], 'Resume', '93,202,165'); btn(o.rows[1], this.round ? 'Give up (lose a life)' : 'Give up (lose a heart)', '255,140,120');
     if (window.DABAudio) btn(o.rows[2], DABAudio.muted() ? '🔇  Sound: off' : '🔊  Sound: on', '200,210,230');
     c.restore();
   };
 
+  // the round's stars: the world's own rating, else from the health left
+  Session.prototype.starsFinal = function () {
+    if (this.stars) return this.stars;
+    const h = this.health / this.maxHealth;
+    return h >= 0.7 ? 3 : h >= 0.35 ? 2 : 1;
+  };
   Session.prototype.finish = function () { this.end(this.won, false); };
   Session.prototype.end = function (won, aborted) {
     if (active !== this) return;
@@ -1449,7 +1532,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     }
     layer.style.transition = 'opacity .3s ease'; layer.style.opacity = '0';
     setTimeout(() => { if (!active) { layer.style.display = 'none'; SW = W; SH = H; placeLayer(false); } }, 320);
-    this.resolve({ won: !!won, aborted: !!aborted });
+    this.resolve({ won: !!won, aborted: !!aborted, stars: won ? this.starsFinal() : 0 });
   };
 
   function roundRect(c, x, y, w, h, r) {

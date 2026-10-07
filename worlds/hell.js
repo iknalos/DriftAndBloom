@@ -509,7 +509,8 @@ void main(){
       if (type === 'ghoul') { e.hp = 5; e.st = 'stalk'; e.seg = segAt(e.x); }
       if (type === 'bat') { e.hp = 1.5; e.st = 'fly'; e.baseY = o.y; e.cd = rand(0.4, 1.0); }
       if (type === 'imp') { e.hp = 2.5; e.st = 'fly'; e.baseY = o.y; e.cd = rand(0.6, 1.2); e.spitCd = rand(1.5, 2.5); e.var = o.v || 'imp'; }
-      if (type === 'brute') { e.hp = e.maxHp = 44; e.st = 'sleep'; e.face = -1; }
+      if (type === 'brute') { e.hp = e.maxHp = Math.round(44 * env.tough); e.st = 'sleep'; e.face = -1; }
+      else e.hp *= env.tough;                                  // Adventure stage toughness
       e.maxHp = e.maxHp || e.hp;
       enemies.push(e);
       return e;

@@ -20,6 +20,7 @@ SRC = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\test\Downloa
 
 # everything game.html loads, at the same relative paths
 GAME_FILES = [
+    "adventure.js",
     "workspace/character/spirit_draw.js",
     "workspace/character/scene_draw.js",
     "assets/sprites/dragon_sheet.png",

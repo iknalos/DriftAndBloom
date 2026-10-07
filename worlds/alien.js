@@ -634,7 +634,7 @@ void main(){
       else kind = r < 0.36 ? 'ammo' : r < 0.52 ? 'missile' : r < 0.66 ? 'repair' : r < 0.79 ? 'spread' : r < 0.91 ? 'rapid' : 'shield';
       S.pickups.push({ kind, x, y, vy: 55, t: 0, life: 14 });
     }
-    function enemy(o) { o.t = 0; o.flash = 0; o.maxHp = o.hp; o.ang = o.ang || 0; S.enemies.push(o); return o; }
+    function enemy(o) { o.hp = Math.max(1, Math.round(o.hp * env.tough)); o.t = 0; o.flash = 0; o.maxHp = o.hp; o.ang = o.ang || 0; S.enemies.push(o); return o; }
 
     // ── wave builders ──
     function formationV(n, cx) {
@@ -685,9 +685,9 @@ void main(){
     function bossEnter() {
       S.boss = {
         x: W / 2, y: -190, ty: BOSS.ty, t: 0, phase: 1, enter: 0,
-        parts: [{ id: 'lt', ox: BOSS.turrets[0][0], oy: BOSS.turrets[0][1], r: BOSS.tr, hp: 34, max: 34, alive: true, aim: Math.PI / 2, cd: 1.4 },
-                { id: 'rt', ox: BOSS.turrets[1][0], oy: BOSS.turrets[1][1], r: BOSS.tr, hp: 34, max: 34, alive: true, aim: Math.PI / 2, cd: 2.0 }],
-        core: { ox: BOSS.core[0], oy: BOSS.core[1], r: BOSS.cr, hp: 100, max: 100, shield: true, flash: 0 },
+        parts: [{ id: 'lt', ox: BOSS.turrets[0][0], oy: BOSS.turrets[0][1], r: BOSS.tr, hp: Math.round(34 * env.tough), max: Math.round(34 * env.tough), alive: true, aim: Math.PI / 2, cd: 1.4 },
+                { id: 'rt', ox: BOSS.turrets[1][0], oy: BOSS.turrets[1][1], r: BOSS.tr, hp: Math.round(34 * env.tough), max: Math.round(34 * env.tough), alive: true, aim: Math.PI / 2, cd: 2.0 }],
+        core: { ox: BOSS.core[0], oy: BOSS.core[1], r: BOSS.cr, hp: Math.round(100 * env.tough), max: Math.round(100 * env.tough), shield: true, flash: 0 },
         supplyCd: 9,
         spiralCd: 3.2, droneCd: 6, laserCd: 3.5, missileCd: 4, spreadCd: 2.2, ringCd: 2.4, streamCd: 1.6,
         laser: null, dying: 0, chain: 0, flash: 0

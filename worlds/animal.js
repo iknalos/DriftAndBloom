@@ -486,7 +486,7 @@ void main(){
     function makeBoar(x) {
       const seg = GAPS.reduce((acc, g) => (g[1] < x ? [g[1] + 20, acc[1]] : g[0] > x && g[0] < acc[1] ? [acc[0], g[0] - 20] : acc), [0, END + 400]);
       return {
-        type: 'boar', x, y: GROUND, face: -1, vx: 0, st: 'idle', t: 0, hp: 3, cd: 0.6 + Math.random(), flash: 0, ph: Math.random() * 6, seg, rot: 0, fade: 1, travel: 0,
+        type: 'boar', x, y: GROUND, face: -1, vx: 0, st: 'idle', t: 0, hp: Math.max(2, Math.round(3 * env.tough)), cd: 0.6 + Math.random(), flash: 0, ph: Math.random() * 6, seg, rot: 0, fade: 1, travel: 0,
         gait: Math.random(), t0: 0.4, seed: Math.random() * 9,
         boxes() { return this.dead ? [] : [{ x: this.x, y: this.y - 36, r: 40 }]; },
         hurt(n, dir) {
@@ -565,7 +565,7 @@ void main(){
       const pts = []; for (let i = 0; i < N; i++) pts.push({ x: 0, y: 0, nx: 0, ny: 1 });
       return {
         type: 'snake', tree, L, pts, s: Math.random() * L.total, x: tree.x, y: BRANCH_Y,
-        st: 'crawl', t: 0, hp: 2, cd: 0.8, flash: 0, drop: 0, ext: 0, jaw: 0, tongue: 0, pace: Math.random() * 6, wave: 0,
+        st: 'crawl', t: 0, hp: Math.max(1, Math.round(2 * env.tough)), cd: 0.8, flash: 0, drop: 0, ext: 0, jaw: 0, tongue: 0, pace: Math.random() * 6, wave: 0,
         aim: { x: 0, y: 1 }, coilH: null, strikeH: null, fall: null, fade: 1, moving: 0,
         head() { return this.pts[0]; },
         boxes() {
@@ -673,7 +673,7 @@ void main(){
 
     function makeCroc(x0, x1) {
       return {
-        type: 'croc', x: (x0 + x1) / 2, x0, x1, face: -1, st: 'lurk', t: 0, hp: 4, cd: 1.2, flash: 0, rise: 0, jaw: 0.05,
+        type: 'croc', x: (x0 + x1) / 2, x0, x1, face: -1, st: 'lurk', t: 0, hp: Math.max(3, Math.round(4 * env.tough)), cd: 1.2, flash: 0, rise: 0, jaw: 0.05,
         roll: 0, sinkY: 0, ph: Math.random() * 6, vx: 0,
         pitch() {                                   // head rears out of the water when it strikes
           const lunge = this.st === 'lunge' ? Math.sin(Math.min(1, 1 - this.t / 0.26) * Math.PI) : 0;
@@ -747,7 +747,7 @@ void main(){
     function makeBird(kind, at) {
       const B = BIRD[kind];
       return {
-        type: 'bird', kind, at, B, st: 'wait', t: 0, hp: 2, x: 0, y: 0, vx: 0, vy: 0, dir: -1, flap: Math.random() * 6, flash: 0,
+        type: 'bird', kind, at, B, st: 'wait', t: 0, hp: Math.max(1, Math.round(2 * env.tough)), x: 0, y: 0, vx: 0, vy: 0, dir: -1, flap: Math.random() * 6, flash: 0,
         dives: 0, grip: 5, carryT: 0, tick: 0, rot: 0, cx: 0, cy: 0,
         talonPt() {
           const R = rigOk(kind) && env.rigs[kind];

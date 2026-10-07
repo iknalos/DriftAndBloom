@@ -97,16 +97,23 @@
   }
 
   // music: one track at a time, looped by crossfading into a fresh copy before it ends
+  // our own composed tracks (tools/assets/music_gen.py) are exact loops: sample-accurate looping, no crossfade
+  const EXACT = new Set(['music_frost', 'music_moonbeat', 'music_stream', 'music_thief', 'music_bombs', 'music_duel']);
   function startTrack(name, fadeIn) {
     if (!ctx) return;
     const b = buffers[name];
     if (!b) { load(name).then(() => { if (want === name && (!cur || cur.name !== name)) startTrack(name, fadeIn); }); return; }
     const t = ctx.currentTime;
     if (cur) fadeOut(cur, Math.max(0.4, fadeIn));
-    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + fadeIn);
-    const s = ctx.createBufferSource(); s.buffer = b; s.connect(g); g.connect(musicBus); s.start(t);
-    cur = { name, s, g, start: t, dur: b.duration }; stats.music = name;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + Math.max(0.01, fadeIn));
+    const s = ctx.createBufferSource(); s.buffer = b; s.connect(g); g.connect(musicBus);
+    const exact = EXACT.has(name), off = Math.max(0, Math.min(b.duration - 0.05, startOffset || 0));
+    startOffset = 0;
+    if (exact) s.loop = true;
+    s.start(t, off);
+    cur = { name, s, g, start: t - off, dur: b.duration, exact }; stats.music = name;
   }
+  let startOffset = 0;
   function fadeOut(tr, d) {
     const t = ctx.currentTime;
     tr.g.gain.cancelScheduledValues(t); tr.g.gain.setValueAtTime(tr.g.gain.value, t); tr.g.gain.linearRampToValueAtTime(0, t + d);
@@ -114,14 +121,23 @@
   }
   setInterval(() => {
     if (!ctx || !cur || ctx.state !== 'running') return;
-    if (ctx.currentTime > cur.start + cur.dur - XF - 0.1) startTrack(cur.name, XF);   // seamless-ish loop
+    if (!cur.exact && ctx.currentTime > cur.start + cur.dur - XF - 0.1) startTrack(cur.name, XF);   // seamless-ish loop
   }, 250);
-  function music(name) {
-    if (want === name) return;
+  // music(name, { restart: true (from the top even if playing), xf: fade-in seconds })
+  function music(name, o) {
+    o = o || {};
+    if (want === name && !o.restart) return;
     want = name;
     if (!ctx) return;                                   // starts on the first gesture
     if (!name) { if (cur) { fadeOut(cur, 1.2); cur = null; } return; }
-    startTrack(name, 1.2);
+    startOffset = o.offset || 0;                       // start part-way in (resync after a pause)
+    startTrack(name, o.xf === undefined ? 1.2 : o.xf);
+  }
+  // seconds into the current track (looping), or null when nothing is playing yet
+  function musicTime() {
+    if (!ctx || !cur || cur.name !== want || ctx.state !== 'running') return null;
+    const e = ctx.currentTime - cur.start;
+    return e < 0 ? null : (cur.exact ? e % cur.dur : e);
   }
   function duck(on) {
     if (!musicBus || ducked === !!on) return;
@@ -141,5 +157,5 @@
     return isMuted;
   }
 
-  window.DABAudio = { play, preload, load, music, loop, duck, muted: () => isMuted, setMuted, toggle: () => setMuted(!isMuted), ensure, stats };
+  window.DABAudio = { play, preload, load, music, musicTime, loop, duck, muted: () => isMuted, setMuted, toggle: () => setMuted(!isMuted), ensure, stats };
 })();

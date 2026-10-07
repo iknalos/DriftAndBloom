@@ -14,6 +14,12 @@ html, body { width: 100%; height: 100%; background: #040e18; display: flex; alig
 @keyframes scrFade { from { opacity: 0; } to { opacity: 1; } }
 
 h1 { font-size: 42px; font-weight: bold; color: #9FE1CB; text-align: center; margin-top: 80px; }
+.mode-card { width: 300px; margin: 14px 0; padding: 22px 18px; border-radius: 22px; border: 1.5px solid rgba(255,215,90,.55);
+  background: linear-gradient(160deg, rgba(255,215,90,.18), rgba(93,202,165,.10)); color: #fff; cursor: pointer; text-align: center; }
+.mode-card.classic { border-color: rgba(93,202,165,.5); background: rgba(93,202,165,.10); }
+.mode-card:active { transform: scale(.98); }
+.mode-icon { font-size: 40px; } .mode-name { font: bold 26px Georgia, serif; margin-top: 4px; color: #ffe3a0; }
+.mode-card.classic .mode-name { color: #9FE1CB; } .mode-sub { font-size: 13.5px; opacity: .75; margin-top: 6px; }
 h2 { font-size: 22px; color: #5DCAA5; text-align: center; margin-bottom: 24px; }
 .subtitle { color: rgba(245,210,100,0.9); font-size: 26px; font-weight: bold; margin-top: 6px; }
 .tagline { color: rgba(160,220,200,0.6); font-size: 14px; margin-top: 12px; }
@@ -168,11 +174,32 @@ if ('serviceWorker' in navigator) {
     <div class="char-grid" id="char-grid"></div>
   </div>
 
+  <!-- Screen 2b: Mode -->
+  <div id="s-mode" class="screen">
+    <button class="btn-back" onclick="goTo('s-charselect')">← Back</button>
+    <h2 style="margin-top:70px">Choose Your Path</h2>
+    <button class="mode-card" onclick="DABAdventure.open()">
+      <div class="mode-icon">🗺️</div><div class="mode-name">Adventure</div>
+      <div class="mode-sub">10 stages · 10 different games in each · bosses · 3 lives</div>
+    </button>
+    <button class="mode-card classic" onclick="goTo('s-levelselect')">
+      <div class="mode-icon">🪷</div><div class="mode-name">Classic Pond</div>
+      <div class="mode-sub">the 100 lily-pad levels</div>
+    </button>
+  </div>
+
+  <!-- Screen 2c: Adventure map (adventure.js) -->
+  <div id="s-adventure" class="screen" style="padding:0;">
+    <canvas id="adv-cv" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <button class="btn-back" onclick="goTo('s-mode')" style="z-index:3">← Back</button>
+    <button class="snd-btn" onclick="toggleSound()" aria-label="Sound on or off">🔊</button>
+  </div>
+
   <!-- Screen 3: Level Select -->
   <div id="s-levelselect" class="screen" style="padding:0;">
     <canvas id="map-bg" width="390" height="844"></canvas>
     <div id="stage-map"></div>
-    <button class="btn-back" onclick="goTo('s-charselect')" style="z-index:3">← Back</button>
+    <button class="btn-back" onclick="goTo('s-mode')" style="z-index:3">← Back</button>
     <div id="stage-head">
       <button id="stage-prev" class="stage-arrow" aria-label="Previous stage">‹</button>
       <div id="level-title"><div id="stage-num">STAGE 1</div><div id="stage-name">The Still Pond</div><div id="stage-stars">★ 0 / 30</div></div>
@@ -185,6 +212,8 @@ if ('serviceWorker' in navigator) {
       <button onclick="tryWorld('animal')">🐊 Animal World</button>
       <button onclick="tryWorld('alien')">🛸 Alien World</button>
       <button onclick="tryWorld('hell')">🔥 Hell</button>
+      <button onclick="tryWorld('frost')">❄️ Frost Garden</button>
+      <button onclick="tryWorld('moonbeat')">🌙 Moonbeat Run</button>
     </div>
   </div>
 
@@ -195,7 +224,7 @@ if ('serviceWorker' in navigator) {
   <!-- Screen 4: Gameplay -->
   <div id="s-gameplay" class="screen" style="padding:0;">
     <canvas id="game-cv" width="390" height="844" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-    <button class="btn-back" onclick="window.DABWorlds&&DABWorlds.abort();goTo('s-levelselect');gActive=false;" style="position:absolute;top:20px;left:20px;z-index:2;">← Back</button>
+    <button class="btn-back" onclick="gameBack()" style="position:absolute;top:20px;left:20px;z-index:2;">← Back</button>
   </div>
 
 </div>
@@ -211,6 +240,9 @@ if ('serviceWorker' in navigator) {
 <script src="worlds/animal.js"></script>
 <script src="worlds/alien.js"></script>
 <script src="worlds/hell.js"></script>
+<script src="worlds/frost.js"></script>
+<script src="worlds/moonbeat.js"></script>
+<!-- the Adventure run (10 stages x 10 rounds) is loaded after the game script below -->
 <script>
 'use strict';
 
@@ -460,7 +492,7 @@ function buildCharGrid() {
 function selectChar(id) {
   selectedChar = id;
   localStorage.setItem('selected_character', id);
-  goTo('s-levelselect');
+  goTo('s-mode');
 }
 
 // ── Screen 3 — Level Select ─────────────────────────────────────────────────
@@ -732,8 +764,15 @@ let gActive = false;
     p.st='down'; p.stT=downFor; burst(p.x,p.y,'120,200,160',8,2); ripple(p.x,p.y,'140,220,200');
   }
 
+  let camp=null;                       // Adventure round 1 (window.__pondRound from adventure.js)
+  window.gameBack=function(){
+    window.DABWorlds&&DABWorlds.abort(); gActive=false;
+    if(camp){ const c=camp; camp=null; c.onEnd({aborted:true}); return; }
+    goTo('s-levelselect');
+  };
+  function campEnd(won){ const c=camp; camp=null; gActive=false; c.onEnd({won,stars:won?starCount():0}); }
   window.initGameplay=function(n){
-    levelN=n;
+    levelN=n; camp=window.__pondRound||null;
     cfg=STAGES[n]||{speed_multiplier:1,pad_lifetime:null,pad_drift_speed:0,enemy_types:[],hazards:[],lives:3,blooms:3,note:''};
     spd=Math.max(0.6,cfg.speed_multiplier||1);
     charId=localStorage.getItem('selected_character')||'spirit';
@@ -775,7 +814,6 @@ let gActive = false;
     if(invuln>0||won||failed||respawnT>0||inWorld)return;
     // what got you, by ear
     sfx(world==='alien'?'beam':world==='hell'?'fire':/snake/i.test(reason)?'hiss':/croc/i.test(reason)?'croc_snap':/star/i.test(reason)?'explode':wet?'splash':'hurt');
-    if(world&&window.DABWorlds&&DABWorlds.has(world)){ catchToWorld(reason,world); return; }
     lives--;hits++;invuln=1.7;shake=0.45;
     burst(sp.x,sp.y,'255,90,90',14,3);
     floatText(sp.x,sp.y-48,reason,'255,170,160');
@@ -991,7 +1029,7 @@ let gActive = false;
           // a fading pad gives itself away only now: it starts to crumble
           if(tp.fades&&!tp.fading&&tp.st==='up'){ tp.fading=true; tp.fadeT=tp.fadeDur=Math.max(0.9,cfg.pad_lifetime||3); burst(tp.x,tp.y,'170,150,80',8,1.8); }
           if(tp.bloom){ tp.bloom=false; bloomsGot++; sfx('bloom'); sp.state='COLLECTING'; sp.stateT=0.6; burst(tp.x,tp.y-12,'255,220,110',14,2.8); burst(tp.x,tp.y-12,'255,245,200',8,2.2,'star'); ripple(tp.x,tp.y,'245,210,100'); floatText(tp.x,tp.y-40,'+ bloom','245,215,120'); }
-          if(tp.kind==='goal'){ won=true; winT=0; saveProgress(levelN); sfx('win'); burst(tp.x,tp.y-10,'255,138,178',26,3.2); }
+          if(tp.kind==='goal'){ won=true; winT=0; if(!camp)saveProgress(levelN); sfx('win'); burst(tp.x,tp.y-10,'255,138,178',26,3.2); }
         } else hurt('Fell into the water!',true);
       }
     } else if(sp.pad){
@@ -1176,8 +1214,11 @@ let gActive = false;
     cx.save();
     cx.fillStyle='rgba(2,12,24,.6)';cx.beginPath();cx.roundRect(98,14,170,34,10);cx.fill();
     cx.font='bold 14px system-ui,sans-serif';cx.fillStyle='rgba(93,202,165,.9)';cx.textAlign='left';
+    if(camp){ cx.fillText(`Stage ${camp.stage}`,110,37); cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(180,230,212,.7)';cx.fillText('round 1',168,37); }
+    else {
     cx.fillText(`Stage ${stageOf(levelN)}`,110,37);
     cx.font='13px system-ui,sans-serif';cx.fillStyle='rgba(180,230,212,.7)';cx.fillText(`${levelInStage(levelN)}/10`,168,37);
+    }
     cx.font='bold 14px system-ui,sans-serif';cx.fillStyle='rgba(245,210,100,.85)';cx.textAlign='right';cx.fillText(`✿ ${bloomsGot}/${bloomsTotal}`,256,37);
     cx.textAlign='right';
     if(maxLives>5){ cx.font='bold 16px system-ui';cx.fillStyle='rgba(255,90,110,.95)';cx.fillText(`♥ ${lives}`,W-14,37); }
@@ -1235,7 +1276,7 @@ let gActive = false;
     cx.save();cx.fillStyle=`rgba(2,12,24,${Math.min(.82,winT*1.2)})`;cx.fillRect(0,0,W,H);
     const ph=Math.min(1,winT*.8);
     cx.textAlign='center';cx.shadowColor='rgba(93,202,165,.6)';cx.shadowBlur=28;
-    cx.font='bold 44px Georgia,serif';cx.fillStyle=`rgba(160,255,220,${ph})`;cx.fillText(`Level ${levelInStage(levelN)} Complete!`,W/2,H/2-86);
+    cx.font='bold 44px Georgia,serif';cx.fillStyle=`rgba(160,255,220,${ph})`;cx.fillText(camp?'Round clear!':`Level ${levelInStage(levelN)} Complete!`,W/2,H/2-86);
     cx.shadowBlur=0;
     const stars=starCount();
     const want=Math.min(stars,Math.floor(winT/0.4));
@@ -1246,9 +1287,11 @@ let gActive = false;
     cx.fillText(`reached the lotus · blooms ${bloomsGot}/${bloomsTotal} · ${hits?hits+' hit'+(hits>1?'s':''):'no hits'}`,W/2,H/2+18);
     if(ph>.6){
       cx.fillStyle=`rgba(93,202,165,${(ph-.6)/.4*.85})`;cx.beginPath();cx.roundRect(W/2-100,H/2+50,200,52,14);cx.fill();
-      cx.font='bold 19px system-ui,sans-serif';cx.fillStyle='#071828';cx.fillText(`Level ${levelInStage(levelN)+1} of 10  ›`,W/2,H/2+82);
+      cx.font='bold 19px system-ui,sans-serif';cx.fillStyle='#071828';cx.fillText(camp?'Continue  ›':`Level ${levelInStage(levelN)+1} of 10  ›`,W/2,H/2+82);
+      if(!camp){
       cx.fillStyle=`rgba(255,255,255,${(ph-.6)/.4*.15})`;cx.beginPath();cx.roundRect(W/2-70,H/2+118,140,40,12);cx.fill();
       cx.font='15px system-ui,sans-serif';cx.fillStyle=`rgba(160,220,200,${(ph-.6)/.4*.7})`;cx.fillText('Menu',W/2,H/2+143);
+      }
     }
     cx.restore();
   }
@@ -1324,9 +1367,11 @@ let gActive = false;
     cx.shadowBlur=0;cx.font='15px system-ui';cx.fillStyle='rgba(220,180,180,.6)';
     cx.fillText(timeUp?'reach the lotus before the clock runs out':'the lotus still waits…',W/2,H/2+2);
     cx.fillStyle='rgba(93,202,165,.85)';cx.beginPath();cx.roundRect(W/2-100,H/2+44,200,52,14);cx.fill();
-    cx.font='bold 19px system-ui';cx.fillStyle='#071828';cx.fillText('Try Again',W/2,H/2+76);
+    cx.font='bold 19px system-ui';cx.fillStyle='#071828';cx.fillText(camp?'Continue (−1 life)':'Try Again',W/2,H/2+76);
+    if(!camp){
     cx.fillStyle='rgba(255,255,255,.13)';cx.beginPath();cx.roundRect(W/2-70,H/2+112,140,40,12);cx.fill();
     cx.font='15px system-ui';cx.fillStyle='rgba(200,220,210,.7)';cx.fillText('Menu',W/2,H/2+137);
+    }
     cx.restore();
   }
 
@@ -1349,6 +1394,10 @@ let gActive = false;
     e.preventDefault();
     if(!gActive)return;
     const{x,y}=cvPos(e);
+    if(camp&&(won||failed)){                       // Adventure: one Continue button back to the run
+      if((won?winT>0.8:true)&&y>H/2+44&&y<H/2+104&&x>W/2-100&&x<W/2+100) campEnd(won);
+      return;
+    }
     if(won&&levelN%10===0){
       if(winT<2.6)return;
       const s=stageOf(levelN);
@@ -1419,7 +1468,7 @@ let gActive = false;
     cx.restore();
     if(homeT>0){const a=Math.min(0.35,homeT*0.3);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,220,140,0)');vg.addColorStop(1,`rgba(255,214,120,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
     else if(invuln>0){const a=Math.min(0.45,invuln*0.5);const vg=cx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.62);vg.addColorStop(0,'rgba(255,40,40,0)');vg.addColorStop(1,`rgba(255,30,30,${a})`);cx.fillStyle=vg;cx.fillRect(0,0,W,H);}
-    if(gActive&&won){ if(levelN%10===0)drawStageClear(dt||0.016); else drawWin(dt||0.016); }
+    if(gActive&&won){ if(levelN%10===0&&!camp)drawStageClear(dt||0.016); else drawWin(dt||0.016); }
     if(gActive&&failed)drawFail();
     requestAnimationFrame(gLoop);
   }
@@ -1467,9 +1516,10 @@ if(UNLOCK_ALL&&window.DABWorlds)document.getElementById('world-dev-btn').style.d
 (function(){
   const w=new URLSearchParams(location.search).get('world');
   if(!w||!window.DABWorlds||!DABWorlds.has(w))return;
-  const go=()=>DABWorlds.enter(w,{charId:selectedChar,reason:'Test run'}).then(r=>{ if(!r.aborted)go(); });
+  const lv=+new URLSearchParams(location.search).get('lv')||0; const go=()=>DABWorlds.enter(w,{charId:selectedChar,reason:'Test run',level:lv||1,round:!!lv,badge:lv?`STAGE ${lv} · TEST`:''}).then(r=>{ if(!r.aborted)go(); });
   go();
 })();
 </script>
+<script src="adventure.js"></script>
 </body>
 </html>
