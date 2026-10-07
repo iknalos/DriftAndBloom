@@ -233,7 +233,7 @@
       if (done) return;
       if (phase === 'build') {
         const before = Math.ceil(countT);
-        countT -= dt;
+        countT -= dt * env.clock;
         if (Math.ceil(countT) !== before && countT < 5 && countT > 0) sfx('tick', { vol: 0.5 });
         if (I.pressed.special) { early = countT; countT = 0; env.floatText(W / 2, OY - 6, 'Spring open!', '160,230,255'); }
         if (countT <= 0) startFlow();

@@ -1059,7 +1059,7 @@ let gActive = false;
     for(let i=floaters.length-1;i>=0;i--){const f=floaters[i];f.life-=dt*0.8;f.y-=dt*18;if(f.life<=0)floaters.splice(i,1);}
     if(failed||inWorld)return;
     if(!won&&introT<=0){
-      timeLeft-=dt;
+      timeLeft-=dt*(camp&&camp.clock||1);                 // Adventure boon Slow Sun: 0.75
       if(timeLeft<=0){timeLeft=0;failed=true;failReason='time';shake=0.3;sfx('lose');return;}
     }
     if(!won){ updatePads(dt); updateEnemies(dt); }

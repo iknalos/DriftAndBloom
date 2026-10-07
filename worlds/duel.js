@@ -102,7 +102,7 @@
       }
     }
     function hitGuardian(dmg, label, big) {
-      hp = Math.max(0, hp - dmg);
+      hp = Math.max(0, hp - dmg * env.atk);
       g.hurt = big ? 0.5 : 0.22;
       combo++; comboT = 1.2;
       sfx('thwack', { vol: big ? 1 : 0.75, rate: big ? 0.8 : 0.95 + Math.min(0.4, combo * 0.05) });
@@ -128,7 +128,7 @@
       g.sway += dt; g.hurt = Math.max(0, g.hurt - dt); p.burst = Math.max(0, p.burst - dt);
       if (done) { g.t += dt; return; }
       if (intro > 0) { intro -= dt; if (intro <= 0) say('FIGHT!', 0.9); return; }
-      clock -= dt;
+      clock -= dt * env.clock;
       if (clock <= 0) {                                          // time: decision on the scorecards
         clock = 0; done = true;
         const mine = env.health / env.maxHealth, theirs = hp / MAXHP;

@@ -745,7 +745,7 @@ void main(){
 
     // ── damage to the world ──
     function hitEnemy(e, dmg) {
-      e.hp -= dmg; e.flash = 1;
+      e.hp -= dmg * env.atk; e.flash = 1;
       if (e.hp > 0) sfx('metal_hit', e.x, { vol: 0.22, rate: 1.3, gap: 0.06 });
       if (e.hp <= 0 && !e.dead) {
         e.dead = true; S.kills++;
@@ -767,7 +767,7 @@ void main(){
       for (const o of S.enemies) if (o !== e && !o.dead && dist(o.x, o.y, e.x, e.y) < 70) hitEnemy(o, 4);
     }
     function hitRock(r, dmg) {
-      r.hp -= dmg; r.flash = 1;
+      r.hp -= dmg * env.atk; r.flash = 1;
       if (r.hp <= 0 && !r.dead) {
         r.dead = true;
         fx.burst(r.x, r.y, { n: 10 + r.size * 5, speed: 90 + r.size * 30, rgb: '150,138,124', kind: 'debris', life: 1.1, size: 2 + r.size, drag: 0.4 });
@@ -781,7 +781,7 @@ void main(){
     }
     function hitBoss(part, dmg, x, y) {
       const B = S.boss;
-      part.hp = Math.max(0, part.hp - dmg); part.flash = 1; B.flash = 0.6;
+      part.hp = Math.max(0, part.hp - dmg * env.atk); part.flash = 1; B.flash = 0.6;
       if (part !== B.core && part.hp <= 0 && part.alive) {
         part.alive = false;
         const p = bossPoint(part);

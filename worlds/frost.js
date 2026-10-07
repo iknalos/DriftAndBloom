@@ -472,7 +472,7 @@
     function update(dt, I) {
       t += dt; msgT = Math.max(0, msgT - dt); comboT = Math.max(0, comboT - dt); if (comboT <= 0) combo = 0;
       if (won) return;
-      timeLeft -= dt;
+      timeLeft -= dt * env.clock;
       if (timeLeft <= 0) { timeLeft = 0; say("Time's up!"); env.lose(); return; }
       if (I.pressed.special) { restarts++; seed += 1; load(true); say('A new garden — same clock'); return; }
       P.frostCd = Math.max(0, P.frostCd - dt); P.breath = Math.max(0, P.breath - dt); P.fallT = Math.max(0, P.fallT - dt);

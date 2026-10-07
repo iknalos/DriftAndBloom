@@ -72,7 +72,7 @@
       T = L.T.map(r => r.slice());
       CELL = Math.floor(Math.min(AREA.w / COLS, AREA.h / ROWS));
       OX = Math.round(AREA.x + (AREA.w - COLS * CELL) / 2); OY = Math.round(AREA.y + (AREA.h - ROWS * CELL) / 2);
-      P = { x: 1, y: 1, px: 0, py: 0, mv: null, k: 0, face: 'down', pods: 1, range: 2, speed: 4.6, kick: false, buzz: 0 };
+      P = { x: 1, y: 1, px: 0, py: 0, mv: null, k: 0, face: 'down', pods: 1, range: env.boon('blast') ? 3 : 2, speed: 4.6, kick: false, buzz: 0 };
       P.px = tx(1); P.py = ty(1);
       pods = []; bursts = [];
       beetles = L.beetles.map(b => ({ x: b.x, y: b.y, px: tx(b.x), py: ty(b.y), mv: null, k: 0, kind: b.kind, dir: 'left', wait: 0.5 + Math.random(), caught: 0, ph: Math.random() * TAU }));
@@ -204,7 +204,7 @@
     function update(dt, I) {
       t += dt; msgT = Math.max(0, msgT - dt);
       if (done) return;
-      timeLeft -= dt;
+      timeLeft -= dt * env.clock;
       if (timeLeft <= 0) { timeLeft = 0; say("The garden's day is over"); env.lose(); return; }
       P.buzz += dt * 40;
       if (I.pressed.attack || I.pressed.jump) plant();

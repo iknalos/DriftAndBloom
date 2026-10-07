@@ -872,7 +872,7 @@ void main(){
         spawnP({ x: e.x + e.face * 46, y: e.y - 130, kind: 'ring', rgb: '255,170,80', size: 6, grow: 90, life: 0.25 });
         return false;
       }
-      e.hp -= n; e.hitT = 1;
+      e.hp -= n * env.atk; e.hitT = 1;
       if (e.type !== 'brute') e.vx += dir * (e.type === 'ghoul' ? 40 : 120);
       bleed(e.x - dir * 6, aimY(e), dir > 0 ? -0.25 : Math.PI + 0.25, e.hp <= 0 || e.type === 'brute');
       sfx('arrow_hit', e.x, { vol: 0.8, gap: 0.04 });
@@ -1130,7 +1130,7 @@ void main(){
       return false;
     }
     function hurtSerpent(z, n, flaming) {
-      const s = z.s; s.hp -= n; s.hitT = 1;
+      const s = z.s; s.hp -= n * env.atk; s.hitT = 1;
       burstP(s.hx, s.hy, { n: 12, speed: 200, rgb: '255,180,90', kind: 'spark', life: 0.4 });
       if (s.hp <= 0 && !s.dead) {
         s.dead = true; s.vy = -120; env.hitstop(0.06); env.shake(0.3);

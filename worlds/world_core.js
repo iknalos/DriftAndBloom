@@ -23,6 +23,8 @@
 // The env handed to create():
 //   W, H (390×844 app px), t (seconds), charId, charRgb ('r,g,b'), assets{key: img}
 //   health / maxHealth (100) · damage(n, {x, y, text}) · heal(n) · invuln(sec)
+//   boon(id) · atk · clock — the Adventure boon picked after the last stage (adventure.js): atk multiplies the
+//   player's hits, clock is how fast round clocks run; 'hide' and 'dew' are handled here (less damage, slow healing)
 //   win() · lose()      — end the world (core plays the result card)
 //   shake(amount 0..1) · flash('r,g,b', alpha) · hitstop(sec)
 //   fx — particle system: fx.spawn({...}) / fx.burst(x, y, opts) / fx.update / fx.draw
@@ -994,6 +996,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     S.pointers = new Map(); S.touch = { dirs: {}, held: {}, ax: 0, ay: 0 }; S.stick = null;
     S.fieldQ = { taps: [], swipes: [], releases: [] };
     S.level = Math.max(1, Math.min(10, +opts.level || 1)); S.badge = opts.badge || ''; S.round = !!opts.round; S.stars = 0;
+    S.boons = opts.boons || {}; S.boonName = opts.boonName || '';
     S.shakeA = 0; S.flashA = 0; S.flashRgb = '255,255,255'; S.stop = 0;
     S.health = 100; S.maxHealth = 100; S.ghost = 100; S.invulnT = 0; S.dmgFlash = 0;
     S.floaters = [];
@@ -1027,11 +1030,15 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       // Adventure toughness: enemy / boss health x tough (stage 1 0.82 .. stage 10 1.45); 1 outside Adventure
       get tough() { return S.round ? 0.75 + 0.07 * S.level : 1; },
       setStars(n) { S.stars = Math.max(1, Math.min(3, n | 0)); },
+      boon(id) { return !!S.boons[id]; },
+      get atk() { return S.boons.edge ? 1.35 : 1; },          // Keen Edge
+      get clock() { return S.boons.time ? 0.75 : 1; },        // Slow Sun
       fx: S.fx, hud: S.hud,
       damage(n, o) {
         if (S.phase !== 'play' || S.invulnT > 0 || n <= 0) return false;
         o = o || {};
         if (S.round) n *= 0.62 + 0.07 * S.level;             // Adventure: hits sting more each stage
+        if (S.boons.hide) n *= 0.7;                           // Thick Hide
         S.health = Math.max(0, S.health - n);
         S.dmgFlash = 1; S.invulnT = o.invuln !== undefined ? o.invuln : 0.35;
         S.shakeA = Math.max(S.shakeA, Math.min(1, 0.25 + n / 30));
@@ -1271,6 +1278,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     if (this.phase === 'play' || this.phase === 'result') {
       if (this.phase === 'play') this.playT += dt;
       if (this.invulnT > 0) this.invulnT -= dt;
+      if (this.boons.dew && this.phase === 'play' && this.health > 0) this.health = Math.min(this.maxHealth, this.health + 1.5 * dt);   // Morning Dew
       try { if (this.world) this.world.update(dt, this.phase === 'play' ? input : makeInput()); }
       catch (e) { console.error('[worlds] update failed', e); this.world = null; this.env.win(); }
       this.fx.update(dt);
@@ -1406,11 +1414,16 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     const R = this.roster.length;
     const ty = R ? 236 : 470;                                  // with a hero picker the text moves up
-    if (this.badge) {                                          // Adventure: STAGE n · ROUND m
-      c.font = 'bold 13px system-ui'; const bw = c.measureText(this.badge).width + 34;
+    if (this.badge) {                                          // Adventure: STAGE n · ROUND m (· the stage's boon)
+      c.font = 'bold 13px system-ui';
+      const boon = this.boonName ? '  ·  ' + this.boonName : '';
+      const w0 = c.measureText(this.badge).width, w1 = c.measureText(boon).width, bw = w0 + w1 + 34;
       c.fillStyle = `rgba(${this.rgb},0.18)`; roundRect(c, W / 2 - bw / 2, ty - 74, bw, 30, 15); c.fill();
       c.strokeStyle = `rgba(${this.rgb},0.7)`; c.lineWidth = 1.5; c.stroke();
-      c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.fillText(this.badge, W / 2, ty - 58); c.textBaseline = 'alphabetic';
+      c.textBaseline = 'middle'; c.textAlign = 'left';
+      c.fillStyle = '#fff'; c.fillText(this.badge, W / 2 - (w0 + w1) / 2, ty - 58);
+      if (boon) { c.fillStyle = '#ffd86b'; c.fillText(boon, W / 2 - (w0 + w1) / 2 + w0, ty - 58); }
+      c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     }
     c.fillStyle = `rgb(${this.rgb})`; c.font = 'bold 34px Georgia, serif';
     c.fillText(this.def.title, W / 2, ty);

@@ -129,8 +129,7 @@ void main(){
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
     howto: ['Stick: run · up = jump · down = crouch · down + move = crawl · ⚔ combo (also kneeling)', 'In the air: ⚔ rising slash, falling = plunge strike',
-            '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free',
-            'The tiger: back off when it raises a paw, move when it crouches, jump its roar'],
+            '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free'],
     controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
       far: A + 'bg_far.webp', mid: A + 'bg_mid.webp', bark: A + 'bark.webp', litter: A + 'litter.webp',
@@ -310,7 +309,7 @@ void main(){
           if (Math.hypot(b.x - cx, b.y - cy) < b.r + r) {
             hero.hitSet.add(e);
             const px = (b.x + cx) / 2, py = (b.y + cy) / 2;
-            e.hurt(s3 ? 2 : 1, hero.face);
+            e.hurt((s3 ? 2 : 1) * env.atk, hero.face);
             bleed(b.x - hero.face * b.r * 0.4, py, hero.face > 0 ? (st === 7 ? -1.1 : -0.3) : Math.PI + (st === 7 ? 1.1 : 0.3), s3);
             sfx(s3 ? 'cut_heavy' : 'cut', b.x, { gap: 0.05 });
             env.hitstop(s3 ? 0.11 : 0.06); env.shake(s3 ? 0.32 : 0.18);
@@ -329,7 +328,7 @@ void main(){
         if (e.dead || h.dashHit.has(e)) continue;
         for (const b of e.boxes()) {
           if (Math.abs(b.x - h.x) < b.r + 34 && Math.abs(b.y - (h.y - 50)) < b.r + 46) {
-            h.dashHit.add(e); e.hurt(2, h.face);
+            h.dashHit.add(e); e.hurt(2 * env.atk, h.face);
             bleed(b.x, b.y, h.face > 0 ? -0.2 : Math.PI + 0.2, true); sfx('cut', b.x);
             env.hitstop(0.07); env.shake(0.25);
             fx.burst(b.x, b.y, { n: 16, speed: 280, rgb: '255,245,210', kind: 'spark', life: 0.3, size: 2.6 });
@@ -348,7 +347,7 @@ void main(){
         if (e.dead) continue;
         for (const b of e.boxes()) if (Math.abs(b.x - h.x) < 110 && Math.abs(b.y - h.y) < 90) {
           const d = Math.sign(b.x - h.x) || h.face;
-          e.hurt(2, d); bleed(b.x, b.y, d > 0 ? -0.9 : Math.PI + 0.9, true); break;
+          e.hurt(2 * env.atk, d); bleed(b.x, b.y, d > 0 ? -0.9 : Math.PI + 0.9, true); break;
         }
       }
     }
@@ -563,7 +562,8 @@ void main(){
       return {
         type: 'tiger', x, y: GROUND, face: -1, vx: 0, st: 'hidden', t: 0, k: 0, hp, maxHp: hp, flash: 0, gait: 0, fade: 1,
         n: 0, rage: false, rageQ: false, raging: false, hit: false, fromX: x, toX: x, leapDur: 0.6, chain: 0, waves: [], wave2: 0,
-        intro: false, enterTo: x,
+        intro: false, enterTo: x, tips: {},
+        tip(key, text) { if (!this.tips[key]) { this.tips[key] = true; env.floatText(W / 2, 336, text, '255,240,190'); } },   // each tell is explained once
         dur(a) { return (rigOk('tiger') && R().dur(a)) || DUR[a] || 0.6; },
         opts() {
           const o = { scale: TIGER.k, flip: this.face < 0, flash: this.flash * 0.55, alpha: this.fade };
@@ -631,8 +631,8 @@ void main(){
                 if (this.n % 4 === 0) go('roar');
                 else if (dist < 175) go(Math.random() < 0.7 ? 'swipe' : 'crouch');
                 else go(Math.random() < 0.78 ? 'crouch' : 'roar');
-                if (this.st === 'crouch') sfx('tiger_growl', this.x, { vol: 0.85 });
-                else if (this.st === 'swipe') sfx('tiger_snarl', this.x, { vol: 0.9 });
+                if (this.st === 'crouch') { sfx('tiger_growl', this.x, { vol: 0.85 }); this.tip('crouch', 'It crouches: move!'); }
+                else if (this.st === 'swipe') { sfx('tiger_snarl', this.x, { vol: 0.9 }); this.tip('swipe', 'Paw up: back off!'); }
               }
               break;
             }
@@ -680,6 +680,7 @@ void main(){
               break;
             case 'tired':                                  // winded after the pounce: the opening
               this.vx = approach(this.vx, 0, 900 * dt);
+              this.tip('tired', 'Winded: strike now!');
               if ((this.t -= dt) <= 0) go('stalk', rand(0.3, 0.7));
               break;
             case 'roar':
@@ -696,7 +697,7 @@ void main(){
                   const L0 = A ? A.cam + 40 : hero.x - 160, R0 = A ? A.cam + AW - 40 : hero.x + 160;
                   blooms.push({ x: clamp(hero.x - hero.face * 90, L0, R0), y: GROUND - 58, got: false, t: 0 });
                 }
-                if (!this.intro) { this.wave(); if (this.rage) this.wave2 = 0.45; }
+                if (!this.intro) { this.wave(); if (this.rage) this.wave2 = 0.45; this.tip('roar', 'Jump the roar!'); }
               }
               if (this.wave2 > 0 && (this.wave2 -= dt) <= 0) this.wave();
               if (adv('roar')) { this.intro = false; this.raging = false; go('stalk', 1.0); }
