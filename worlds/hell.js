@@ -207,6 +207,8 @@ void main(){
       stickJump: true,
       buttons: [{ id: 'attack', icon: 'bow' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }, { id: 'special2', icon: '\uD83D\uDD25', count: () => VOLLEY.n }]
     },
+    // skinned photo rigs (tools/assets/rigs): the hounds run, crouch into a stance, leap and land on real joints
+    rigs: { hound: A + 'rig/hound', horn: A + 'rig/horn', bat: A + 'rig/bat', imp: A + 'rig/imp', garg: A + 'rig/garg', brute: A + 'rig/brute', ghoul: A + 'rig/ghoul' },
     assets: {
       rock: A + 'rock.jpg', backdrop: A + 'backdrop.jpg', volcano: A + 'volcano.jpg', canyon: A + 'canyon.jpg',
       hound: A + 'hellhound.png', houndGlow: A + 'hellhound_glow.png',
@@ -225,12 +227,14 @@ void main(){
     const AS = env.assets;
     VOLLEY.n = 1;
     const cheat = () => window.__hellCheat || {};
+    const rigOk = n => !!(env.rigs[n] && env.rigs[n].ready);     // skinned photo rig baked and loaded
+    const CROUCH_T = 0.48;                                        // the hound's stance before it pounces
 
     // creature sprite records: base + glow + white flash + leg split line + eye spots
     const SPR = {
       hound: { img: AS.hound, glow: AS.houndGlow, leg: 0.56, eyes: [], s: 0.36 },        // AI Horde hellhound
       horn: { img: AS.horn, glow: AS.hornGlow, leg: 0.55, eyes: [], s: 0.37 },           // the horde's horned hounds
-      ghoul: { img: AS.ghoul, glow: AS.ghoulGlow, leg: 0.56, eyes: [[0.93, 0.5]], s: 0.37 },  // charred hyena photo
+      ghoul: { img: AS.ghoul, glow: AS.ghoulGlow, leg: 0.56, eyes: [[0.08, 0.25]], s: 0.37, faceLeft: true },  // charred hyena photo
       bat: { img: AS.bat, glow: AS.batGlow, eyes: [[0.455, 0.71], [0.545, 0.71]], s: 0.33 },  // charred bat photo
       imp: { img: AS.imp, glow: AS.impGlow, eyes: [], s: 0.34, wing: 0.56, sh: [0.56, 0.36] },
       garg: { img: AS.garg, glow: AS.gargGlow, eyes: [], s: 0.34, wing: 0.6, sh: [0.6, 0.42] },
@@ -917,22 +921,24 @@ void main(){
         e.face = dir;
         e.vx += (dir * e.speed - e.vx) * Math.min(1, dt * 5);
         if (e.onGround && !segAt(e.x + dir * 34, e.y)) {             // leap the gap
-          e.vy = -600; e.vx = dir * 330; e.onGround = false; e.st = 'air';
+          e.vy = e.vy0 = -600; e.vx = dir * 330; e.onGround = false; e.st = 'air';
         }
-        if (e.onGround && close < 150 && Math.abs(hero.y - e.y) < 80 && e.cd <= 0 && hero.lavaT <= 0) { e.st = 'crouch'; e.t = 0.36; }
-        if (overlapHero(e, 10) && e.cd <= 0) { if (hurtHero(7, e.x)) { e.st = 'recover'; e.t = 0.5; e.vx = -dir * 150; e.cd = 1; } }
+        if (e.onGround && close < 150 && Math.abs(hero.y - e.y) < 80 && e.cd <= 0 && hero.lavaT <= 0) { e.st = 'crouch'; e.t = CROUCH_T; }
+        if (overlapHero(e, 10) && e.cd <= 0) { if (hurtHero(7, e.x)) { e.st = 'recover'; e.t = e.t0 = 0.5; e.vx = -dir * 150; e.cd = 1; } }
       } else if (e.st === 'crouch') {
         e.vx *= Math.pow(0.02, dt);
-        if ((e.t -= dt) <= 0) { e.st = 'pounce'; e.vx = dir * 440; e.vy = -470; e.onGround = false; e.cd = 1.3; e.bit = false; sfx('hound', e.x, { vol: 0.7, gap: 0.6 }); }
+        if ((e.t -= dt) <= 0) { e.st = 'pounce'; e.vx = dir * 440; e.vy = e.vy0 = -470; e.onGround = false; e.cd = 1.3; e.bit = false; sfx('hound', e.x, { vol: 0.7, gap: 0.6 }); }
       } else if (e.st === 'pounce' || e.st === 'air') {
         if (!e.bit && overlapHero(e, 6) && e.st === 'pounce') { e.bit = true; if (hurtHero(9, e.x)) e.vx = -e.vx * 0.3; }
-        if (e.onGround) { e.t = e.st === 'air' ? 0.05 : 0.38; e.st = 'recover'; }
+        if (e.onGround) { e.t = e.t0 = e.st === 'air' ? 0.16 : 0.38; e.st = 'recover'; }
       } else if (e.st === 'recover') {
         e.vx *= Math.pow(0.05, dt);
         if ((e.t -= dt) <= 0) e.st = 'run';
       }
       physics(e, dt, 1500);
       e.phase += dt * (5 + Math.abs(e.vx) / 22);
+      const kind = e.var === 'horn' ? 'horn' : 'hound';             // the gallop advances with the ground covered
+      if (e.st === 'run' && rigOk(kind)) e.gait = ((e.gait || 0) + Math.abs(e.vx) * dt / (env.rigs[kind].stride('run') * SPR[kind].s)) % 1;
       if (e.x < cam - 700 || e.x > cam + W + 900) e.gone = true;
     }
 
@@ -959,6 +965,7 @@ void main(){
       }
       physics(e, dt, 1500);
       e.phase += dt * (3 + Math.abs(e.vx) / 24);
+      if (rigOk('ghoul')) e.gait = ((e.gait || 0) + Math.abs(e.vx) * dt / (env.rigs.ghoul.stride('walk') * SPR.ghoul.s)) % 1;
       if (e.x < cam - 700) e.gone = true;
     }
 
@@ -1061,7 +1068,10 @@ void main(){
       burstP(e.x - e.face * 40, e.y, { n: 18, speed: 220, rgb: '255,140,50', kind: 'spark', life: 0.5, angle: -Math.PI / 2, spread: 2.4 });
     }
     function hurl(e, T) {
-      const ox = e.x + e.face * 62, oy = e.y - 106, tx = hero.x, ty = hero.y - 20, g = 620;     // from the demon's hand
+      let ox = e.x + e.face * 62, oy = e.y - 106;                                              // from the demon's hand
+      const q = rigOk('brute') && env.rigs.brute.point({ anim: 'hurlT', k: 1, scale: SPR.brute.s, flip: e.face > 0 }, 'hand');
+      if (q) { ox = e.x + q.x; oy = e.y + q.y; }
+      const tx = hero.x, ty = hero.y - 20, g = 620;
       shots.push({ x: ox, y: oy, vx: (tx - ox) / T, vy: (ty - oy - 0.5 * g * T * T) / T, g, life: 3 });
     }
     function bossDeath(e) {
@@ -1522,6 +1532,54 @@ void main(){
       }
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
+    // a hound from its rig: which baked motion, how far into it
+    function drawHound(c, e, kind) {
+      const spr = SPR[kind], R = env.rigs[kind];
+      const fade = e.dying ? Math.max(0, 1 - e.dying / 0.75) : 1;
+      const o = { scale: spr.s, flip: e.face < 0, alpha: fade, flash: e.hitT * 0.32 * fade };
+      let tele = 0;
+      if (e.dying) { o.anim = 'die'; o.k = Math.min(1, e.dying / 0.6); }
+      else if (e.st === 'crouch') { o.anim = 'crouch'; o.k = tele = clamp(1 - e.t / CROUCH_T, 0, 1); }
+      else if (e.st === 'pounce' || e.st === 'air') { const v0 = Math.abs(e.vy0 || 470); o.anim = 'leap'; o.k = clamp((e.vy + v0) / (2 * v0), 0, 1); }
+      else if (e.st === 'recover') { o.anim = 'land'; o.k = clamp(1 - e.t / (e.t0 || 0.38), 0, 1); }
+      else { o.anim = 'run'; o.u = e.gait || 0; }
+      const pulse = 0.55 + 0.3 * Math.sin(tAll * 3 + e.seed) + e.hitT * 0.6 + (e.burn > 0 ? 0.4 : 0) + tele * 0.6;
+      o.glow = clamp(pulse, 0, 1.4) * fade;
+      R.draw(c, e.x - cam, e.y + 2 + (e.dying ? e.dying * 10 : 0), o);
+      if (!e.dying) {                                  // under-light from the lava
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.22;
+        c.drawImage(env.glowSprite('255,100,30'), e.x - cam - 50, e.y - 20, 100, 30);
+        c.restore();
+      }
+    }
+    function drawGhoul(c, e) {
+      const R = env.rigs.ghoul, spr = SPR.ghoul;
+      const fade = e.dying ? Math.max(0, 1 - e.dying / 0.75) : 1;
+      const o = { scale: spr.s, flip: e.face > 0, alpha: fade, flash: e.hitT * 0.32 * fade };   // the photo faces left
+      let tele = 0;
+      if (e.dying) { o.anim = 'die'; o.k = Math.min(1, e.dying / 0.6); }
+      else if (e.st === 'rear') { o.anim = 'rear'; o.k = tele = clamp(1 - e.t / 0.55, 0, 1); }
+      else if (e.st === 'lunge') { o.anim = 'lunge'; o.k = clamp(1 - e.t / 0.3, 0, 1); }
+      else if (e.st === 'recover') { o.anim = 'recover'; o.k = clamp(1 - e.t / 0.7, 0, 1); }
+      else { o.anim = 'walk'; o.u = e.gait || 0; }
+      const pulse = 0.55 + 0.3 * Math.sin(tAll * 3 + e.seed) + e.hitT * 0.6 + (e.burn > 0 ? 0.4 : 0) + tele * 0.6;
+      o.glow = clamp(pulse, 0, 1.4) * fade;
+      const x = e.x - cam, y = e.y + 2 + (e.dying ? e.dying * 10 : 0);
+      R.draw(c, x, y, o);
+      const q = R.point(o, 'eye');
+      if (q) {                                         // burning eye
+        const r = 7 + tele * 8;
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = (0.85 + 0.15 * Math.sin(tAll * 9 + e.seed)) * fade;
+        c.drawImage(env.glowSprite('255,190,60'), x + q.x - r, y + q.y - r, r * 2, r * 2);
+        c.drawImage(env.glowSprite('255,255,200'), x + q.x - 2.5, y + q.y - 2.5, 5, 5);
+        c.restore();
+      }
+      if (!e.dying) {
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.22;
+        c.drawImage(env.glowSprite('255,100,30'), x - 50, e.y - 20, 100, 30);
+        c.restore();
+      }
+    }
     function drawBeast(c, e, spr, opt) {
       const img = spr.img;
       if (!img) return;
@@ -1531,7 +1589,7 @@ void main(){
       const fade = e.dying ? Math.max(0, 1 - e.dying / 0.75) : 1;
       c.save();
       c.translate(x, y + (e.dying ? e.dying * 30 : 0));
-      if (e.face < 0) c.scale(-1, 1);
+      if ((e.face < 0) !== !!spr.faceLeft) c.scale(-1, 1);
       c.rotate(opt.pitch || 0);
       const bob = -Math.abs(Math.sin(phase)) * 5 * run;
       c.scale(opt.sx || 1, opt.sy || 1);
@@ -1558,6 +1616,24 @@ void main(){
       }
     }
     function drawBat(c, e) {
+      if (rigOk('bat')) {
+        const R = env.rigs.bat, fade = e.dying ? Math.max(0, 1 - e.dying / 0.75) : 1;
+        const pulse = 0.5 + 0.3 * Math.sin(tAll * 4 + e.seed) + e.hitT * 0.6 + (e.st === 'mark' ? 0.5 : 0);
+        const o = { scale: SPR.bat.s, rot: clamp(e.vx / 900, -0.4, 0.4) + (e.dying ? e.dying * 4 : 0), alpha: fade,
+          glow: clamp(pulse, 0, 1.3) * fade, flash: e.hitT * 0.32 * fade };
+        if (e.st === 'dive') { o.anim = 'dive'; o.t = tAll + e.seed; }
+        else { o.anim = 'fly'; o.u = ((e.phase / TAU) % 1 + 1) % 1; }
+        const x = e.x - cam, y = e.y;
+        R.draw(c, x, y, o);
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = fade;     // red eyes
+        for (const n of ['eye0', 'eye1']) {
+          const q = R.point(o, n); if (!q) continue;
+          const r = e.st === 'mark' ? 10 : 5;
+          c.drawImage(env.glowSprite('255,70,50'), x + q.x - r, y + q.y - r, r * 2, r * 2);
+        }
+        c.restore();
+        return;
+      }
       const spr = SPR.bat, img = spr.img;
       if (!img) return;
       const w = img.width, h = img.height, s = spr.s;
@@ -1595,7 +1671,28 @@ void main(){
     }
     // side-view flyer: the wings (behind the shoulder) beat around the shoulder joint
     function drawImp(c, e) {
-      const spr = SPR[e.var === 'garg' ? 'garg' : 'imp'], img = spr.img;
+      const kind = e.var === 'garg' ? 'garg' : 'imp';
+      if (rigOk(kind)) {
+        const R = env.rigs[kind], fade = e.dying ? Math.max(0, 1 - e.dying / 0.75) : 1;
+        const pulse = 0.55 + 0.3 * Math.sin(tAll * 4 + e.seed) + e.hitT * 0.6 + (e.st === 'mark' || e.st === 'spit' ? 0.6 : 0);
+        const lean = clamp(e.vy / 1200, -0.35, 0.5) + (e.dying ? e.dying * 3 : 0) + (e.st === 'spit' ? -0.12 : 0);
+        const o = { scale: SPR[kind].s, flip: e.face < 0, rot: lean * (e.face < 0 ? -1 : 1), alpha: fade,
+          glow: clamp(pulse, 0, 1.4) * fade, flash: e.hitT * 0.32 * fade };
+        const u = ((e.phase * 0.75 / TAU) % 1 + 1) % 1;
+        if (e.st === 'dive') { o.anim = 'dive'; o.t = tAll + e.seed; }
+        else if (e.st === 'spit') { o.anim = 'spit'; o.u = u; }
+        else { o.anim = 'fly'; o.u = u; }
+        const x = e.x - cam, y = e.y;
+        R.draw(c, x, y, o);
+        if (e.st === 'spit') {                         // fire gathering in its jaws
+          const q = R.point(o, 'mouth') || { x: 0, y: 0 }, k = 1 - e.t / 0.55, r = 6 + k * 12;
+          c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.9 * fade;
+          c.drawImage(env.glowSprite('255,150,40'), x + q.x - r, y + q.y - r, r * 2, r * 2);
+          c.restore();
+        }
+        return;
+      }
+      const spr = SPR[kind], img = spr.img;
       if (!img) return;
       const w = img.width, h = img.height, s = spr.s;
       const x = e.x - cam, y = e.y;
@@ -1624,11 +1721,52 @@ void main(){
       c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
       c.restore();
     }
+    // which baked motion the Gatekeeper shows and how far into it
+    function brutePose(e) {
+      const o = { scale: SPR.brute.s, flip: e.face > 0 };                                      // the photo faces left
+      const prog = T0 => clamp(1 - e.t / T0, 0, 1);
+      switch (e.st) {
+        case 'sleep': o.anim = 'sleep'; o.t = tAll; break;
+        case 'roar': o.anim = 'roar'; o.k = prog(e.raged ? 1.0 : 1.7) * 1.6; break;
+        case 'guard': o.anim = 'guard'; o.t = tAll; break;
+        case 'slamT': o.anim = 'slamT'; o.k = prog(0.8); break;
+        case 'slam': o.anim = 'slam'; o.k = prog(0.35) * 1.4; break;
+        case 'hurlT': o.anim = 'hurlT'; o.k = prog(0.7); break;
+        case 'hurl': o.anim = 'hurl'; o.k = prog(0.35) * 1.3; break;
+        case 'chargeT': o.anim = 'charge'; o.u = 0; o.rot = 0.06; break;
+        case 'charge': o.anim = 'charge'; o.u = (tAll * 2.4) % 1; o.rot = 0.12; break;
+        default: o.anim = 'walk'; o.u = ((e.phase / TAU) % 1 + 1) % 1;
+      }
+      if (o.k !== undefined) o.k = Math.min(1, o.k);
+      if (o.rot) o.rot *= -e.face;                                  // lean into the charge
+      return o;
+    }
     function drawBrute(c, e) {
       const spr = SPR.brute, img = spr.img;
       if (!img) return;
       const w = img.width, h = img.height, s = spr.s;
       const x = e.x - cam, y = e.y;
+      if (rigOk('brute')) {
+        const R = env.rigs.brute, dying = e.dying ? Math.min(1, e.dying / 2.2) : 0;
+        const tele = e.st === 'slamT' ? 1 - e.t / 0.8 : e.st === 'hurlT' ? 1 - e.t / 0.7 : e.st === 'chargeT' ? 1 : e.st === 'roar' ? 0.8 : e.st === 'guard' ? 0.4 : 0;
+        const o = dying ? { anim: 'die', k: dying, scale: spr.s, flip: e.face > 0, rot: -e.face * 0.3 * Math.max(0, dying - 0.5) } : brutePose(e);
+        const fade = 1 - Math.max(0, dying - 0.4) / 0.6;
+        const pulse = 0.6 + 0.3 * Math.sin(tAll * 2.4) + e.hitT * 0.6 + tele * 0.5 + dying * 1.2 + (e.raged ? 0.25 : 0);
+        o.alpha = fade; o.glow = clamp(pulse, 0, 2) * fade; o.flash = e.hitT * 0.28 * fade;
+        const jx = e.st === 'roar' ? Math.sin(tAll * 40) * 1.2 : 0;
+        R.draw(c, x + jx, y, o);
+        if (e.st === 'hurlT') {                     // the fireball forming in its paw
+          const q = R.point(o, 'hand') || { x: 0, y: -100 }, r = 10 + tele * 22;
+          c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.9;
+          c.drawImage(env.glowSprite('255,150,40'), x + q.x - r, y + q.y - r, r * 2, r * 2);
+          c.drawImage(env.glowSprite('255,240,180'), x + q.x - r * 0.4, y + q.y - r * 0.4, r * 0.8, r * 0.8);
+          c.restore();
+        }
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.3 + tele * 0.3;
+        c.drawImage(env.glowSprite('255,100,30'), x - 90, y - 30, 180, 50); c.restore();
+        if (e.st === 'guard') drawWard(c, e, x, y);
+        return;
+      }
       let lean = Math.sin(e.phase * 2) * 0.02, sy = 1 + Math.sin(tAll * 1.8) * 0.012, tele = 0;
       if (e.st === 'slamT') { const k = 1 - e.t / 0.8; lean = -0.14 * k; sy = 1 + 0.05 * k; tele = k; }
       if (e.st === 'slam') { lean = 0.16; sy = 0.95; }
@@ -1667,7 +1805,10 @@ void main(){
       c.restore();
       c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.3 + tele * 0.3;
       c.drawImage(env.glowSprite('255,100,30'), x - 90, y - 30, 180, 50); c.restore();
-      if (e.st === 'guard') {                      // a burning ward of runes in front of it
+      if (e.st === 'guard') drawWard(c, e, x, y);
+    }
+    function drawWard(c, e, x, y) {
+      {                                            // a burning ward of runes in front of it
         const k = Math.min(1, (1.5 - e.t) / 0.2) * Math.min(1, e.t / 0.2);
         c.save(); c.translate(x + e.face * 52, y - 128); c.globalCompositeOperation = 'lighter';
         for (let i = 0; i < 18; i++) {
@@ -1937,11 +2078,14 @@ void main(){
       for (const e of enemies) {
         if (e.x - cam < -200 || e.x - cam > W + 200) continue;
         if (e.type === 'hound') {
+          const kind = e.var === 'horn' ? 'horn' : 'hound';
+          if (rigOk(kind)) { drawHound(c, e, kind); continue; }
           const opt = { run: e.st === 'run' ? 1 : e.st === 'recover' ? 0.3 : 0, pitch: 0 };
-          if (e.st === 'crouch') { opt.sy = 0.88; opt.sx = 1.06; opt.pitch = 0.06; opt.tele = 1 - e.t / 0.36; }
+          if (e.st === 'crouch') { opt.sy = 0.88; opt.sx = 1.06; opt.pitch = 0.06; opt.tele = 1 - e.t / CROUCH_T; }
           if (e.st === 'pounce' || e.st === 'air') { opt.pitch = clamp(e.vy / 1400, -0.35, 0.4); opt.sx = 1.08; opt.sy = 0.95; }
           drawBeast(c, e, e.var === 'horn' ? SPR.horn : SPR.hound, opt);
         } else if (e.type === 'ghoul') {
+          if (rigOk('ghoul')) { drawGhoul(c, e); continue; }
           const opt = { run: Math.min(1, Math.abs(e.vx) / 110), pitch: 0 };
           if (e.st === 'rear') { opt.pitch = -0.2 * (1 - e.t / 0.55); opt.tele = 1 - e.t / 0.55; }
           if (e.st === 'lunge') { opt.pitch = 0.1; opt.sx = 1.08; opt.run = 1; }

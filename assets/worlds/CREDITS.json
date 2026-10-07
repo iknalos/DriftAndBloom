@@ -1286,24 +1286,24 @@
     "seed": "31"
   },
   "assets/worlds/hell/ghoul.png": {
-    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
-    "derived_from": "cut_hyena.png",
-    "license": "CC BY 2.0",
-    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "author": "Bernard DUPONT",
+    "derived_from": "cut_hyena2.png",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
     "modified": "background removed, charred, lava cracks added",
     "origin": "Wikimedia Commons photo",
-    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
-    "title": "File:Running spotted hyena (11065789016).jpg"
+    "source": "https://commons.wikimedia.org/wiki/File:Spotted_Hyena_(Crocuta_crocuta)_walking_to_the_waterhole.jpg",
+    "title": "File:Spotted Hyena (Crocuta crocuta) walking to the waterhole.jpg"
   },
   "assets/worlds/hell/ghoul_glow.png": {
-    "author": "Ronnie Macdonald from Chelmsford, United Kingdom",
-    "derived_from": "cut_hyena.png",
-    "license": "CC BY 2.0",
-    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "author": "Bernard DUPONT",
+    "derived_from": "cut_hyena2.png",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
     "modified": "background removed, charred, lava cracks added",
     "origin": "Wikimedia Commons photo",
-    "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
-    "title": "File:Running spotted hyena (11065789016).jpg"
+    "source": "https://commons.wikimedia.org/wiki/File:Spotted_Hyena_(Crocuta_crocuta)_walking_to_the_waterhole.jpg",
+    "title": "File:Spotted Hyena (Crocuta crocuta) walking to the waterhole.jpg"
   },
   "assets/worlds/hell/hellhound.png": {
     "derived_from": "cut_hound_a.png",
@@ -1495,6 +1495,16 @@
     "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
     "title": "File:Running spotted hyena (11065789016).jpg"
   },
+  "assets/worlds/hell/src/cut_hyena2.png": {
+    "author": "Bernard DUPONT",
+    "derived_from": "hyena2.jpg",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Spotted_Hyena_(Crocuta_crocuta)_walking_to_the_waterhole.jpg",
+    "title": "File:Spotted Hyena (Crocuta crocuta) walking to the waterhole.jpg"
+  },
   "assets/worlds/hell/src/cut_imp_a.png": {
     "derived_from": "imp_a.png",
     "license": "AI-generated, no copyright claimed",
@@ -1540,6 +1550,14 @@
     "origin": "Wikimedia Commons photo",
     "source": "https://commons.wikimedia.org/wiki/File:Running_spotted_hyena_(11065789016).jpg",
     "title": "File:Running spotted hyena (11065789016).jpg"
+  },
+  "assets/worlds/hell/src/hyena2.jpg": {
+    "author": "Bernard DUPONT",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Spotted_Hyena_(Crocuta_crocuta)_walking_to_the_waterhole.jpg",
+    "title": "File:Spotted Hyena (Crocuta crocuta) walking to the waterhole.jpg"
   },
   "assets/worlds/hell/src/imp_a.png": {
     "license": "AI-generated, no copyright claimed",

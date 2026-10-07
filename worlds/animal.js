@@ -12,7 +12,7 @@
 //   eagle / vulture — wings split off the body and flapped around the shoulders;
 //            they swoop, grab and carry you up (tap ⚔ to break free, the longer
 //            it takes the higher you fall)
-//   boar   — gallop from a body bob + sheared leg band, charges after a snort
+//   boar   — skinned photo rig (tools/assets/rigs/boar.py): planted-hoof gallop, pawing, skid, stagger, collapse
 // Water is a WebGL shader that reflects the (blurred photo) forest behind it.
 //
 // Test flags: &god=1 (no damage) · &ax=2400 (start at x) · &show=zoo (creature preview)
@@ -131,6 +131,8 @@ void main(){
       croc: A + 'croc.webp', crocLunge: A + 'croc_lunge.webp', boar: A + 'boar.webp', eagle: A + 'eagle.webp', vulture: A + 'vulture.webp',
       lotus: A + 'lotus.webp', fern: A + 'fern.webp', pyskin: A + 'python.webp'
     },
+    // skinned photo rigs (tools/assets/rigs): real leg / wing joints instead of sheared cut-outs
+    rigs: { boar: A + 'rig/boar', eagle: A + 'rig/eagle', vulture: A + 'rig/vulture', croc: A + 'rig/croc' },
     create(env) { return makeWorld(env); }
   });
 
@@ -138,6 +140,7 @@ void main(){
     const { W, H, TAU, clamp, lerp, rand } = env;
     const AW = Math.min(W, 560);             // arena width: a fight-sized pen even on a wide landscape screen
     const img = env.assets;
+    const rigOk = n => !!(env.rigs[n] && env.rigs[n].ready);     // skinned photo rig baked and loaded
     const R = offRes();
     const waterProg = env.shader(WATER_FS);
     const fx = env.fx;
@@ -167,6 +170,7 @@ void main(){
       return litterPat;
     }
     const crocTint = tinted(img.croc, [10, 40, 30], 0.55), crocLungeTint = img.crocLunge ? tinted(img.crocLunge, [10, 40, 30], 0.55) : null;
+    const crocRigUnder = rigOk('croc') ? env.rigs.croc.variant(im => tinted(im, [10, 40, 30], 0.55)) : null;   // the croc seen through the water
     const ferns = [];
     { const r = rng(7); for (let x = 60; x < END + 300; x += 70 + r() * 150) if (!gapAt(x, 30)) ferns.push({ x, s: 0.2 + r() * 0.17, f: r() < 0.5 ? -1 : 1, d: r() < 0.3 }); }
     const rocks = [];
@@ -483,17 +487,18 @@ void main(){
       const seg = GAPS.reduce((acc, g) => (g[1] < x ? [g[1] + 20, acc[1]] : g[0] > x && g[0] < acc[1] ? [acc[0], g[0] - 20] : acc), [0, END + 400]);
       return {
         type: 'boar', x, y: GROUND, face: -1, vx: 0, st: 'idle', t: 0, hp: 3, cd: 0.6 + Math.random(), flash: 0, ph: Math.random() * 6, seg, rot: 0, fade: 1, travel: 0,
+        gait: Math.random(), t0: 0.4, seed: Math.random() * 9,
         boxes() { return this.dead ? [] : [{ x: this.x, y: this.y - 36, r: 40 }]; },
         hurt(n, dir) {
           if (this.st === 'die') return;
-          this.hp -= n; this.flash = 1; this.vx = dir * (n > 1 ? 330 : 200); this.st = 'stagger'; this.t = n > 1 ? 0.5 : 0.32;
+          this.hp -= n; this.flash = 1; this.vx = dir * (n > 1 ? 330 : 200); this.st = 'stagger'; this.t = this.t0 = n > 1 ? 0.5 : 0.32;
           if (this.hp <= 0) { this.st = 'die'; this.t = 0; dust(this.x, this.y, 10, dir); env.floatText(this.x - camX, this.y - 90 - camY, 'Boar down!', '255,230,160'); }
         },
         update(dt) {
           this.t -= dt; this.flash = Math.max(0, this.flash - dt * 5); this.cd -= dt;
           const dx = hero.x - this.x, near = Math.abs(dx) < 300 && Math.abs(hero.y - this.y) < 120 && !hero.carried;
           if (this.st === 'die') {                 // legs buckle, nose drops, it slumps and fades
-            this.rot = Math.min(1, this.rot + dt * 4); this.vx *= Math.pow(0.02, dt); this.x += this.vx * dt;
+            this.rot = Math.min(1, this.rot + dt * (rigOk('boar') ? 1.4 : 4)); this.vx *= Math.pow(0.02, dt); this.x += this.vx * dt;
             if (this.rot >= 1) { this.fade -= dt * 0.8; if (this.fade <= 0) this.dead = true; }
             return;
           }
@@ -520,6 +525,9 @@ void main(){
             if (this.t <= 0) { this.st = 'idle'; this.cd = 0.9 + Math.random() * 0.6; this.face = Math.sign(hero.x - this.x) || this.face; }
           }
           this.x = clamp(this.x + this.vx * dt, this.seg[0], this.seg[1]);
+          // the gallop advances with the ground covered, so the hooves stay planted
+          const L = rigOk('boar') ? env.rigs.boar.stride('charge') * BOAR.k : 80;
+          this.gait = (this.gait + Math.abs(this.vx) * dt / L) % 1;
         },
         draw(c) { drawBoar(c, this); }
       };
@@ -741,7 +749,10 @@ void main(){
       return {
         type: 'bird', kind, at, B, st: 'wait', t: 0, hp: 2, x: 0, y: 0, vx: 0, vy: 0, dir: -1, flap: Math.random() * 6, flash: 0,
         dives: 0, grip: 5, carryT: 0, tick: 0, rot: 0, cx: 0, cy: 0,
-        talonPt() { const s = B.k * 700 / B.src; const fr = (B.faceRight ? 1 : -1) * this.flipDir(); return { x: this.x + (B.talon[0] - B.src / 2) * s * fr * (kind === 'eagle' ? 1 : 1), y: this.y + (B.talon[1] - (B.src * this.aspect()) / 2) * s }; },
+        talonPt() {
+          const R = rigOk(kind) && env.rigs[kind];
+          if (R) { const o = birdPose(this), q = R.point(o, 'talon'); if (q) return { x: this.x + q.x, y: this.y + q.y }; }
+          const s = B.k * 700 / B.src; const fr = (B.faceRight ? 1 : -1) * this.flipDir(); return { x: this.x + (B.talon[0] - B.src / 2) * s * fr * (kind === 'eagle' ? 1 : 1), y: this.y + (B.talon[1] - (B.src * this.aspect()) / 2) * s }; },
         aspect() { return kind === 'eagle' ? 440 / 700 : 306 / 760; },
         flipDir() { return this.dir > 0 ? 1 : -1; },
         boxes() { return this.dead || this.st === 'wait' || this.st === 'falling' || this.st === 'flee' ? [] : [{ x: this.x, y: this.y, r: 34 }]; },
@@ -1110,6 +1121,21 @@ void main(){
 
     // ── drawing: creatures ─────────────────────────────────────────────────
     function drawBoar(c, b) {
+      if (rigOk('boar')) {
+        const w = 420 * BOAR.k;
+        c.save(); c.globalAlpha = b.fade * (1 - 0.5 * (b.st === 'die' ? b.rot : 0)); c.translate(b.x, b.y);   // contact shadow
+        c.scale(1, 0.18); const sg = c.createRadialGradient(0, 0, 0, 0, 0, w * 0.5);
+        sg.addColorStop(0, 'rgba(0,0,0,0.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(-w / 2, -w / 2, w, w); c.restore();
+        const o = { scale: BOAR.k, flip: b.face > 0, alpha: b.fade, flash: b.flash * 0.6 };      // the photo faces left
+        if (b.st === 'die') { o.anim = 'die'; o.k = b.rot; }
+        else if (b.st === 'charge') { o.anim = 'charge'; o.u = b.gait; }
+        else if (b.st === 'skid') { o.anim = 'skid'; o.t = T; }
+        else if (b.st === 'stagger') { o.anim = 'stagger'; o.k = clamp(1 - b.t / (b.t0 || 0.4), 0, 1); }
+        else if (b.st === 'notice') { o.anim = 'notice'; o.u = (b.ph / TAU) % 1; }
+        else { o.anim = 'idle'; o.t = T + b.seed; }
+        env.rigs.boar.draw(c, b.x, b.y, o);
+        return;
+      }
       const im = img.boar; if (!im) return;
       const k = BOAR.k, w = im.width * k, h = im.height * k;
       const run = b.st === 'charge' ? 1 : b.st === 'skid' || b.st === 'stagger' ? 0.4 : b.st === 'notice' ? 0.25 : 0;
@@ -1255,6 +1281,10 @@ void main(){
         mg.addColorStop(0, '#5a1e1a'); mg.addColorStop(1, '#2a0b0a');
         c.fillStyle = mg; c.fill(); c.restore();
       }
+      if (rigOk('croc')) {                                   // skinned tail wave + paddling legs (the jaw is cut out of the sheet)
+        const R = im === crocTint ? crocRigUnder : env.rigs.croc;
+        R.draw(c, 600, 0, { anim: cr.st === 'lurk' ? 'swim' : 'swimlo', u: ((cr.ph * 2.6 / TAU) % 1 + 1) % 1, scale: 1 });
+      } else {
       const tailEnd = CROC.tailEnd, sw = 22;
       c.save();
       c.beginPath(); c.rect(-10, -40, im.width + 20, im.height + 80);
@@ -1267,6 +1297,7 @@ void main(){
       }
       c.drawImage(im, tailEnd, 0, im.width - tailEnd, im.height, tailEnd, 0, im.width - tailEnd, im.height);
       c.restore();
+      }
       // lower jaw on its hinge
       c.save();
       c.translate(CROC.hinge[0], CROC.hinge[1]); c.rotate(CROC.jaw0 + cr.jaw * 0.62); c.translate(-CROC.hinge[0], -CROC.hinge[1]);
@@ -1308,8 +1339,32 @@ void main(){
       }
     }
 
+    // which baked wing-beat a bird shows, and how it is placed (shared by the drawing and talonPt)
+    function birdPose(b) {
+      const B = b.B, eagle = b.kind === 'eagle';
+      const flip = (B.faceRight ? 1 : -1) * b.flipDir();
+      const pitch = b.st === 'falling' ? b.rot : clamp(Math.atan2(b.vy, Math.abs(b.vx) + 60) * 0.35, -0.4, 0.4) * (b.st === 'carry' ? 0.3 : 1);
+      const o = { scale: B.k * 700 / (eagle ? 700 : 760), flip: flip < 0, rot: pitch * flip, flash: b.flash * 0.5 };
+      const u = ((b.flap / TAU) % 1 + 1) % 1;
+      if (b.st === 'falling') { o.anim = 'fall'; o.t = T; }
+      else if (eagle && b.st === 'dive') { o.anim = 'dive'; o.t = T; }
+      else if (eagle && b.st === 'carry') { o.anim = 'grip'; o.u = u; }
+      else if (!eagle && b.st === 'circle' && Math.sin(T * 0.7 + b.at) > 0.2 && u < 0.08) { o.anim = 'glide'; o.t = T; }
+      else { o.anim = 'flap'; o.u = u; }
+      return o;
+    }
     function drawBird(c, b) {
       if (b.st === 'wait') return;
+      if (rigOk(b.kind)) {
+        env.rigs[b.kind].draw(c, b.x, b.y, birdPose(b));
+        if (b.screech > 0 && b.st !== 'carry') {
+          c.save(); c.globalAlpha = Math.min(1, b.screech * 2);
+          c.fillStyle = '#ffd86b'; c.font = 'bold 22px Georgia, serif'; c.textAlign = 'center';
+          c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 3;
+          c.strokeText('!', b.x, b.y - 52); c.fillText('!', b.x, b.y - 52); c.restore();
+        }
+        return;
+      }
       const parts = birdParts[b.kind]; if (!parts) return;
       const B = b.B, s = B.k * 700 / B.src;     // polygon space → screen
       const amp = b.st === 'carry' ? 0.5 : b.st === 'dive' ? 0.12 : b.kind === 'vulture' ? 0.16 : 0.34;
@@ -1569,7 +1624,7 @@ void main(){
       zoo.croc.ph += dt; zoo.croc.jaw = 0.4 + 0.4 * Math.sin(T * 2);
       zoo.croc.st = 'lunge'; zoo.croc.t = 0.13; zoo.croc.face = -1; zoo.croc.x = 250;
       zoo.eagle.flap += dt * 6; zoo.vult.flap += dt * 4;
-      zoo.boar.ph += dt * 15;
+      zoo.boar.ph += dt * 15; zoo.boar.gait = (zoo.boar.gait + dt * 3.8) % 1;
       zoo.snake.update(dt);
     }
     function zooRender(c) {

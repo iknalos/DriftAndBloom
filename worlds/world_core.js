@@ -686,6 +686,80 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       warm(c) { if (H && H.ready) for (const sh of H.sheets) c.drawImage(sh, 0, 0, 1, 1, -10, -10, 1, 1); }
     };
   }
+  // ── PHOTO RIGS: creatures baked from one photo with a skinned skeleton (tools/assets/rigs) ──
+  // <base>.json + <base>_N.webp (+ <base>_glow_N.webp), frames in the hero-sheet layout
+  // [sheet, sx, sy, w, h, ax, ay] with (ax, ay) = the rig's anchor (ground under it / a flyer's centre).
+  // A world lists them in def.rigs { name: 'assets/worlds/<w>/rig/<name>' } and draws with env.rigs[name];
+  // a missing rig gives ready === false and the world keeps its old drawing.
+  const rigCache = {};
+  function loadRig(base) {
+    if (rigCache[base]) return rigCache[base];
+    const dir = base.slice(0, base.lastIndexOf('/') + 1);
+    const R = { ready: false, meta: null, sheets: [], glow: [] };
+    rigCache[base] = fetch(base + '.json').then(r => (r.ok ? r.json() : null)).then(meta => {
+      if (!meta) return makeRigApi(R);
+      const names = meta.sheets.concat(meta.glow || []);
+      return Promise.all(names.map(n => loadImage(dir + n).then(img => (img && img.decode ? img.decode().then(() => img, () => img) : img))))
+        .then(imgs => {
+          if (imgs.every(Boolean)) { R.meta = meta; R.sheets = imgs.slice(0, meta.sheets.length); R.glow = imgs.slice(meta.sheets.length); R.ready = true; }
+          return makeRigApi(R);
+        });
+    }).catch(() => makeRigApi(R));
+    return rigCache[base];
+  }
+  function rigFrameIndex(an, o) {
+    const n = an.f.length;
+    if (o.u !== undefined) return ((Math.floor(o.u * n) % n) + n) % n;                      // loop position 0..1
+    if (o.k !== undefined) return Math.max(0, Math.min(n - 1, Math.round(o.k * (n - 1))));  // progress 0..1
+    const f = Math.floor(Math.max(0, o.t || 0) * an.fps);
+    return an.loop ? f % n : Math.min(n - 1, f);
+  }
+  function makeRigApi(R) {
+    const anim = name => (R.ready ? R.meta.anims[name] || R.meta.anims[Object.keys(R.meta.anims)[0]] : null);
+    return {
+      get ready() { return R.ready; },
+      has(name) { return !!(R.ready && R.meta.anims[name]); },
+      dur(name) { const an = R.ready && R.meta.anims[name]; return an ? an.f.length / an.fps : 0; },
+      stride(name) { const an = R.ready && R.meta.anims[name]; return (an && an.stride) || 0; },   // photo px per loop
+      // draw at the anchor (x, y). o: { anim, u (loop 0..1) | k (progress 0..1) | t (s), scale (app px per
+      //   photo px), flip (mirror the photo), alpha, rot (radians about the anchor), glow (additive glow
+      //   layer strength, >1 stacks), flash (0..1 additive hit flash) }
+      draw(c, x, y, o) {
+        const an = anim(o.anim);
+        if (!an) return false;
+        const [s, sx, sy, w, h, ax, ay] = an.f[rigFrameIndex(an, o)];
+        const k = (o.scale || 1) / R.meta.S, a0 = o.alpha === undefined ? 1 : o.alpha;
+        c.save();
+        c.translate(x, y);
+        if (o.rot) c.rotate(o.rot);
+        c.scale(o.flip ? -k : k, k);
+        c.globalAlpha = a0;
+        c.drawImage(R.sheets[s], sx, sy, w, h, -ax, -ay, w, h);
+        c.globalCompositeOperation = 'lighter';
+        if (o.glow > 0 && R.glow[s]) {
+          for (let g = o.glow; g > 0.01; g -= 1) { c.globalAlpha = Math.min(1, g) * a0; c.drawImage(R.glow[s], sx, sy, w, h, -ax, -ay, w, h); }
+        }
+        if (o.flash > 0) { c.globalAlpha = Math.min(1, o.flash) * a0; c.drawImage(R.sheets[s], sx, sy, w, h, -ax, -ay, w, h); }
+        c.restore();
+        return true;
+      },
+      // a named point of that frame (eyes, talons...) as an offset from the anchor in app px
+      point(o, name) {
+        const an = anim(o.anim);
+        if (!an || !an.p) return null;
+        const v = an.p[rigFrameIndex(an, o)][name];
+        if (!v) return null;
+        const sc = o.scale || 1;
+        let px = v[0] * sc * (o.flip ? -1 : 1), py = v[1] * sc;
+        if (o.rot) { const cr = Math.cos(o.rot), sr = Math.sin(o.rot); [px, py] = [px * cr - py * sr, px * sr + py * cr]; }
+        return { x: px, y: py };
+      },
+      warm(c) { if (R.ready) for (const sh of R.sheets.concat(R.glow)) c.drawImage(sh, 0, 0, 1, 1, -10, -10, 1, 1); },
+      // the same rig drawn from re-coloured sheets (fn(img) -> canvas), e.g. an underwater tint
+      variant(fn) { return makeRigApi(R.ready ? Object.assign({}, R, { sheets: R.sheets.map(fn) }) : R); }
+    };
+  }
+
   let shadowCv = null;
   function shadowSprite() {
     if (shadowCv) return shadowCv;
@@ -929,6 +1003,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       floatText(x, y, txt, rgb) { S.floaters.push({ x, y, txt, rgb: rgb || '255,255,255', life: 1 }); },
       shader: makeShader, drawShader, drawHero, glowSprite, loadImage,
       hero: makeHeroApi(null),                  // sprite hero (def.hero), see SPRITE HERO
+      rigs: {},                                 // photo-rig creatures (def.rigs), see PHOTO RIGS
       setControls(cfg) { S.controls = cfg; }
     };
 
@@ -941,7 +1016,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       S.roster.forEach(h => loadImage(`assets/hero/${h.id}/portrait.webp`).then(im => { S.portraits[h.id] = im; }));
       return S.heroId ? loadHeroSet(S.heroId) : null;
     }) : def.hero ? loadHeroSet(def.hero) : Promise.resolve(null);
-    loadAll(def.assets, k => { S.loadK = k * (def.hero || def.roster ? 0.85 : 1); }).then(a => heroP.then(H => {
+    const rigP = Promise.all(Object.keys(def.rigs || {}).map(k => loadRig(def.rigs[k]).then(api => { S.env.rigs[k] = api; })));
+    loadAll(def.assets, k => { S.loadK = k * (def.hero || def.roster ? 0.85 : 1); }).then(a => Promise.all([heroP, rigP]).then(([H]) => {
       S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
       S.ready = true;                              // the world itself is built on Start (orientation first)
