@@ -578,6 +578,16 @@
     "source": "https://commons.wikimedia.org/wiki/File:Nile_Crocodile_Side_View_2620px.jpg",
     "title": "File:Nile Crocodile Side View 2620px.jpg"
   },
+  "assets/worlds/animal/src/cut_tiger.png": {
+    "author": "Joselodos",
+    "derived_from": "tiger.jpg",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "background removed",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bengal_tiger_walking_on_the_grass.jpg",
+    "title": "File:Bengal tiger walking on the grass.jpg"
+  },
   "assets/worlds/animal/src/eagle.jpg": {
     "author": "WallpapersWide.com",
     "license": "CC BY-SA 4.0",
@@ -676,6 +686,14 @@
     "source": "https://commons.wikimedia.org/wiki/File:Morelia_viridis_9.jpg",
     "title": "File:Morelia viridis 9.jpg"
   },
+  "assets/worlds/animal/src/tiger.jpg": {
+    "author": "Joselodos",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bengal_tiger_walking_on_the_grass.jpg",
+    "title": "File:Bengal tiger walking on the grass.jpg"
+  },
   "assets/worlds/animal/src/vulture.jpg": {
     "author": "Вых Пыхманн",
     "license": "CC BY-SA 3.0",
@@ -693,6 +711,15 @@
     "origin": "Wikimedia Commons photo",
     "source": "https://commons.wikimedia.org/wiki/File:Flying_griffon_vulture.jpg",
     "title": "File:Flying griffon vulture.jpg"
+  },
+  "assets/worlds/animal/tiger.webp": {
+    "author": "Joselodos",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "background removed; rigged and animated (tools/assets/rigs/tiger.py)",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:Bengal_tiger_walking_on_the_grass.jpg",
+    "title": "File:Bengal tiger walking on the grass.jpg"
   },
   "assets/worlds/animal/vulture.webp": {
     "author": "Вых Пыхманн",
@@ -1131,6 +1158,14 @@
     "source": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
     "title": "40 CC0 water / splash / slime SFX"
   },
+  "assets/worlds/audio/src/angry_tiger.wav": {
+    "author": "schots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "origin": "Wikimedia Commons photo",
+    "source": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+    "title": "File:439280 schots angry-tiger.wav"
+  },
   "assets/worlds/audio/start.mp3": {
     "author": "Kenney (kenney.nl)",
     "license": "CC0 1.0",
@@ -1170,6 +1205,42 @@
     "modified": "trimmed / layered / pitched, normalised",
     "source": "https://opengameart.org/content/swishes-sound-pack",
     "title": "Swishes Sound Pack"
+  },
+  "assets/worlds/audio/tiger_growl.mp3": {
+    "author": "schots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "trimmed / layered / pitched, normalised",
+    "origin": "Wikimedia Commons audio",
+    "source": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+    "title": "File:439280 schots angry-tiger.wav"
+  },
+  "assets/worlds/audio/tiger_hurt.mp3": {
+    "author": "schots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "trimmed / layered / pitched, normalised",
+    "origin": "Wikimedia Commons audio",
+    "source": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+    "title": "File:439280 schots angry-tiger.wav"
+  },
+  "assets/worlds/audio/tiger_roar.mp3": {
+    "author": "schots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "trimmed / layered / pitched, normalised",
+    "origin": "Wikimedia Commons audio",
+    "source": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+    "title": "File:439280 schots angry-tiger.wav"
+  },
+  "assets/worlds/audio/tiger_snarl.mp3": {
+    "author": "schots",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "modified": "trimmed / layered / pitched, normalised",
+    "origin": "Wikimedia Commons audio",
+    "source": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+    "title": "File:439280 schots angry-tiger.wav"
   },
   "assets/worlds/audio/unsheathe.mp3": {
     "author": "artisticdude",

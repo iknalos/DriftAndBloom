@@ -1072,6 +1072,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       S.env.hero = makeHeroApi(H);
       Object.assign(S.env.assets, a);
       S.ready = true;                              // the world itself is built on Start (orientation first)
+      // def.lazyRigs: rigs only needed later in the level (a boss) load behind play; until they arrive the
+      // world sees env.rigs[k] missing and draws its fallback
+      const envNow = S.env;
+      Object.keys(def.lazyRigs || {}).forEach(k => loadRig(def.lazyRigs[k]).then(api => { envNow.rigs[k] = api; }));
     }));
 
     S.last = performance.now();

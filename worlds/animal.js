@@ -13,6 +13,8 @@
 //            they swoop, grab and carry you up (tap ⚔ to break free, the longer
 //            it takes the higher you fall)
 //   boar   — skinned photo rig (tools/assets/rigs/boar.py): planted-hoof gallop, pawing, skid, stagger, collapse
+//   tiger  — the boss before the lotus gate (tools/assets/rigs/tiger.py): stalk, paw rake, crouch-and-pounce, a roar
+//            whose shock rolls along the ground; at half health it rages
 // Water is a WebGL shader that reflects the (blurred photo) forest behind it.
 //
 // Test flags: &god=1 (no damage) · &ax=2400 (start at x) · &show=zoo (creature preview)
@@ -27,7 +29,7 @@
   const ZOO = Q.get('show') === 'zoo';
 
   // ── level layout (world px; screen is 390 wide, ground surface at y 600) ──
-  const GROUND = 600, WATER = 618, END = 5060, HS = 1.2;
+  const GROUND = 600, WATER = 618, END = 5760, HS = 1.2;
   // every hop is one full running jump (~140 px) onto a wide landing
   const GAPS = [[1180, 1460], [2420, 2860], [3760, 4020]];
   const PLATS = [
@@ -38,16 +40,18 @@
   const TREES = [
     { x: 190, v: 0 }, { x: 830, v: 1, snake: true }, { x: 1080, v: 2 }, { x: 1640, v: 3 },
     { x: 2240, v: 1, snake: true }, { x: 2050, v: 0 }, { x: 3110, v: 2 }, { x: 3330, v: 3, snake: true },
-    { x: 3620, v: 0 }, { x: 4200, v: 2 }, { x: 4460, v: 1, snake: true }, { x: 4820, v: 3 }
+    { x: 3620, v: 0 }, { x: 4200, v: 2 }, { x: 4460, v: 1, snake: true }, { x: 4820, v: 3 },
+    { x: 5210, v: 2 }, { x: 5600, v: 0 }
   ];
   const BOARS = [560, 1760, 1880, 3020, 4620, 4730];
   // beat-'em-up arenas: the camera locks and the way only opens when the pack is down
   const ARENAS = [
     { at: 1640, cam: 1560, extra: [{ side: 1, delay: 2.2 }] },
-    { at: 4500, cam: 4445, extra: [{ side: -1, delay: 1.6 }, { side: 1, delay: 4.5 }] }
+    { at: 4500, cam: 4445, extra: [{ side: -1, delay: 1.6 }, { side: 1, delay: 4.5 }] },
+    { at: 5150, cam: 5080, boss: true, extra: [] }                 // the Striped King's clearing
   ];
   const BIRDS = [{ at: 2100, kind: 'vulture' }, { at: 3420, kind: 'eagle' }, { at: 4300, kind: 'eagle' }];
-  const BLOOMS = [1600, 3060, 4130, 4420];
+  const BLOOMS = [1600, 3060, 4130, 4420, 4990];
   const BRANCH_Y = 404, BRANCH_LEN = 128;
   const SN = { N: 34, SEG: 4, K: 20, R: 3.6 };       // tree python: body points, spacing, neck = front K points, body radius
 
@@ -59,6 +63,7 @@
     wlLurk: 34, wlUp: 158, wlLunge: 292
   };
   const BOAR = { k: 0.245, legs: 0.62 };                                               // boar.webp 420 x 317, faces left
+  const TIGER = { k: 0.36, hp: 60, leapH: 120, x: 5600, flee: 4800, name: 'THE STRIPED KING' };   // tiger.webp 640 x 463, faces right
   const BIRD = {
     eagle: {                             // eagle.webp 700 x 440 (polys in 1376-px space), faces right, diving pose
       k: 0.27, src: 1376, faceRight: true, talon: [950, 790], body: [800, 560],
@@ -119,20 +124,22 @@ void main(){
     landscape: { top: 150, h: 560 },        // landscape camera: world rows 150..710 (sky trimmed, ground + soil kept)
     music: 'music_animal',
     sounds: ['swing', 'swing_big', 'cut', 'cut_heavy', 'dash', 'plunge', 'jump', 'land', 'hurt', 'hiss', 'snake_strike',
-      'croc_snap', 'splash', 'splash_big', 'splash_small', 'boar', 'eagle', 'bloom'],
+      'croc_snap', 'splash', 'splash_big', 'splash_small', 'boar', 'eagle', 'bloom', 'tiger_roar', 'tiger_snarl', 'tiger_growl', 'tiger_hurt'],
     subtitle: r => /croc/i.test(r || '') ? 'The crocodile dragged you deep into the wild.'
       : /snake/i.test(r || '') ? 'The snake\'s bite pulled you into the wild.' : 'You were dragged into the wild.',
     hint: 'Fight your way to the lotus gate',
     howto: ['Stick: run · up = jump · down = crouch · down + move = crawl · ⚔ combo (also kneeling)', 'In the air: ⚔ rising slash, falling = plunge strike',
-            '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free'],
+            '» dash-strike through enemies · stick down + » = roll', 'Eagle got you? Tap ⚔ fast to break free',
+            'The tiger: back off when it raises a paw, move when it crouches, jump its roar'],
     controls: { dirs: 'stick', stickJump: true, buttons: [{ id: 'attack', icon: 'sword' }, { id: 'jump', icon: 'jump' }, { id: 'special', icon: 'dash' }] },
     assets: {
       far: A + 'bg_far.webp', mid: A + 'bg_mid.webp', bark: A + 'bark.webp', litter: A + 'litter.webp',
       croc: A + 'croc.webp', crocLunge: A + 'croc_lunge.webp', boar: A + 'boar.webp', eagle: A + 'eagle.webp', vulture: A + 'vulture.webp',
-      lotus: A + 'lotus.webp', fern: A + 'fern.webp', pyskin: A + 'python.webp'
+      lotus: A + 'lotus.webp', fern: A + 'fern.webp', pyskin: A + 'python.webp', tiger: A + 'tiger.webp'
     },
     // skinned photo rigs (tools/assets/rigs): real leg / wing joints instead of sheared cut-outs
     rigs: { boar: A + 'rig/boar', eagle: A + 'rig/eagle', vulture: A + 'rig/vulture', croc: A + 'rig/croc' },
+    lazyRigs: { tiger: A + 'rig/tiger' },            // the boss waits at the far end: load it behind play
     create(env) { return makeWorld(env); }
   });
 
@@ -198,15 +205,24 @@ void main(){
     });
     BOARS.forEach(x => enemies.push(makeBoar(x)));
     BIRDS.forEach(b => enemies.push(makeBird(b.kind, b.at)));
+    const tiger = makeTiger(TIGER.x);
+    enemies.push(tiger);
+    window.__tigerBoss = () => tiger;                 // test hook
     const blooms = BLOOMS.map(x => ({ x, y: GROUND - 58, got: false, t: Math.random() * 6 }));
     const arenas = ARENAS.map(a => Object.assign({}, a, { st: a.at < hero.x ? 'clear' : 'wait', members: [], t: 0, banner: 0, go: 0, left: 0, extra: a.extra.map(e => Object.assign({}, e)) }));
     let arena = null;
     function updateArenas(dt) {
       for (const a of arenas) {
         if (a.st === 'wait' && hero.x > a.at && !hero.carried && hero.ground) {
-          a.st = 'fight'; arena = a; a.t = 0; a.banner = 1.5;
-          a.members = enemies.filter(e => e.type === 'boar' && !e.dead && e.x > a.cam - 20 && e.x < a.cam + AW + 60);
-          a.members.forEach(e => { e.seg = [a.cam + 14, a.cam + AW - 14]; e.cd = Math.min(e.cd, 0.6); });
+          a.st = 'fight'; arena = a; a.t = 0; a.banner = a.boss ? 2.4 : 1.5;
+          if (a.boss) {                                  // the tiger pads in from the trees on the right
+            a.members = [tiger];
+            tiger.st = 'enter'; tiger.x = a.cam + AW + 170; tiger.enterTo = a.cam + AW * 0.68; tiger.face = -1;
+            sfx('tiger_growl', a.cam + AW, { vol: 0.9 });
+          } else {
+            a.members = enemies.filter(e => e.type === 'boar' && !e.dead && e.x > a.cam - 20 && e.x < a.cam + AW + 60);
+            a.members.forEach(e => { e.seg = [a.cam + 14, a.cam + AW - 14]; e.cd = Math.min(e.cd, 0.6); });
+          }
           env.shake(0.3);
         }
         if (a.st !== 'fight') { if (a.go > 0) a.go -= dt; continue; }
@@ -221,7 +237,8 @@ void main(){
         a.left = a.members.filter(e => !e.dead && e.st !== 'die').length + a.extra.filter(ex => !ex.done).length;
         if (a.left === 0) {
           a.st = 'clear'; a.go = 3.5; arena = null;
-          env.floatText(W / 2, 320, 'Clear!', '200,255,170'); env.flash('220,255,200', 0.15);
+          if (a.boss) { env.hud.boss = null; env.floatText(W / 2, 300, 'The Striped King falls!', '255,225,150'); env.flash('255,235,200', 0.35); }
+          else { env.floatText(W / 2, 320, 'Clear!', '200,255,170'); env.flash('220,255,200', 0.15); }
         }
       }
     }
@@ -533,6 +550,189 @@ void main(){
       };
     }
 
+    // ── the Striped King: Animal World's boss ──
+    // It stalks to its range, then: a fore-paw rake when you are close (the raised paw is the tell: back off or roll
+    // through), a crouch-and-pounce onto the spot you stood on when the crouch ends (move!), or a roar whose shock
+    // rolls along the ground both ways (jump it). Every fourth move is a roar. At half health it roars itself into a
+    // rage: faster, closer, two pounces in a row, a double roar -- and a bloom falls to heal you. After a pounce it
+    // is winded for a moment: that is the opening.
+    function makeTiger(x) {
+      const hp = Math.max(14, Math.round(TIGER.hp * env.tough));
+      const R = () => env.rigs.tiger;
+      const DUR = { swipe: 0.7, roar: 1.0, crouch: 0.6, land: 0.44, hurt: 0.33, die: 1.0 };
+      return {
+        type: 'tiger', x, y: GROUND, face: -1, vx: 0, st: 'hidden', t: 0, k: 0, hp, maxHp: hp, flash: 0, gait: 0, fade: 1,
+        n: 0, rage: false, rageQ: false, raging: false, hit: false, fromX: x, toX: x, leapDur: 0.6, chain: 0, waves: [], wave2: 0,
+        intro: false, enterTo: x,
+        dur(a) { return (rigOk('tiger') && R().dur(a)) || DUR[a] || 0.6; },
+        opts() {
+          const o = { scale: TIGER.k, flip: this.face < 0, flash: this.flash * 0.55, alpha: this.fade };
+          if (this.st === 'enter' || this.st === 'stalk') { o.anim = 'walk'; o.u = this.gait; }
+          else if (this.st === 'tired') { o.anim = 'idle'; o.t = T * 1.6; }
+          else if (DUR[this.st] || this.st === 'leap') { o.anim = this.st; o.k = this.k; }
+          else { o.anim = 'idle'; o.t = T; }
+          return o;
+        },
+        boxes() {
+          if (this.dead || this.st === 'hidden' || this.st === 'die') return [];
+          const out = [];
+          if (rigOk('tiger')) {
+            const o = this.opts();
+            for (const [n, r, dy] of [['rump', 42, 28], ['chest', 44, 12], ['head', 32, 0]]) {
+              const p = R().point(o, n);
+              if (p) out.push({ x: this.x + p.x, y: this.y + p.y + dy, r });
+            }
+          }
+          if (!out.length) {
+            const f = this.face;
+            out.push({ x: this.x - f * 48, y: this.y - 82, r: 42 }, { x: this.x + f * 36, y: this.y - 76, r: 44 }, { x: this.x + f * 92, y: this.y - 98, r: 32 });
+          }
+          return out;
+        },
+        hurt(n, dir) {
+          if (this.dead || this.st === 'die' || this.st === 'hidden') return;
+          this.hp -= n; this.flash = 1;
+          if (Math.random() < 0.5) sfx('tiger_hurt', this.x, { vol: 0.55, gap: 0.6 });
+          if (this.hp <= 0) {
+            this.hp = 0; this.st = 'die'; this.k = 0; this.t = 0; this.vx = dir * 120; this.waves.length = 0;
+            sfx('tiger_roar', this.x, { rate: 0.82, vol: 0.85 }); env.shake(0.6); env.hitstop(0.2);
+            return;
+          }
+          if (!this.rage && this.hp <= this.maxHp * 0.5) { this.rage = true; this.rageQ = true; }
+          if (n > 1 && (this.st === 'stalk' || this.st === 'tired')) { this.st = 'hurt'; this.k = 0; this.vx = dir * 170; }
+        },
+        wave() {
+          for (const d of [-1, 1]) this.waves.push({ x: this.x + d * 60, d, life: 1.7, hit: false });
+          fx.spawn({ x: this.x, y: GROUND - 10, kind: 'ring', size: 16, grow: 420, life: 0.45, rgb: '255,235,200' });
+        },
+        update(dt) {
+          this.flash = Math.max(0, this.flash - dt * 5);
+          if (this.st === 'hidden') return;
+          const A = arena && arena.boss ? arena : null;
+          const dx = hero.x - this.x, dist = Math.abs(dx), sp = this.rage ? 1.25 : 1;
+          const lo = A ? A.cam + 70 : this.x - 400, hi = A ? A.cam + AW - 70 : this.x + 400;
+          if (this.st !== 'die') env.hud.boss = { name: TIGER.name, hp: Math.max(0, this.hp / this.maxHp) };
+          const adv = a => { this.k = Math.min(1, this.k + dt * sp / Math.max(0.05, this.dur(a))); return this.k >= 1; };
+          const go = (st, t) => { this.st = st; this.k = 0; this.t = t || 0; this.hit = false; };
+          switch (this.st) {
+            case 'enter':
+              this.face = -1; this.vx = -105;
+              if (this.x <= this.enterTo) { this.vx = 0; go('roar'); this.intro = true; }
+              break;
+            case 'stalk': {
+              this.face = Math.sign(dx) || this.face;
+              const want = this.rage ? 150 : 185;
+              const v = dist > want + 30 ? 1 : dist < want - 70 ? -0.55 : 0;
+              this.vx = approach(this.vx, this.face * v * (this.rage ? 135 : 100), 500 * dt);
+              this.t -= dt;
+              if (this.rageQ) { this.rageQ = false; go('roar'); this.raging = true; break; }
+              if (this.t <= 0 && hero.plungeT <= 0) {
+                this.n++;
+                if (this.n % 4 === 0) go('roar');
+                else if (dist < 175) go(Math.random() < 0.7 ? 'swipe' : 'crouch');
+                else go(Math.random() < 0.78 ? 'crouch' : 'roar');
+                if (this.st === 'crouch') sfx('tiger_growl', this.x, { vol: 0.85 });
+                else if (this.st === 'swipe') sfx('tiger_snarl', this.x, { vol: 0.9 });
+              }
+              break;
+            }
+            case 'swipe':
+              this.vx = approach(this.vx, this.k > 0.42 && this.k < 0.62 ? this.face * 240 : 0, 1600 * dt);
+              if (!this.hit && this.k > 0.44 && this.k < 0.66 && !hero.carried) {
+                const rel = (hero.x - this.x) * this.face;
+                if (rel > 30 && rel < 210 && hero.y > this.y - 150) { this.hit = true; if (hurtHero(10, this.x, 330, 'Claws! -10', 70)) env.shake(0.45); }
+              }
+              if (adv('swipe')) go('stalk', rand(0.8, 1.2));
+              break;
+            case 'crouch':
+              this.vx = approach(this.vx, 0, 800 * dt);
+              this.face = Math.sign(dx) || this.face;
+              if (Math.random() < dt * 8) dust(this.x - this.face * 50, GROUND, 1, -this.face);
+              if (adv('crouch')) {
+                this.fromX = this.x; this.toX = clamp(hero.x, lo, hi);
+                if (Math.abs(this.toX - this.x) < 90) this.toX = clamp(this.x + this.face * 90, lo, hi);
+                this.face = Math.sign(this.toX - this.x) || this.face;
+                this.leapDur = clamp(Math.abs(this.toX - this.fromX) / 520, 0.5, 0.78);
+                go('leap'); sfx('tiger_snarl', this.x, { rate: 0.9 }); dust(this.x, GROUND, 8, -this.face);
+              }
+              break;
+            case 'leap': {
+              this.k = Math.min(1, this.k + dt / this.leapDur);
+              const s = this.k;
+              this.x = lerp(this.fromX, this.toX, s); this.y = GROUND - TIGER.leapH * 4 * s * (1 - s); this.vx = 0;
+              if (!this.hit && s > 0.12 && s < 0.96 && !hero.carried) {
+                for (const b of this.boxes()) if (Math.hypot(b.x - hero.x, b.y - (hero.y - 60)) < b.r + 28) {
+                  this.hit = true; if (hurtHero(12, this.x, 380, 'Pounce! -12', 80)) env.shake(0.6);
+                  break;
+                }
+              }
+              if (s >= 1) {
+                this.y = GROUND; go('land'); env.shake(0.45); dust(this.x, GROUND, 16, 0); sfx('land', this.x, { vol: 1, rate: 0.6 });
+                fx.spawn({ x: this.x, y: GROUND - 4, kind: 'ring', size: 14, grow: 260, life: 0.4, rgb: '230,215,180' });
+              }
+              break;
+            }
+            case 'land':
+              if (adv('land')) {
+                if (this.rage && this.chain < 1) { this.chain++; go('crouch'); this.k = 0.4; sfx('tiger_growl', this.x, { vol: 0.85 }); }
+                else { this.chain = 0; go('tired', this.rage ? 0.8 : 0.95); }
+              }
+              break;
+            case 'tired':                                  // winded after the pounce: the opening
+              this.vx = approach(this.vx, 0, 900 * dt);
+              if ((this.t -= dt) <= 0) go('stalk', rand(0.3, 0.7));
+              break;
+            case 'roar':
+              this.vx = approach(this.vx, 0, 900 * dt);
+              if (!this.intro) this.face = Math.sign(dx) || this.face;
+              if (!this.hit && this.k > 0.26) {
+                this.hit = true; sfx('tiger_roar', this.x, { vol: 1 }); env.shake(this.intro || this.raging ? 0.8 : 0.55);
+                if (rigOk('tiger')) {
+                  const m = R().point(this.opts(), 'mouth');
+                  if (m) fx.spawn({ x: this.x + m.x, y: this.y + m.y, kind: 'ring', size: 8, grow: 300, life: 0.5, rgb: '255,240,210' });
+                }
+                if (this.raging) {
+                  env.floatText(W / 2, 300, 'It is enraged!', '255,150,110');
+                  const L0 = A ? A.cam + 40 : hero.x - 160, R0 = A ? A.cam + AW - 40 : hero.x + 160;
+                  blooms.push({ x: clamp(hero.x - hero.face * 90, L0, R0), y: GROUND - 58, got: false, t: 0 });
+                }
+                if (!this.intro) { this.wave(); if (this.rage) this.wave2 = 0.45; }
+              }
+              if (this.wave2 > 0 && (this.wave2 -= dt) <= 0) this.wave();
+              if (adv('roar')) { this.intro = false; this.raging = false; go('stalk', 1.0); }
+              break;
+            case 'hurt':
+              this.vx = approach(this.vx, 0, 900 * dt);
+              if (adv('hurt')) go('stalk', 0.25);
+              break;
+            case 'die':
+              this.vx *= Math.pow(0.02, dt);
+              if (this.k < 1) this.k = Math.min(1, this.k + dt / 1.6);
+              else if ((this.t += dt) > 3) { this.fade = Math.max(0, this.fade - dt * 0.6); if (this.fade <= 0) this.dead = true; }
+              break;
+          }
+          if (this.st !== 'leap') {
+            this.x += this.vx * dt;
+            if (A && this.st !== 'enter') this.x = clamp(this.x, A.cam + 30, A.cam + AW - 30);
+          }
+          // the walk advances with the ground covered (backing off runs it backwards), so the paws stay planted
+          const L = rigOk('tiger') ? R().stride('walk') * TIGER.k : 56;
+          this.gait = ((this.gait + this.vx * this.face * dt / L) % 1 + 1) % 1;
+          // roar shocks roll along the ground; standing on the ground when one passes = hit (jump it)
+          for (let i = this.waves.length - 1; i >= 0; i--) {
+            const w = this.waves[i], px = w.x;
+            w.x += w.d * 400 * dt; w.life -= dt;
+            if (Math.random() < 0.9) dust(w.x, GROUND, 1, w.d);
+            if (!w.hit && !hero.carried && hero.y > GROUND - 22 && hero.rollT <= 0 && ((hero.x - px) * (hero.x - w.x) <= 0 || Math.abs(hero.x - w.x) < 14)) {
+              w.hit = true; hurtHero(7, w.x - w.d * 20, 240, 'Roar! -7', 30);
+            }
+            if (w.life <= 0 || (A && (w.x < A.cam - 30 || w.x > A.cam + AW + 30))) this.waves.splice(i, 1);
+          }
+        },
+        draw(c) { drawTiger(c, this); }
+      };
+    }
+
     // ── tree python ──
     // the loop it crawls round its tree, as a dense closed polyline (world px)
     function snakeLoop(t) {
@@ -775,7 +975,7 @@ void main(){
             this.x += this.vx * dt; this.y += this.vy * dt;
             this.dir = this.vx < -20 ? -1 : this.vx > 20 ? 1 : this.dir;
             if (won) { this.st = 'flee'; return; }
-            if (hero.x > END - 260) { this.st = 'flee'; return; }
+            if (hero.x > TIGER.flee) { this.st = 'flee'; return; }          // the sky clears before the tiger's clearing
             if (this.t <= 0 && !hero.carried && hero.plungeT <= 0 && !arena) {
               this.st = 'dive'; this.t = 0; this.u = 0; sfx('eagle', this.x, { vol: 0.6, rate: kind === 'vulture' ? 0.75 : 1 });
               const aimX = hero.x + hero.vx * 0.8;
@@ -905,7 +1105,7 @@ void main(){
       if (won) { winT += dt; if (winT > 0.9) env.win(); }
       env.hud.progress = clamp(hero.x / END, 0, 1);
       env.hud.objective = hero.carried ? 'Tap ⚔ fast to break free!' : won ? 'The lotus gate!'
-        : arena ? `Fight off the boars! (${arena.left} left)` : 'Reach the lotus gate';
+        : arena && arena.boss ? 'Defeat the Striped King!' : arena ? `Fight off the boars! (${arena.left} left)` : 'Reach the lotus gate';
     }
 
     // ── drawing: backgrounds ───────────────────────────────────────────────
@@ -1100,6 +1300,10 @@ void main(){
         c.drawImage(img.lotus, gx - lw / 2, gy - 40 - lh + Math.sin(T * 1.6) * 3, lw, lh);
       }
       if (Math.random() < 0.3) fx.spawn({ x: gx + rand(-60, 60), y: gy - rand(0, 30), vy: -rand(30, 70), kind: 'glow', size: rand(1.2, 2.4), life: rand(1, 2), rgb: '255,220,240', fade: 'in-out' });
+      if (arena && arena.boss) {                       // a wide screen shows the gate past the clearing's edge
+        c.save(); c.textAlign = 'center'; c.font = 'bold 16px Georgia, serif'; c.lineWidth = 4; c.strokeStyle = 'rgba(30,0,20,0.7)';
+        c.strokeText('SEALED', gx, gy - 244); c.fillStyle = 'rgba(255,215,235,0.9)'; c.fillText('SEALED', gx, gy - 244); c.restore();
+      }
     }
     function drawBlooms(c) {
       for (const b of blooms) {
@@ -1166,6 +1370,39 @@ void main(){
       if (b.flash > 0) { c.globalCompositeOperation = 'lighter'; c.globalAlpha = b.flash * 0.6 * b.fade; c.drawImage(im, 0, 0, im.width, split + 2, -w / 2, -split * k, w, split * k + 2 * k); }
       c.restore();
       c.restore();
+    }
+
+    function drawTiger(c, t) {
+      if (t.st === 'hidden') return;
+      const o = t.opts(), k = TIGER.k;
+      // contact shadow (smaller and fainter while it is in the air)
+      const air = clamp((GROUND - t.y) / TIGER.leapH, 0, 1), w = 470 * k * (1 - 0.35 * air);
+      c.save(); c.globalAlpha = t.fade * (1 - 0.5 * air); c.translate(t.x + t.face * 12, GROUND); c.scale(1, 0.16);
+      const sg = c.createRadialGradient(0, 0, 0, 0, 0, w * 0.5);
+      sg.addColorStop(0, 'rgba(0,0,0,0.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(-w / 2, -w / 2, w, w); c.restore();
+      if (rigOk('tiger')) env.rigs.tiger.draw(c, t.x, t.y, o);
+      else if (img.tiger) {                               // rig not loaded: the photo itself, bobbing
+        c.save(); c.globalAlpha = t.fade; c.translate(t.x, t.y + (t.st === 'die' ? 30 * t.k : Math.sin(t.gait * TAU * 2) * 2));
+        c.scale(t.face < 0 ? -k : k, k); c.drawImage(img.tiger, -320, -445); c.restore();
+      }
+      // its eyes catch the light as it gathers to pounce
+      if (t.st === 'crouch' && rigOk('tiger')) {
+        const p = env.rigs.tiger.point(o, 'head');
+        if (p) {
+          c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.55 + 0.45 * Math.sin(T * 28);
+          c.drawImage(env.glowSprite('255,215,120'), t.x + p.x - 15, t.y + p.y - 19, 30, 30); c.restore();
+        }
+      }
+      // roar shocks: a bright crescent of air with the dust it raises
+      for (const wv of t.waves) {
+        const a = clamp(wv.life, 0, 1);
+        c.save(); c.translate(wv.x, GROUND - 26); c.scale(wv.d, 1); c.globalCompositeOperation = 'lighter';
+        c.strokeStyle = `rgba(255,236,196,${0.65 * a})`; c.lineWidth = 5;
+        c.beginPath(); c.ellipse(0, 0, 11, 30, 0, -Math.PI / 2, Math.PI / 2); c.stroke();
+        c.strokeStyle = `rgba(255,236,196,${0.3 * a})`; c.lineWidth = 3;
+        c.beginPath(); c.ellipse(-12, 0, 9, 24, 0, -Math.PI / 2, Math.PI / 2); c.stroke();
+        c.restore();
+      }
     }
 
     // body: tapered tube drawn segment by segment, tail first — dark rim, emerald body, pale
@@ -1559,9 +1796,10 @@ void main(){
       for (const a of arenas) {
         if (a.st === 'fight' && a.banner > 0) {
           const k = a.banner / 1.5, s = 1 + (1 - k) * 0.25;
+          const txt = a.boss ? 'THE STRIPED KING' : 'FIGHT!';
           c.save(); c.globalAlpha = Math.min(1, k * 2.5); c.translate(W / 2, 300); c.scale(s, s);
-          c.textAlign = 'center'; c.font = 'bold 46px Georgia, serif'; c.lineWidth = 6; c.strokeStyle = 'rgba(40,10,0,0.75)';
-          c.strokeText('FIGHT!', 0, 0); c.fillStyle = '#ffcf5a'; c.fillText('FIGHT!', 0, 0); c.restore();
+          c.textAlign = 'center'; c.font = a.boss ? 'bold 32px Georgia, serif' : 'bold 46px Georgia, serif'; c.lineWidth = 6; c.strokeStyle = 'rgba(40,10,0,0.75)';
+          c.strokeText(txt, 0, 0); c.fillStyle = '#ffcf5a'; c.fillText(txt, 0, 0); c.restore();
         }
         if (a.st === 'clear' && a.go > 0) {
           const bob = Math.sin(T * 7) * 8;
@@ -1601,7 +1839,7 @@ void main(){
       drawGround(c);
       drawGate(c);
       drawBlooms(c);
-      for (const e of enemies) if (e.type === 'snake' || e.type === 'boar') { if (Math.abs(e.x - camX - W / 2) < W) e.draw(c); }
+      for (const e of enemies) if (e.type === 'snake' || e.type === 'boar' || e.type === 'tiger') { if (Math.abs(e.x - camX - W / 2) < W) e.draw(c); }
       for (const e of enemies) if (e.type === 'croc' && Math.abs(e.x - camX - W / 2) < W) e.draw(c);
       if (!hero.carried) drawHeroAll(c);
       if (img.fern) for (const f of ferns) if (f.d && f.x > camX - 100 && f.x < camX + W + 100) drawFern(c, f);
@@ -1859,7 +2097,8 @@ void main(){
           arena: arena ? { cam: arena.cam, left: arena.left } : null, arenas: arenas.map(a => a.st),
           x: Math.round(hero.x), y: Math.round(hero.y), ground: hero.ground, carried: !!hero.carried, grip: hero.carried ? hero.carried.grip : null,
           plunge: hero.plungeT > 0, atk: hero.atkStep, progress: +(hero.x / END).toFixed(3), won, camX: Math.round(camX), camY: Math.round(camY),
-          enemies: enemies.map(e => ({ t: e.type, st: e.st, x: Math.round(e.x), y: Math.round(e.y), hp: e.hp }))
+          enemies: enemies.map(e => ({ t: e.type, st: e.st, x: Math.round(e.x), y: Math.round(e.y), hp: e.hp })),
+          tiger: { st: tiger.st, hp: tiger.hp, maxHp: tiger.maxHp, x: Math.round(tiger.x), rage: tiger.rage, waves: tiger.waves.length, dead: !!tiger.dead }
         };
       }
     };
