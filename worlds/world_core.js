@@ -926,6 +926,16 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
         c.beginPath(); c.arc(0, 0, u * 0.7, -0.4, Math.PI * 1.55); c.stroke();
         c.beginPath(); c.moveTo(u * 0.7 * Math.cos(-0.4) + u * 0.3, u * 0.7 * Math.sin(-0.4) - u * 0.05); c.lineTo(u * 0.7 * Math.cos(-0.4), u * 0.7 * Math.sin(-0.4)); c.lineTo(u * 0.7 * Math.cos(-0.4) - u * 0.12, u * 0.7 * Math.sin(-0.4) - u * 0.4); c.stroke();
         break;
+      case 'fist':
+        c.beginPath(); c.roundRect(-u * 0.62, -u * 0.5, u * 1.2, u * 0.95, u * 0.3); c.fill();
+        c.fillRect(-u * 0.75, -u * 0.05, u * 0.32, u * 0.55);
+        c.strokeStyle = 'rgba(10,14,22,0.6)'; c.lineWidth = r * 0.05;
+        for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-u * 0.3 + i * u * 0.3, -u * 0.5); c.lineTo(-u * 0.3 + i * u * 0.3, -u * 0.12); c.stroke(); }
+        break;
+      case 'star':
+        c.beginPath();
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? u * 0.42 : u * 0.95; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+        c.closePath(); c.fill(); break;
       case 'bomb':
         c.beginPath(); c.arc(0, u * 0.15, u * 0.62, 0, Math.PI * 2); c.fill();
         c.beginPath(); c.moveTo(u * 0.35, -u * 0.35); c.quadraticCurveTo(u * 0.6, -u * 0.95, u * 0.95, -u * 0.7); c.stroke(); break;
