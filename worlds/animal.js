@@ -808,8 +808,9 @@ void main(){
             this.vx = approach(this.vx, 78, 300 * dt); this.vy = approach(this.vy, this.y > -230 ? -82 : 0, 200 * dt);
             this.x += this.vx * dt; this.y += this.vy * dt; this.dir = 1;
             let tp = this.talonPt();
-            if (tp.y + 80 > GROUND - 4) { this.y -= tp.y + 80 - (GROUND - 4); tp = this.talonPt(); }
-            hero.x = tp.x - 4; hero.y = tp.y + 80; hero.vx = this.vx; hero.vy = this.vy;
+            const HANG = rigOk(kind) ? 102 : 80;      // talons hold the chest (where the grab caught it), head between the legs
+            if (tp.y + HANG > GROUND - 4) { this.y -= tp.y + HANG - (GROUND - 4); tp = this.talonPt(); }
+            hero.x = tp.x - 4; hero.y = tp.y + HANG; hero.vx = this.vx; hero.vy = this.vy;
             if (this.tick <= 0) {
               this.tick = 0.3;
               if (!GOD) env.damage(1.5, { invuln: 0 });
@@ -1602,9 +1603,10 @@ void main(){
       drawBlooms(c);
       for (const e of enemies) if (e.type === 'snake' || e.type === 'boar') { if (Math.abs(e.x - camX - W / 2) < W) e.draw(c); }
       for (const e of enemies) if (e.type === 'croc' && Math.abs(e.x - camX - W / 2) < W) e.draw(c);
-      drawHeroAll(c);
+      if (!hero.carried) drawHeroAll(c);
       if (img.fern) for (const f of ferns) if (f.d && f.x > camX - 100 && f.x < camX + W + 100) drawFern(c, f);
       for (const e of enemies) if (e.type === 'bird') e.draw(c);
+      if (hero.carried) drawHeroAll(c);                  // hanging in front of the bird that holds it, not inside its wings
       fx.draw(c);
       c.restore();
       drawFront(c);
