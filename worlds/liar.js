@@ -537,7 +537,7 @@
     sounds: ['lp_jump', 'lp_land', 'lp_die', 'lp_pop', 'lp_crumble', 'lp_slam', 'lp_door', 'lp_saw', 'lp_exit', 'lp_flip', 'lp_thunder', 'lp_spring'],
     subtitle: () => 'A forest path that lies. The floor, the thorns, even the door.',
     hint: 'Reach the lit door. Trust nothing.',
-    howto: ['◀ ▶ run  ·  jump (hold for higher)', 'Every room has a trick: die, learn, try again', 'Deaths are free. The clock is not.'],
+    howto: ['◀ ▶ run  ·  jump (hold for higher)', 'Every room lies. Deaths are free, the clock is not.'],
     controls: { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }], layout: 'platform' },
     create
   });

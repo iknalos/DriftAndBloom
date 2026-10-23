@@ -17,7 +17,7 @@
     { id: 'animal',   name: 'Animal World',  icon: '🐗', rgb: '150,215,110' },
     { id: 'liar',     name: 'Liar’s Path',  icon: '🚪', rgb: '226,214,188' },
     { id: 'moonbeat', name: 'Moonbeat Run',  icon: '🌙', rgb: '255,90,220' },
-    { id: 'stream',   name: 'Stream Weaver', icon: '💧', rgb: '90,200,255' },
+    { id: 'ink',      name: 'The Ink Door',  icon: '🖌️', rgb: '200,70,58' },
     { id: 'alien',    name: 'Alien Escape',  icon: '🛸', rgb: '140,170,255' },
     { id: 'thief',    name: 'Seed Thief',    icon: '🦝', rgb: '230,170,90' },
     { id: 'bombs',    name: 'Bloom Bombs',   icon: '🌸', rgb: '255,130,170' },
@@ -197,9 +197,13 @@
         c.fillStyle = '#fff'; c.beginPath(); c.ellipse(x + r * 0.45, y + r * 0.55, r * 0.2, r * 0.15, -0.4, 0, TAU); c.fill();
         c.strokeStyle = '#fff'; c.lineWidth = Math.max(1.2, r * 0.09); c.beginPath(); c.moveTo(x + r * 0.62, y + r * 0.5); c.lineTo(x + r * 0.62, y - r * 0.1); c.lineTo(x + r * 0.85, y + r * 0.05); c.stroke(); break;
       }
-      case 'stream':                                            // water drop
-        c.fillStyle = '#6cc8ff'; dropPath(c, x, y, r * 0.95); c.fill();
-        c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.ellipse(x - r * 0.3, y + r * 0.2, r * 0.13, r * 0.28, 0.3, 0, TAU); c.fill(); break;
+      case 'ink':                                               // a red door on a scrap of paper, a brush stroke under it
+        c.fillStyle = '#efe5cf'; c.fillRect(x - r * 0.95, y - r * 0.95, r * 1.9, r * 1.9);
+        c.fillStyle = '#15120f'; c.fillRect(x - r * 0.5, y - r * 0.72, r, r * 1.3);
+        c.fillStyle = '#c0392b'; c.fillRect(x - r * 0.34, y - r * 0.58, r * 0.68, r * 1.16);
+        c.fillStyle = '#c9a046'; c.beginPath(); c.arc(x + r * 0.18, y + r * 0.02, r * 0.07, 0, TAU); c.fill();
+        c.strokeStyle = '#15120f'; c.lineWidth = Math.max(1.6, r * 0.14); c.lineCap = 'round';
+        c.beginPath(); c.moveTo(x - r * 0.85, y + r * 0.72); c.quadraticCurveTo(x, y + r * 0.6, x + r * 0.85, y + r * 0.76); c.stroke(); break;
       case 'alien':                                             // saucer
         c.fillStyle = 'rgba(170,255,220,0.85)'; c.beginPath(); c.ellipse(x, y - r * 0.12, r * 0.42, r * 0.4, 0, Math.PI, 0); c.fill();
         c.fillStyle = '#a9b8ff'; c.beginPath(); c.ellipse(x, y + r * 0.12, r * 1.0, r * 0.32, 0, 0, TAU); c.fill();
