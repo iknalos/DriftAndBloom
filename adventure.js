@@ -15,7 +15,7 @@
   const ROUNDS = [
     { id: 'pond',     name: 'Lily Pond',     icon: '🪷', rgb: '93,202,165' },
     { id: 'animal',   name: 'Animal World',  icon: '🐗', rgb: '150,215,110' },
-    { id: 'frost',    name: 'Frost Garden',  icon: '❄️', rgb: '170,220,255' },
+    { id: 'liar',     name: 'Liar’s Path',  icon: '🚪', rgb: '226,214,188' },
     { id: 'moonbeat', name: 'Moonbeat Run',  icon: '🌙', rgb: '255,90,220' },
     { id: 'stream',   name: 'Stream Weaver', icon: '💧', rgb: '90,200,255' },
     { id: 'alien',    name: 'Alien Escape',  icon: '🛸', rgb: '140,170,255' },
@@ -182,16 +182,14 @@
         c.fillStyle = '#f2c27a';
         c.beginPath(); c.ellipse(x, y + r * 0.35, r * 0.52, r * 0.42, 0, 0, TAU); c.fill();
         [[-0.62, -0.18], [-0.24, -0.58], [0.24, -0.58], [0.62, -0.18]].forEach(([dx, dy]) => { c.beginPath(); c.ellipse(x + dx * r, y + dy * r, r * 0.2, r * 0.26, dx * 0.5, 0, TAU); c.fill(); }); break;
-      case 'frost':                                             // snowflake
-        c.strokeStyle = '#cfeaff'; c.lineWidth = Math.max(1.6, r * 0.14);
-        for (let i = 0; i < 6; i++) {
-          const a = i * TAU / 6, cx = Math.cos(a), sy = Math.sin(a);
-          c.beginPath(); c.moveTo(x, y); c.lineTo(x + cx * r, y + sy * r); c.stroke();
-          for (const k of [0.55]) for (const d of [-0.5, 0.5]) {
-            const bx = x + cx * r * k, by = y + sy * r * k, b = a + d * 1.6;
-            c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + Math.cos(b) * r * 0.32, by + Math.sin(b) * r * 0.32); c.stroke();
-          }
-        } break;
+      case 'liar': {                                            // a black stone arch with a lit doorway
+        const g = c.createRadialGradient(x, y + r * 0.2, 0, x, y + r * 0.2, r * 1.2);
+        g.addColorStop(0, 'rgba(255,214,150,0.55)'); g.addColorStop(1, 'rgba(255,214,150,0)');
+        c.fillStyle = g; c.fillRect(x - r * 1.3, y - r * 1.2, r * 2.6, r * 2.6);
+        c.fillStyle = '#16170f'; c.beginPath(); c.moveTo(x - r * 0.72, y + r * 0.9); c.lineTo(x - r * 0.72, y - r * 0.15); c.arc(x, y - r * 0.15, r * 0.72, Math.PI, 0); c.lineTo(x + r * 0.72, y + r * 0.9); c.closePath(); c.fill();
+        c.fillStyle = '#ffd99a'; c.beginPath(); c.moveTo(x - r * 0.4, y + r * 0.9); c.lineTo(x - r * 0.4, y - r * 0.1); c.arc(x, y - r * 0.1, r * 0.4, Math.PI, 0); c.lineTo(x + r * 0.4, y + r * 0.9); c.closePath(); c.fill();
+        c.fillStyle = '#16170f'; c.fillRect(x - r * 0.95, y + r * 0.82, r * 1.9, r * 0.16); break;
+      }
       case 'moonbeat': {                                        // crescent moon + a note
         c.fillStyle = '#ffb0f0';
         c.save(); c.beginPath(); c.arc(x - r * 0.1, y, r * 0.85, 0, TAU); c.clip();

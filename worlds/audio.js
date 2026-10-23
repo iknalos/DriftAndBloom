@@ -98,11 +98,12 @@
 
   // music: one track at a time, looped by crossfading into a fresh copy before it ends
   // our own composed tracks (tools/assets/music_gen.py) are exact loops: sample-accurate looping, no crossfade
-  const EXACT = new Set(['music_frost', 'music_moonbeat', 'music_stream', 'music_thief', 'music_bombs', 'music_duel']);
+  const EXACT = new Set(['music_moonbeat', 'music_thief', 'music_bombs', 'music_duel', 'music_liar', 'music_ink']);
   function startTrack(name, fadeIn) {
     if (!ctx) return;
     const b = buffers[name];
-    if (!b) { load(name).then(() => { if (want === name && (!cur || cur.name !== name)) startTrack(name, fadeIn); }); return; }
+    // (a track that failed to load stays silent: retrying on the settled promise would spin forever)
+    if (!b) { load(name).then(lb => { if (lb && want === name && (!cur || cur.name !== name)) startTrack(name, fadeIn); }); return; }
     const t = ctx.currentTime;
     if (cur) fadeOut(cur, Math.max(0.4, fadeIn));
     const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + Math.max(0.01, fadeIn));

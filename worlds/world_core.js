@@ -25,7 +25,9 @@
 //   health / maxHealth (100) · damage(n, {x, y, text}) · heal(n) · invuln(sec)
 //   boon(id) · atk · clock — the Adventure boon picked after the last stage (adventure.js): atk multiplies the
 //   player's hits, clock is how fast round clocks run; 'hide' and 'dew' are handled here (less damage, slow healing)
-//   win() · lose()      — end the world (core plays the result card)
+//   win() · lose(why?)  — end the world (core plays the result card; why replaces 'Knocked out', e.g. "Time's up")
+//   def.hud = 'none'    — no health bar / title / objective: the world draws its own HUD (the pause button stays)
+//   controls.layout = 'platform' — ◀ ▶ + buttons kept low in the corners, portrait and landscape (one-screen platformers)
 //   shake(amount 0..1) · flash('r,g,b', alpha) · hitstop(sec)
 //   fx — particle system: fx.spawn({...}) / fx.burst(x, y, opts) / fx.update / fx.draw
 //   floatText(x, y, text, rgb) — rising damage / pickup numbers (core draws them)
@@ -794,7 +796,14 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   const L_BTN = () => [
     { x: SW - 92, y: SH - 96, r: 42 }, { x: SW - 196, y: SH - 58, r: 34 }, { x: SW - 82, y: SH - 206, r: 30 }, { x: SW - 186, y: SH - 160, r: 27 }];
   const L_STICK = () => ({ x: 118, y: SH - 104, r: 62 });
-  const btnPos = () => (SW !== W ? L_BTN() : BTN_POS);
+  // controls.layout 'platform' (one-screen platformers): every button kept low in the corners so the room stays clear
+  const P_BTN = () => (SW !== W ? [{ x: SW - 70, y: SH - 58, r: 44 }, { x: SW - 172, y: SH - 46, r: 32 }]
+    : [{ x: 318, y: 762, r: 46 }, { x: 222, y: 790, r: 32 }]);
+  const P_DPAD = () => (SW !== W ? [{ id: 'left', x: 62, y: SH - 54, r: 38 }, { id: 'right', x: 158, y: SH - 54, r: 38 }]
+    : [{ id: 'left', x: 56, y: 768, r: 40 }, { id: 'right', x: 148, y: 768, r: 40 }]);
+  const platform = () => active && active.controls && active.controls.layout === 'platform';
+  const btnPos = () => (platform() ? P_BTN() : SW !== W ? L_BTN() : BTN_POS);
+  const dpadPos = () => (platform() ? P_DPAD() : DPAD.lr);
   const stickPos = () => (SW !== W ? L_STICK() : STICK);
   const pausePos = () => (SW !== W ? { x: SW - 34, y: 34 } : { x: 362, y: 46 });
 
@@ -1050,7 +1059,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       invuln(sec) { S.invulnT = Math.max(S.invulnT, sec); },
       get invulnerable() { return S.invulnT > 0; },
       win() { if (S.phase === 'play') { S.phase = 'result'; S.won = true; S.resultT = 0; if (AU) AU.play('win', { jitter: 0 }); } },
-      lose() { if (S.phase === 'play') { S.phase = 'result'; S.won = false; S.resultT = 0; if (AU) AU.play('lose', { jitter: 0 }); } },
+      lose(why) { if (S.phase === 'play') { S.phase = 'result'; S.won = false; S.resultT = 0; S.loseWhy = why || ''; if (AU) AU.play('lose', { jitter: 0 }); } },
       // sound effects: sfx(name, {vol, rate, pan}); x (world px on screen) pans it a little
       sfx(name, o) { if (AU) AU.play(name, o); },
       sfxAt(name, sx, o) { if (AU) AU.play(name, Object.assign({ pan: clamp((sx - W / 2) / W, -0.6, 0.6) }, o)); },
@@ -1165,7 +1174,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   Session.prototype.hitControl = function (p, dirsOnly) {
     const c = this.controls;
     if (c.dirs === 'lr') {
-      for (const d of DPAD.lr) if (Math.hypot(p.x - d.x, p.y - d.y) < d.r + 14) return { kind: 'dir', id: d.id };
+      for (const d of dpadPos()) if (Math.hypot(p.x - d.x, p.y - d.y) < d.r + 14) return { kind: 'dir', id: d.id };
       if (dirsOnly) return null;
     } else if (c.dirs === 'stick') {
       if (!dirsOnly && p.x < SW * 0.42 && p.y > SH * (SW !== W ? 0.4 : 0.66)) return { kind: 'stick', ox: p.x, oy: p.y };
@@ -1324,6 +1333,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   };
 
   Session.prototype.drawHUD = function (c) {
+    if (this.def.hud === 'none') { this.drawPauseBtn(c); return; }   // the world draws its own HUD (no health in it)
     // health bar
     const x = 16, y = 30, w = 168, h = 14, k = this.health / this.maxHealth, gk = this.ghost / this.maxHealth;
     c.save();
@@ -1361,8 +1371,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       c.textAlign = 'left'; c.font = 'bold 12px system-ui'; c.fillStyle = 'rgba(255,255,255,0.9)';
       c.fillText(`${ct.icon || ''} ${ct.value}`, x, cy); cy += 18;
     }
-    // pause button
+    this.drawPauseBtn(c);
+    c.restore();
+  };
+  Session.prototype.drawPauseBtn = function (c) {
     const pp = pausePos();
+    c.save();
     c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.arc(pp.x, pp.y, 17, 0, TAU); c.fill();
     c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(pp.x - 6, pp.y - 7, 4, 14); c.fillRect(pp.x + 2, pp.y - 7, 4, 14);
     c.restore();
@@ -1371,7 +1385,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
   Session.prototype.drawControls = function (c) {
     const cfg = this.controls, held = this.input.held;
     if (cfg.dirs === 'lr') {
-      for (const d of DPAD.lr) drawButton(c, d.x, d.y, d.r, !!this.touch.dirs[d.id] || this.input[d.id], d.id, this.rgb);
+      for (const d of dpadPos()) drawButton(c, d.x, d.y, d.r, !!this.touch.dirs[d.id] || this.input[d.id], d.id, this.rgb);
     } else if (cfg.dirs === 'stick') {
       const ST = stickPos(), st = this.stick, ox = st ? st.ox : ST.x, oy = st ? st.oy : ST.y;
       c.save();
@@ -1507,7 +1521,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.translate(SW / 2, SW !== W ? SH * 0.4 : 380); c.scale(sc, sc);
     c.fillStyle = this.won ? '#ffd86b' : '#ff6b6b'; c.font = 'bold 40px Georgia, serif';
     if (this.round) {
-      c.fillText(this.won ? 'Round clear!' : (this.gaveUp ? 'You gave up' : 'Knocked out'), 0, 0);
+      c.fillText(this.won ? 'Round clear!' : (this.gaveUp ? 'You gave up' : this.loseWhy || 'Knocked out'), 0, 0);
       if (this.won) {
         const st = this.starsFinal(), shown = Math.min(st, Math.floor(this.resultT / 0.35));
         c.font = '44px system-ui';
