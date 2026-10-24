@@ -876,6 +876,7 @@
     const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on });
 
     function update(dt, I) {
+      if (R && R.rebake) { R.rebake = false; bakeRoom(); }
       t += dt;
       if (done) return;
       introT += dt; tauntT = Math.max(0, tauntT - dt); flashT = Math.max(0, flashT - dt);
@@ -1016,6 +1017,7 @@
     function stepWorld(dt) {
       for (const b of R.blist) {
         stepMover(b, dt);
+        if (!b.live && !b.static && (b.dx || b.dy || b.shk || !b.alive || (b.cur && b.cur.k !== 'wait'))) { b.live = true; R.rebake = true; }
         if (b.oy > RH + 200 || b.oy < -RH - 200) { b.alive = false; b.q = []; b.cur = null; }
         if (b.seen > 0) b.seen = Math.max(0, b.seen - dt * 0.8);
       }
@@ -1124,7 +1126,13 @@
       const g = cv.getContext('2d'); g.scale(K, K);
       g.fillStyle = STONE; g.fillRect(0, 0, RW, RH);
       // the night: every tile that isn't fixed stone (moving / fake / crumbling stone is drawn on top, live)
-      const G0 = R.g, open = (x, y) => G0[y][x] !== '#' && G0[y][x] !== '=';
+      // still trap pieces are baked as stone (pixel-identical to the real ground); live ones leave night behind
+      const G0 = R.g, still = new Set();
+      for (const b of R.blist) if (!b.static && b.kind !== 'ghost' && !b.live && b.alive) for (const [x, y] of b.tiles) {
+        still.add(x + ',' + y);
+        if (b.kind === 'fake') for (let yy = y + 1; yy < ROWS && G0[yy][x] === '.'; yy++) still.add(x + ',' + yy);   // (the pit under a lie stays hidden too)
+      }
+      const open = (x, y) => G0[y][x] !== '#' && G0[y][x] !== '=' && !still.has(x + ',' + y);
       g.fillStyle = NIGHT;
       for (let y = 0; y < ROWS; y++) {
         let run = -1;
@@ -1167,7 +1175,7 @@
       if (bake.room) c.drawImage(bake.room, 0, 0, RW, RH);
       c.fillStyle = STONE;
       for (const b of R.blist) {
-        if (b.static || !b.alive || b.kind === 'ghost') continue;
+        if (b.static || !b.alive || b.kind === 'ghost' || !b.live) continue;
         const jx = b.shk ? (Math.random() - 0.5) * b.shk * 2 : 0;
         // (bleeds a hair into neighbouring fixed stone so no seam shows; never into the night)
         for (const q of b.rects) { const e = q.bleed || [0, 0, 0, 0]; c.fillRect(q.x + b.ox + jx - e[0], q.y + b.oy - e[1], q.w + e[0] + e[2], q.h + e[1] + e[3]); }
