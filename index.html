@@ -34,7 +34,8 @@ h1 { font-size: 42px; font-weight: bold; color: #9FE1CB; text-align: center; mar
 .lab-levels button.on { background: rgba(255,215,90,.85); color: #071828; }
 .lab-rooms { display: flex; flex-direction: column; gap: 6px; margin: 0 4px 14px; }
 .lab-rooms button { text-align: left; padding: 11px 14px; font-size: 15px; }
-.lab-rooms button:first-child { background: rgba(93,202,165,.85); color: #071828; }
+.lab-rooms button.lab-whole { background: rgba(93,202,165,.85); color: #071828; }
+.lab-rooms button.lab-auto.on { background: rgba(255,210,122,.92); color: #241a05; }
 h2 { font-size: 22px; color: #5DCAA5; text-align: center; margin-bottom: 24px; }
 .subtitle { color: rgba(245,210,100,0.9); font-size: 26px; font-weight: bold; margin-top: 6px; }
 .tagline { color: rgba(160,220,200,0.6); font-size: 14px; margin-top: 12px; }
@@ -535,7 +536,8 @@ function selectChar(id) {
 const UNLOCK_ALL = true;
 
 // ── Test Lab (developer builds): the ten games one by one, any level (1-10), any room of the room games ──
-const lab = { game: null, level: 0 };
+const lab = { game: null, level: 0, auto: false };
+const LAB_BOT = { liar: '__liarBot', ink: '__inkBot' };     // the room games carry an autopilot: watch it play the solution
 if (UNLOCK_ALL) document.getElementById('lab-card').style.display = '';
 function labOpen() { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); }
 function labRender() {
@@ -547,15 +549,19 @@ function labRender() {
     if (!on) return;
     h += '<div class="lab-levels">' + Array.from({ length: 10 }, (_, k) => `<button class="${lab.level === k + 1 ? 'on' : ''}" onclick="labLevel(${k + 1})">${k + 1}</button>`).join('') + '</div>';
     const rooms = lab.level && window.DABWorlds && DABWorlds.rooms(g.id);
-    if (rooms && rooms[lab.level - 1]) h += `<div class="lab-rooms"><button onclick="labPlay(0)">▶ Whole level ${lab.level}</button>` + rooms[lab.level - 1].map((n, k) => `<button onclick="labPlay(${k + 1})">${k + 1}. ${n}</button>`).join('') + '</div>';
+    if (rooms && rooms[lab.level - 1]) h += `<div class="lab-rooms">` + (LAB_BOT[g.id] ? `<button class="lab-auto${lab.auto ? ' on' : ''}" onclick="labAuto()">🤖 Autopilot: ${lab.auto ? 'ON — watch it play' : 'off'}</button>` : '') +
+      `<button class="lab-whole" onclick="labPlay(0)">▶ Whole level ${lab.level}</button>` + rooms[lab.level - 1].map((n, k) => `<button onclick="labPlay(${k + 1})">${k + 1}. ${n}</button>`).join('') + '</div>';
   });
   document.getElementById('lab-body').innerHTML = h;
 }
 function labGame(id) { lab.game = lab.game === id ? null : id; lab.level = 0; labRender(); }
+function labAuto() { lab.auto = !lab.auto; labRender(); }
 function labLevel(n) { lab.level = n; if (window.DABWorlds && DABWorlds.rooms(lab.game)) labRender(); else labPlay(0); }
 function labPlay(room) {
   const id = lab.game, lv = lab.level, badge = `TEST LAB · LEVEL ${lv}` + (room ? ` · ROOM ${room}` : '');
-  const back = () => { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); };
+  const flag = LAB_BOT[id];
+  if (flag) window[flag] = lab.auto;
+  const back = () => { if (flag) window[flag] = false; goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); };
   if (id === 'pond') { window.__pondRound = { badge, stage: lv, clock: 1, onEnd: () => { window.__pondRound = null; back(); } }; startLevel(DABAdventure.POND[lv]); return; }
   if (!window.DABWorlds || !DABWorlds.has(id)) return;
   DABWorlds.enter(id, { charId: selectedChar, reason: '', level: lv, badge, round: true, music: 'music_pond', startRoom: room || 0, onlyRoom: !!room }).then(back);
