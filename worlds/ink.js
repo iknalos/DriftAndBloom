@@ -4,8 +4,9 @@
 // same way twice: find the key, knock, wait, walk out the way you came, drag the door down, fail on
 // purpose, count, blow the lamp out, draw a bridge, rub out a wall, turn the world over, make it night,
 // pause the game, stamp the seal, make it rain, let your last attempt hold the plate... Every death
-// leaves an ink splat that stays on the page. The room's name is the clue; stuck long enough, a note
-// appears. Stage n = harder tricks. Shares Liar's Path's platform feel (worlds/liar.js), not its code.
+// leaves an ink splat that stays on the page. The room's name is a clue, not an answer. Later pages stack
+// tricks, punish overshooting (exact counts), hide what you need (under ink, under a crate) and plant decoys
+// (a key that bites, a door that's painted on). Notes appear late on early pages and never from page set 8 on.
 //
 // A room = an ASCII map (32 x 15 tiles of 26 px) + setup(R) (the R api below) + a hint + a bot route.
 //   .  paper        #  ink ground     S  start     D  the red door (locked until the trick)
@@ -31,43 +32,53 @@
   const STAGES = [null,
     // ── Stage 1
     [
-      { name: 'The red door', t: 60, hint: 'A locked door wants its key.',
+      { name: 'The red door', t: 70, hint: 'Take the key. Then mind where you walk.',
         map: [...fill(7, E),
           '..............$.................',
           '............=====...............',
           E,
-          '.S......##..............^^...D..',
-          ...fill(4, G)],
+          '.S......##..............BB...D..',
+          '############~~##################',
+          ...fill(3, '############..##################')],
+        setup(R) { R.when(() => R.hasKey, () => R.pop('B')); },
         bot: [['jumpAt', 7.2, 0.2], ['land'], ['go', 10.1], ['dir', 1], ['jump'], ['land'], ['go', 14.6], ['run', 17.4], ['land'], ['jumpAt', 23.2], ['land'], ['go', 29.5]] },
-      { name: 'Knock knock', t: 60, hint: 'Doors like to be asked. Tap it.',
+      { name: 'Knock knock', t: 70, hint: 'Say the title out loud. Exactly.',
         map: [...fill(10, E),
           '.S.........^^...............D...',
           ...fill(4, G)],
-        setup(R) { R.sign(25, 10, 'WHO’S THERE?'); R.onKnock(3, () => R.unlock()); },
-        bot: [['jumpAt', 10.3], ['land'], ['go', 26.0], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.6], ['go', 28.5]] },
-      { name: 'Patience', t: 60, hint: 'Even a cat needs a moment of quiet. So does the door.',
-        map: [...fill(10, E),
+        setup(R) { R.sign(25, 10, 'WHO’S THERE?'); R.onKnock(2, () => R.unlock(), { exact: true }); },
+        bot: [['jumpAt', 10.3], ['land'], ['go', 26.0], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 1.4], ['go', 28.5]] },
+      { name: 'Patience', t: 70, hint: 'Be still. Not under those.',
+        map: [...fill(4, E),
+          '....................##########..',
+          '....................AAAAAAAAAA..',
+          ...fill(4, E),
           '.S..........................D...',
           ...fill(4, G)],
-        setup(R) { R.cat(26, 10); R.onStill(4, () => { R.wakeCat(); R.unlock(); }); },
-        bot: [['go', 20], ['wait', 4.6], ['go', 28.5]] }
+        setup(R) {
+          R.show('A'); R.cat(26, 10);
+          R.onStill(4, () => { R.wakeCat(); R.unlock(); }, { far: 9 });
+          R.stillTrap('A', 1.2, 19.6, 30);
+        },
+        bot: [['go', 12], ['wait', 4.6], ['go', 28.5]] }
     ],
     // ── Stage 2
     [
-      { name: 'Heavy lifting', t: 75, hint: 'The box moves if you lean on it.',
+      { name: 'Heavy lifting', t: 85, hint: 'Not every key is a key. What was the box sitting on?',
         map: [...fill(7, E),
-          '...................$............',
-          ...fill(2, '...................###..........'),
-          '.S.....&...........###......D...',
+          '......................$.........',
+          ...fill(2, '...................####.........'),
+          '.S.....&...........####.....D...',
           ...fill(4, G)],
-        bot: [['go', 17.7], ['dir', 1], ['jump'], ['land'], ['dir', 1], ['jump'], ['land'], ['go', 19.6], ['run', 22.6], ['land'], ['go', 28.5]] },
-      { name: 'The way you came', t: 60, hint: 'Not every way out is ahead of you.',
+        setup(R) { R.fakeKey(0); R.keyUnder(0); },
+        bot: [['go', 7.6], ['go', 17.6], ['dir', 1], ['jump'], ['land'], ['dir', 1], ['jump'], ['land'], ['jumpAt', 21.5], ['land'], ['go', 28.5]] },
+      { name: 'The way you came', t: 70, hint: 'Not every way out is ahead of you.',
         map: [...fill(10, E),
-          '....S...........^^.........D....',
+          '.BB.S...........^^.........D....',
           ...fill(4, G)],
-        setup(R) { R.painted(); R.edgeExit('left'); R.sign(7, 10, 'EXIT  →'); },
-        bot: [['go', -1]] },
-      { name: 'Bring it down', t: 70, hint: 'Your finger is part of the game. Drag the door.',
+        setup(R) { R.painted(); R.edgeExit('left'); R.sign(7, 10, 'EXIT  →'); R.when(R.at(7.0), () => R.pop('B')); },
+        bot: [['go', 7.5], ['jumpAt', 3.5], ['land']] },
+      { name: 'Bring it down', t: 75, hint: 'Your finger is part of the game. Drag the door.',
         map: [...fill(3, E),
           '..........................D.....',
           '........................######..',
@@ -79,155 +90,162 @@
     ],
     // ── Stage 3
     [
-      { name: 'Try failing', t: 70, hint: 'Sometimes you have to fail first.',
+      { name: 'Third time lucky', t: 80, hint: 'Some doors want you to fail. More than once.',
         map: [...fill(10, E),
           '.S......^^....................D.',
           ...fill(4, G)],
-        setup(R) { R.sign(5, 10, 'DON’T DIE'); if (R.roomDeaths > 0) R.unlock(); },
-        bot: R => (R.roomDeaths === 0 ? [['go', 8.6], ['wait', 2]] : [['jumpAt', 7.1], ['land'], ['go', 30.5]]) },
-      { name: 'Jump for it', t: 70, hint: 'Count the marks on the door. Then count your jumps.',
+        setup(R) { R.sign(5, 10, 'DON’T DIE'); if (R.roomDeaths >= 2) R.unlock(); else if (R.roomDeaths === 1) R.say('Still locked. Again?'); },
+        bot: R => (R.roomDeaths < 2 ? [['go', 8.6], ['wait', 2]] : [['jumpAt', 7.1], ['land'], ['go', 30.5]]) },
+      { name: 'Jump for it', t: 80, hint: 'Count the marks. Then count your jumps. Exactly.',
         map: [...fill(6, E),
           '................################',
           '................vvvvvvvvvvvvvvvv',
           E, E,
           '.S............................D.',
           ...fill(4, G)],
-        setup(R) { R.tally(10); },
+        setup(R) { R.tally(10, { exact: true }); },
         bot: [['go', 5], ...Array.from({ length: 10 }, () => [['jump', 0.1], ['land'], ['wait', 0.05]]).flat(), ['go', 30.5]] },
-      { name: 'Lights out', t: 70, hint: 'Some things only show in the dark. Tap the lamp.',
+      { name: 'Lights out', t: 80, hint: 'Some things only show in the dark. The dark doesn’t last.',
         map: [...fill(3, E),
           '..........!.....................',
           ...fill(6, E),
           '.S..........................D...',
           ...fill(4, '##################...###########')],
-        setup(R) { R.darkDoor(); },
-        bot: [['tap', 10.5, 3.5], ['wait', 0.5], ['jumpAt', 17.8], ['land'], ['go', 28.5]] }
+        setup(R) { R.darkDoor(); R.lampTimer(3, { once: true }); },
+        bot: [['jumpAt', 17.8], ['land'], ['go', 26.0], ['tap', 10.5, 3.5], ['wait', 0.4], ['go', 28.5]] }
     ],
     // ── Stage 4
     [
-      { name: 'Bridge', t: 75, hint: 'You hold the brush. Draw across the gap.',
+      { name: 'Mind the gap', t: 85, hint: 'You hold the brush. Ink dries fast.',
         map: [...fill(10, E),
-          '.S..........................D...',
+          '.S.................B........D...',
           ...fill(4, '#########.........##############')],
-        setup(R) { R.ink(12, 5); R.free(); },
-        bot: [['go', 8.4], ['draw', [[8.5, 11.05], [18.5, 11.05]], 0.5], ['go', 28.5]] },
-      { name: 'Erase', t: 70, hint: 'Ink can be wiped away. Rub the wall.',
+        setup(R) { R.ink(11, 2.4); R.free(); R.when(R.at(17.2), () => R.pop('B')); },
+        bot: [['go', 8.4], ['draw', [[8.5, 11.05], [18.5, 11.05]], 0.5], ['go', 17.6], ['jumpAt', 17.9], ['land'], ['go', 28.5]] },
+      { name: 'In the way', t: 80, hint: 'Ink can be wiped away. Hurry.',
         map: [...fill(5, E),
           ...fill(5, '..................%%............'),
-          '.S................%%........D...',
+          '.S................%%...B....D...',
           ...fill(4, G)],
-        setup(R) { R.free(); },
-        bot: [['rub', 18, 5, 2, 6, 1.4], ['wait', 0.4], ['go', 28.5]] },
-      { name: 'Which way is down', t: 75, hint: 'Swipe up. Then think about down.',
-        map: [G, G,
+        setup(R) { R.free(); R.crumble(0, 17, 3.0, 1.5); R.when(R.at(20.6), () => R.pop('B')); },
+        bot: [['go', 16.6], ['rub', 18, 5, 2, 6, 1.4], ['wait', 0.3], ['go', 21.0], ['jumpAt', 21.6], ['land'], ['go', 28.5]] },
+      { name: 'Upside down', t: 85, hint: 'Swipe up. Mind the holes in the sky.',
+        map: [...fill(2, '###############..###############'),
           '..........vv..............D.....',
           ...fill(7, E),
           '.S..............................',
           ...fill(4, G)],
-        setup(R) { R.free(); },
-        bot: [['swipe', 'up'], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.3], ['land'], ['go', 26.5]] }
+        setup(R) { R.free(); R.swipeGravity(); },
+        bot: [['swipe', 'up'], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.3], ['land'], ['jumpAt', 14.0], ['land'], ['go', 26.5]] }
     ],
     // ── Stage 5
     [
-      { name: 'In order', t: 80, hint: 'The scroll at the top shows the order.',
+      { name: 'In order', t: 85, hint: 'The scroll reads the other way.',
         map: [...fill(3, E),
           '........!......!......!.........',
           ...fill(6, E),
           '.S..........................D...',
           ...fill(4, G)],
-        setup(R) { R.lampOrder(['star', 'moon', 'sun'], ['moon', 'sun', 'star']); },
+        setup(R) { R.lampOrder(['star', 'moon', 'sun'], ['moon', 'sun', 'star'], { reverse: true }); },
         bot: [['tap', 15.5, 3.5], ['wait', 0.3], ['tap', 22.5, 3.5], ['wait', 0.3], ['tap', 8.5, 3.5], ['wait', 0.5], ['go', 28.5]] },
-      { name: 'Shy', t: 80, hint: 'It runs when you look at it. Let something else carry you.',
+      { name: 'Shy', t: 85, hint: 'It runs when you look at it. Let something else carry you.',
         map: [...fill(10, E),
           '.S....................D.........',
           ...fill(4, G)],
         setup(R) { R.belt(6, 27, 11, 2.6); R.shyDoor(); },
         bot: [['go', 6.6], ['dir', -1], ['wait', 0.06], ['dir', 0], ['wait', 9]] },
-      { name: 'Night', t: 80, hint: 'The door only comes out at night. Move the sun.',
+      { name: 'Night', t: 85, hint: 'Night changes more than the door.',
         map: [...fill(10, E),
           '.S..........................D...',
-          ...fill(4, '###########...##################')],
-        setup(R) { R.sunNight(27.5, 2.0); },
-        bot: [['drag', 27.5, 2.0, 27.5, 12.6, 0.6], ['wait', 1.4], ['jumpAt', 10.6], ['land'], ['go', 28.5]] }
+          '###########dddddd###############',
+          ...fill(3, '###########......###############')],
+        setup(R) { R.sunNight(27.5, 2.0); R.dayOnly('d'); },
+        bot: [['go', 20], ['drag', 27.5, 2.0, 27.5, 12.6, 0.6], ['wait', 1.4], ['go', 28.5]] }
     ],
     // ── Stage 6
     [
-      { name: 'Steps of the fallen', t: 90, hint: 'Your mistakes stay on the page. Stand on them.',
-        map: [...fill(8, E),
+      { name: 'Steps of the fallen', t: 100, hint: 'Your mistakes stay on the page. Stand on them. Twice.',
+        map: [...fill(7, E),
           ...fill(2, '..................##............'),
+          '.................<##............',
           '.S...............^##........D...',
           ...fill(4, G)],
         setup(R) { R.splatsSolid(); R.free(); },
-        bot: R => (!R.splats.length ? [['go', 17.6], ['wait', 2]] : [['go', 15.9], ['dir', 1], ['jump', 0.13], ['land'], ['go', 17.5], ['dir', 1], ['jump'], ['land'], ['go', 28.5]]) },
-      { name: 'Read the title', t: 75, hint: 'Words can hide things. Move them.',
+        bot: R => (R.splats.length === 0 ? [['go', 17.6], ['wait', 2]]
+          : R.splats.length === 1 ? [['go', 16.0], ['dir', 1], ['jump', 0.13], ['wait', 2]]
+            : [['go', 15.6], ['dir', 1], ['jump', 0.2], ['land'], ['go', 17.5], ['dir', 1], ['jump'], ['land'], ['go', 28.5]]) },
+      { name: 'Read the title', t: 85, hint: 'Words can hide things. Catch what falls.',
         map: [...fill(10, E),
           '.S..........................D...',
-          ...fill(4, '##########...###################')],
-        setup(R) { R.titleKey(16, 3.4); },
-        bot: [['drag', 16, 3.3, 26, 1.4, 0.5], ['wait', 1.2], ['jumpAt', 9.6], ['land'], ['go', 16.5], ['go', 28.5]] },
-      { name: 'Count', t: 75, hint: 'How many birds are flying? Knock that many times.',
+          ...fill(4, '###############...##############')],
+        setup(R) { R.titleKey(16, 3.4); R.ink(5, 3.0); },
+        bot: [['go', 14.4], ['draw', [[14.4, 10.95], [18.6, 10.95]], 0.4], ['drag', 16, 3.3, 26, 1.4, 0.5], ['wait', 0.5], ['go', 17.6], ['go', 28.5]] },
+      { name: 'Count', t: 90, hint: 'Count every crane. Knock that many times.',
         map: [...fill(10, E),
-          '.S..........................D...',
+          '.S........................CCD...',
           ...fill(4, G)],
-        setup(R) { R.cranes(5); R.onKnock(5, () => R.unlock(), { exact: true }); },
-        bot: [['go', 26], ['tap', 28.5, 9.6], ['wait', 0.2], ['tap', 28.5, 9.6], ['wait', 0.2], ['tap', 28.5, 9.6], ['wait', 0.2], ['tap', 28.5, 9.6], ['wait', 0.2], ['tap', 28.5, 9.6], ['wait', 1.6], ['go', 28.5]] }
+        setup(R) { R.cranes(7, { seq: true }); R.onKnock(7, () => R.unlock(), { exact: true, punish: () => { R.pop('C'); R.after(1.2, () => R.hide('C')); } }); },
+        bot: [['go', 22], ['wait', 1.0], ...Array.from({ length: 7 }, () => [['tap', 28.5, 9.6], ['wait', 0.2]]).flat(), ['wait', 1.4], ['go', 28.5]] }
     ],
     // ── Stage 7
     [
-      { name: 'When nobody is looking', t: 75, hint: 'What happens when the game stops watching? Pause it.',
+      { name: 'When nobody is looking', t: 85, hint: 'Pause it. Then look again.',
         map: [...fill(10, E),
-          '.S..............^^..........D...',
+          '.S..............AA......BB..D...',
           ...fill(4, G)],
-        setup(R) { R.onPause(() => R.unlock()); },
-        bot: [['pause', 0.6], ['wait', 0.3], ['jumpAt', 15.2], ['land'], ['go', 28.5]] },
-      { name: 'Seal it', t: 75, hint: 'Every page needs its seal. The red stamp in the corner.',
-        map: [...fill(10, E),
+        setup(R) { R.show('A'); R.onPause(() => { R.unlock(); R.hide('A'); R.pop('B'); }); },
+        bot: [['pause', 0.6], ['wait', 0.3], ['jumpAt', 23.5], ['land'], ['go', 28.5]] },
+      { name: 'Seal it', t: 85, hint: 'Every page needs its seal. Look under the ink.',
+        map: [E,
+          ...fill(2, '.%%.............................'),
+          ...fill(7, E),
           '.S.........^^..........^^...D...',
           ...fill(4, G)],
         setup(R) { R.seal(1.6, 1.6); },
-        bot: [['drag', 1.6, 1.6, 28.5, 9.4, 0.6], ['wait', 0.5], ['jumpAt', 10.2], ['land'], ['jumpAt', 22.2], ['land'], ['go', 28.5]] },
-      { name: 'Rain', t: 85, hint: 'Plants need water. Tap the cloud when it is over the sprout.',
+        bot: [['rub', 1, 1, 2, 2, 1.0], ['wait', 0.3], ['drag', 1.6, 1.6, 28.5, 9.4, 0.6], ['wait', 0.5], ['jumpAt', 10.2], ['land'], ['jumpAt', 22.2], ['land'], ['go', 28.5]] },
+      { name: 'Rain', t: 100, hint: 'Plants need water. More than once.',
         map: [...fill(4, E),
           '....................$...........',
           '....................####........',
           ...fill(4, E),
           '.S..........................D...',
           ...fill(4, G)],
-        setup(R) { R.rainPlant(15, 11); },
-        bot: [['until', R => R.cloudOver()], ['tap', -1, -1, 'cloud'], ['wait', 3.4], ['go', 11.8], ['dir', 1], ['jump', 0.25], ['land'], ['go', 14.7], ['dir', 1], ['jump'], ['land'], ['go', 17.7], ['dir', 1], ['jump'], ['land'],
+        setup(R) { R.rainPlant(15, 11, { times: 2 }); },
+        bot: [['until', R => R.cloudOver()], ['tap', -1, -1, 'cloud'], ['wait', 2.4], ['until', R => R.cloudOver()], ['tap', -1, -1, 'cloud'], ['wait', 3.4],
+          ['go', 11.8], ['dir', 1], ['jump', 0.25], ['land'], ['go', 14.7], ['dir', 1], ['jump'], ['land'], ['go', 17.7], ['dir', 1], ['jump'], ['land'],
           ['go', 20.6], ['run', 24.5], ['land'], ['go', 28.5]] }
     ],
-    // ── Stage 8
+    // ── Stage 8 (no more notes from here on)
     [
-      { name: 'Echo', t: 95, hint: 'Your last try remembers. Restart while standing on the plate.',
+      { name: 'Echo', t: 100, hint: 'Your last try remembers. Restart while standing on the plate.',
         map: [...fill(10, E),
-          '.S....._....................D...',
+          '.S....._.................BB.D...',
           ...fill(4, G)],
-        setup(R) { R.echoGhost(); R.plateDoor(); },
-        bot: R => (!R.ghostHolds ? [['go', 7.5], ['wait', 4.5], ['restart']] : [['go', 28.5]]) },
-      { name: 'Wet ink', t: 80, hint: 'The ink is still wet. Smear it.',
+        setup(R) { R.echoGhost(); R.plateDoor(); R.when(() => R.unlocked, () => R.pop('B')); },
+        bot: R => (!R.ghostHolds ? [['go', 7.5], ['wait', 4.5], ['restart']] : [['go', 23.0], ['jumpAt', 24.4], ['land'], ['go', 28.5]]) },
+      { name: 'Wet ink', t: 85, hint: 'Only wet ink smears. Look for the shine.',
         map: [...fill(8, '.............########...........'),
           E, E,
-          '.S............WWWWWW........D...',
+          '.S............^WWWW^........D...',
           ...fill(4, G)],
         setup(R) { R.wet('W'); R.free(); },
-        bot: [['go', 12.0], ['drag', 13.6, 10.6, 20.4, 10.6, 0.6], ['wait', 0.4], ['go', 28.5]] },
-      { name: 'Shake it', t: 75, hint: 'Give the page a shake. Swipe left and right, fast.',
+        bot: [['go', 12.0], ['drag', 15.4, 10.6, 18.6, 10.6, 0.6], ['wait', 0.4], ['go', 13.0], ['jumpAt', 13.4], ['land'], ['jumpAt', 18.4], ['land'], ['go', 28.5]] },
+      { name: 'Shake it', t: 85, hint: 'Give the page a shake. Then watch your step.',
         map: [...fill(10, E),
-          '.S..........................D...',
+          '.S........................B.D...',
           ...fill(4, '#############..#################')],
-        setup(R) { R.treeKey(24, 4); R.onShake(4, () => R.dropKey()); },
-        bot: [['swipe', 'left'], ['wait', 0.12], ['swipe', 'right'], ['wait', 0.12], ['swipe', 'left'], ['wait', 0.12], ['swipe', 'right'], ['wait', 1.2], ['jumpAt', 12.4], ['land'], ['go', 24.5], ['go', 28.5]] }
+        setup(R) { R.treeKey(24, 4); R.onShake(4, () => R.dropKey()); R.when(() => R.hasKey, () => R.pop('B')); },
+        bot: [['swipe', 'left'], ['wait', 0.12], ['swipe', 'right'], ['wait', 0.12], ['swipe', 'left'], ['wait', 0.12], ['swipe', 'right'], ['wait', 1.2], ['jumpAt', 12.4], ['land'], ['go', 24.5], ['jumpAt', 25.2], ['land'], ['go', 28.5]] }
     ],
     // ── Stage 9
     [
-      { name: 'Hold the door', t: 80, hint: 'It slams when you come close. Hold it open with a finger.',
+      { name: 'Hold the door', t: 90, hint: 'It slams when you come close. Hold it open with a finger.',
         map: [...fill(10, E),
-          '.S..........^^..............D...',
+          '.S..........^^...........BB.D...',
           ...fill(4, G)],
-        setup(R) { R.holdDoor(); },
-        bot: [['jumpAt', 11.3], ['land'], ['go', 24], ['press', 28.5, 9.6, 3.5], ['go', 28.5], ['wait', 1]] },
-      { name: 'Light and dark', t: 85, hint: 'The key likes the light. The door likes the dark.',
+        setup(R) { R.holdDoor(); R.when(R.at(23.0), () => R.pop('B')); },
+        bot: [['jumpAt', 11.3], ['land'], ['go', 23.4], ['press', 28.5, 9.6, 3.5], ['jumpAt', 24.4], ['land'], ['go', 28.5], ['wait', 1]] },
+      { name: 'Light and dark', t: 90, hint: 'The key likes the light. The door likes the dark.',
         map: [...fill(3, E),
           '.........!......................',
           E, E,
@@ -239,23 +257,23 @@
           ...fill(4, '###################...##########')],
         setup(R) { R.darkDoor(); R.lightKey(); },
         bot: [['jumpAt', 6.2, 0.2], ['land'], ['go', 9.0], ['dir', 1], ['jump'], ['land'], ['go', 12.6], ['tap', 9.5, 3.5], ['wait', 0.4], ['run', 15.6], ['land'], ['jumpAt', 18.7], ['land'], ['go', 28.5]] },
-      { name: 'Everything you learned', t: 100, hint: 'Bridge, wipe, knock.',
+      { name: 'Everything you learned', t: 110, hint: 'Bridge, wipe, knock. Exactly.',
         map: [...fill(5, E),
           ...fill(5, '....................%%..........'),
           '.S..................%%......D...',
           ...fill(4, '#######........#################')],
-        setup(R) { R.ink(10, 5); R.onKnock(3, () => R.unlock()); },
-        bot: [['go', 6.4], ['draw', [[6.5, 11.05], [15.5, 11.05]], 0.5], ['go', 17], ['rub', 20, 5, 2, 6, 1.4], ['wait', 0.3], ['go', 26], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.6], ['go', 28.5]] }
+        setup(R) { R.ink(10, 2.6); R.onKnock(2, () => R.unlock(), { exact: true }); },
+        bot: [['go', 6.4], ['draw', [[6.5, 11.05], [15.5, 11.05]], 0.5], ['go', 17], ['rub', 20, 5, 2, 6, 1.4], ['wait', 0.3], ['go', 26], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 1.4], ['go', 28.5]] }
     ],
     // ── Stage 10
     [
-      { name: 'Ink runs dry', t: 100, hint: 'There is only so much ink. Draw short, draw twice.',
+      { name: 'Ink runs dry', t: 110, hint: 'There is only so much ink. Draw short, draw twice.',
         map: [...fill(10, E),
           '.S...........B..............D...',
           ...fill(4, '######......###.......##########')],
         setup(R) { R.ink(15.5, 4.5); R.free(); R.when(R.at(12.0), () => R.pop('B')); },
         bot: [['go', 5.4], ['draw', [[5.5, 11.05], [12.4, 11.05]], 0.45], ['go', 12.2], ['draw', [[14.4, 11.05], [22.5, 11.05]], 0.45], ['dir', 1], ['jump'], ['land'], ['go', 28.5]] },
-      { name: 'The fallen and the echo', t: 120, hint: 'Fall where it helps. Then let your last try hold the plate.',
+      { name: 'The fallen and the echo', t: 130, hint: 'Fall where it helps. Then let your last try hold the plate.',
         map: [...fill(8, E),
           ...fill(2, '..................##............'),
           '.S.._............^##........D...',
@@ -263,18 +281,21 @@
         setup(R) { R.splatsSolid(); R.echoGhost(); R.plateDoor(); },
         bot: R => (!R.splats.length ? [['go', 17.6], ['wait', 2]] : !R.ghostHolds ? [['go', 4.5], ['wait', 5.5], ['restart']]
           : [['go', 15.9], ['dir', 1], ['jump', 0.13], ['land'], ['go', 17.5], ['dir', 1], ['jump'], ['land'], ['go', 28.5]]) },
-      { name: 'The last door', t: 120, hint: 'Knock. Be still. Seal it. And remember the way you came.',
-        map: [...fill(10, E),
-          '....S.......................D...',
+      { name: 'The last door', t: 140, hint: 'Knock. Be still, far off. Find the seal. And remember the way you came.',
+        map: [E,
+          ...fill(2, '.............................%%.'),
+          ...fill(7, E),
+          '.BB.S.......................D...',
           ...fill(4, G)],
         setup(R) {
           R.locks(3); R.seal(30.2, 1.6, true);
-          R.onKnock(3, () => R.openLock('knock'));
-          R.onStill(3, () => R.openLock('still'), { near: 3 });
+          R.onKnock(3, () => R.openLock('knock'), { exact: true });
+          R.onStill(3, () => R.openLock('still'), { far: 8 });
           R.onSeal(() => R.openLock('seal'));
-          R.onAllLocks(() => { R.painted(); R.edgeExit('left'); R.say('Nice try.'); });
+          R.onAllLocks(() => { R.painted(); R.edgeExit('left'); R.pop('B'); R.say('Nice try.'); });
         },
-        bot: [['go', 26], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 3.6], ['drag', 30.2, 1.6, 28.5, 9.4, 0.6], ['wait', 1.0], ['go', -1]] }
+        bot: [['go', 26], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 0.25], ['tap', 28.5, 9.6], ['wait', 1.4], ['go', 18.0], ['wait', 3.6],
+          ['rub', 29, 1, 2, 2, 1.0], ['wait', 0.3], ['drag', 30.2, 1.6, 28.5, 9.4, 0.6], ['wait', 1.0], ['go', 4.2], ['jumpAt', 3.6], ['land']] }
     ]
   ];
 
@@ -283,7 +304,7 @@
     landscape: { top: 0, h: RH },
     music: 'music_ink',
     sounds: ['ink_jump', 'ink_land', 'ink_die', 'ink_knock', 'ink_unlock', 'ink_slide', 'ink_key', 'ink_brush', 'ink_erase', 'ink_lamp', 'ink_flip', 'ink_push', 'ink_rain', 'ink_grow', 'ink_stamp', 'ink_wrong', 'ink_exit', 'ink_slam'],
-    subtitle: () => 'One red door per page. It never opens the same way twice. Stuck long enough, a note appears.',
+    subtitle: () => 'One red door per page. It never opens the same way twice, and the page lies. Early pages leave a note if you’re stuck; later ones don’t.',
     hint: 'The room’s name is the clue.',
     howto: ['◀ ▶ walk  ·  jump  ·  ↻ restart the page', 'Touch the page too: tap, drag, draw, rub, swipe'],
     rooms: () => STAGES.slice(1).map(st => st.map(r => r.name)),   // Test Lab: room names per level
@@ -409,27 +430,62 @@
         dragDoor() { door().drag = true; door().locked = false; },
         darkDoor() { door().darkOnly = true; if (!r.keys.length) door().locked = false; },
         lightKey() { for (const k of r.keys) k.lightOnly = true; },
-        onKnock(n, fn, o) { r.knock = { n, fn, exact: !!(o && o.exact), count: 0, lastT: -9, done: false }; },
-        onStill(sec, fn, o) { r.still = { sec, fn, t: 0, done: false, near: o && o.near }; },
+        onKnock(n, fn, o) { r.knock = { n, fn, exact: !!(o && o.exact), punish: o && o.punish, count: 0, lastT: -9, done: false }; },
+        onStill(sec, fn, o) { r.still = { sec, fn, t: 0, done: false, near: o && o.near, far: o && o.far }; },
         onPause(fn) { r.pauseFn = fn; },
         onShake(n, fn) { r.shake = { n, fn, count: 0, last: null, t: 0, done: false }; },
         onSeal(fn) { r.sealFn = fn; },
         onAllLocks(fn) { r.allLocksFn = fn; },
         locks(n) { r.lockSet = { need: n, open: {} }; },
         openLock(id) { if (!r.lockSet || r.lockSet.open[id]) return; r.lockSet.open[id] = true; sfx('ink_unlock', { vol: 0.6, rate: 1.2 }); const d = door(); burst(d.x, d.y - 26, 8, '200,70,58'); if (Object.keys(r.lockSet.open).length >= r.lockSet.need) { r.lockSet.done = true; if (r.allLocksFn) r.allLocksFn(); else api.unlock(); } },
-        tally(n) { r.tally = n; r.jumpsLeft = n; },
+        tally(n, o) { r.tally = n; r.jumpsLeft = n; r.tallyExact = !!(o && o.exact); },
+        get hasKey() { return !!(P && P.carry); },
+        get unlocked() { return !!r.door && !r.door.locked; },
+        get idleT() { return r.idleT || 0; },
+        show(id) { const s = r.spikes[id]; if (s) s.ext = 1; },
+        hide(id) { const s = r.spikes[id]; if (s) s.q.push({ k: 'ext', to: 0, dur: 0.12, ease: 'in' }); },
+        // a hanging thorn group lets go and falls to the ground below it
+        fallSpikes(id) {
+          const s = r.spikes[id]; if (!s || s.falling) return;
+          s.falling = true; s.ext = 1;
+          let d = 1e9;
+          for (const tl of s.tiles) for (let y = tl.y + 1; y <= ROWS; y++) if (y === ROWS || SOLIDISH(r.g[y][tl.x])) { d = Math.min(d, (y - tl.y - 1) * T + T * 0.3); break; }
+          sfx('ink_slide', { vol: 0.5, rate: 1.6 });
+          s.q.push({ k: 'to', x: 0, y: d, dur: 0.3, ease: 'in' }, { k: 'fn', fn: () => sfx('ink_slam', { vol: 0.5, rate: 1.4 }) }, { k: 'to', x: 0, y: d, dur: 0.6 }, { k: 'fn', fn: () => { s.alive = false; } });
+        },
+        // stand still under them that long and they fall on you
+        stillTrap(id, sec, x0, x1) { r.ticks.push(() => { const s = r.spikes[id]; if (s && !s.falling && P.ground && (r.idleT || 0) > sec && P.x >= x0 * T && P.x <= x1 * T) api.fallSpikes(id); }); },
+        fakeKey(i) { if (r.keys[i]) r.keys[i].fake = true; },
+        // a key hidden under a crate (shows once the crate has been pushed off it)
+        keyUnder(ci) { const c = r.crates[ci]; if (c) r.keys.push({ x: c.x + T / 2, y: c.y + T / 2 + 4, carried: false, alive: true, vy: 0, hidden: true, falls: false, bob: 0, under: c, ux: c.x }); },
+        // the lamp goes out for sec, then lights itself again (once: and won't go out a second time)
+        lampTimer(sec, o) { r.lampTimer = { sec, once: !!(o && o.once), used: false, t: 0 }; },
+        dayOnly(id) { const b = r.bodies[id]; if (b) b.dayOnly = true; },
+        // the ground from column x0 toward x1 gives way, one column after another
+        crumble(x0, x1, speed, delay) {
+          const gb = r.bodies['#'], dir = Math.sign(x1 - x0) || 1;
+          for (let x = x0; dir > 0 ? x <= x1 : x >= x1; x += dir) {
+            const tiles = gb.tiles.filter(tl => tl[0] === x);
+            if (!tiles.length) continue;
+            gb.tiles = gb.tiles.filter(tl => tl[0] !== x);
+            const bd = mover({ id: 'crumble' + x, kind: 'ground', tiles, rects: rowRects(tiles), solid: true, visible: true, alive: true });
+            r.bodies[bd.id] = bd; r.blist.push(bd);
+            r.timers.push({ t: delay + Math.abs(x - x0) / speed, fn: () => { bd.q.push({ k: 'to', x: 1.5, y: 2, dur: 0.16 }, { k: 'fn', fn: () => { bd.solid = false; sfx('ink_slide', { vol: 0.25, rate: 1.5 }); } }, { k: 'to', x: 0, y: RH, dur: 0.9, ease: 'in' }); } });
+          }
+          gb.rects = rowRects(gb.tiles);
+        },
         ink(tiles, life) { r.inkMax = r.inkLeft = tiles * T; r.inkLife = life || 5; },
         cat(x, y) { r.cat = { x: (x + 0.5) * T, y: (y + 1) * T, awake: 0 }; },
         wakeCat() { if (r.cat) r.cat.awake = 0.001; },
-        lampOrder(syms, order) { r.lamps.forEach((l, i) => { l.sym = syms[i]; l.on = false; }); r.order = { want: order, got: [] }; },
+        lampOrder(syms, order, o) { r.lamps.forEach((l, i) => { l.sym = syms[i]; l.on = false; }); r.order = { want: order, got: [], reverse: !!(o && o.reverse), lock: 0 }; },
         belt(x0, x1, y, speed) { r.belts.push({ x0: x0 * T, x1: (x1 + 1) * T, y: y * T, v: speed * T }); },
         shyDoor() { r.shy = true; door().locked = false; },
         sunNight(x, y) { r.sun = { x: x * T, y: y * T, x0: x * T, y0: y * T, drag: false }; door().nightOnly = true; door().locked = false; },
         splatsSolid() { r.splatSolid = true; },
         titleKey(x, y) { r.title = { x: x * T, y: y * T, x0: x * T, y0: y * T, text: r.def.name, moved: false }; r.keys.push({ x: x * T, y: y * T, carried: false, alive: true, vy: 0, hidden: true, falls: true, bob: 0 }); },
-        cranes(n) { r.cranes = n; },
+        cranes(n, o) { r.cranes = n; r.craneSeq = !!(o && o.seq); },
         seal(x, y, small) { r.seal = { x: x * T, y: y * T, x0: x * T, y0: y * T, used: false, small: !!small }; if (!r.sealFn) r.sealFn = () => api.unlock(); },
-        rainPlant(x, y) { r.cloud = { x: 4 * T, y: 1.6 * T, dir: 1, rain: 0 }; r.plant = { x: (x + 0.5) * T, y: y * T, grow: 0, tx: x, ty: y }; },
+        rainPlant(x, y, o) { r.cloud = { x: 4 * T, y: 1.6 * T, dir: 1, rain: 0, speed: 1.6 }; r.plant = { x: (x + 0.5) * T, y: y * T, grow: 0, tx: x, ty: y, need: (o && o.times) || 1, rains: 0, target: 0 }; },
         cloudOver() { return r.cloud && Math.abs(r.cloud.x - r.plant.x) < T * 1.2 && r.cloud.rain <= 0; },
         echoGhost() { r.echo = true; },
         plateDoor() { r.plateDoor = true; },
@@ -438,6 +494,7 @@
         dropKey() { for (const k of r.keys) if (k.hang) { k.hang = false; k.falls = true; sfx('ink_key', { vol: 0.6, rate: 0.8 }); } },
         holdDoor() { r.holdDoor = true; door().locked = false; },
         free() { const d = door(); if (d) d.locked = false; },
+        swipeGravity() { r.swipeGrav = true; },                     // swipe up / down turns this page's gravity
         get ghostHolds() { const gq = persist.ghost; if (!gq || !gq.length) return false; const f = gq[gq.length - 1]; return r.plates.some(p => Math.abs(f.x - p.x) < T * 0.6 && Math.abs(f.y - p.y) < 3); }
       };
       return api;
@@ -498,8 +555,9 @@
     function toRoom(p) { const F = fit(); return { x: (p.x - F.x) / F.s, y: (p.y - F.y) / F.s }; }
     function doorRect() { const d = R.door; if (!d) return null; const x = d.x + d.ox, y = d.y + d.oy; return d.hang ? { x0: x - 14, y0: y - 2, x1: x + 14, y1: y + 44 } : { x0: x - 14, y0: y - 44, x1: x + 14, y1: y + 2 }; }
     const inR = (p, r, pad) => r && p.x >= r.x0 - (pad || 0) && p.x <= r.x1 + (pad || 0) && p.y >= r.y0 - (pad || 0) && p.y <= r.y1 + (pad || 0);
+    const sealHidden = () => R.seal && R.erasers.some(e => e.alive && R.seal.x0 > e.x - 4 && R.seal.x0 < e.x + T + 4 && R.seal.y0 > e.y - 4 && R.seal.y0 < e.y + T + 4);
     function draggableAt(p) {
-      if (R.seal && !R.seal.used && Math.hypot(p.x - R.seal.x, p.y - R.seal.y) < 22) return 'seal';
+      if (R.seal && !R.seal.used && !sealHidden() && Math.hypot(p.x - R.seal.x, p.y - R.seal.y) < 22) return 'seal';
       if (R.sun && Math.hypot(p.x - R.sun.x, p.y - R.sun.y) < 30) return 'sun';
       if (R.title && !R.title.moved && Math.abs(p.x - R.title.x) < 120 && Math.abs(p.y - R.title.y) < 22) return 'title';
       if (R.door && R.door.drag && inR(p, doorRect(), 8)) return 'door';
@@ -577,19 +635,26 @@
           const sh = R.shake;
           if ((s.dir === 'left' || s.dir === 'right') && s.dir !== sh.last) { sh.count++; sh.last = s.dir; sh.t = 1.6; env.shake(0.15); sfx('ink_push', { vol: 0.4, rate: 1.4 }); if (sh.count >= sh.n && !sh.done) { sh.done = true; sh.fn(); } }
         }
-        if (rooms[ri].name === 'Which way is down') {
+        if (R.swipeGrav) {
           if ((s.dir === 'up' && R.gdir > 0) || (s.dir === 'down' && R.gdir < 0)) flipGravity();
         }
       }
       if (R.shake && R.shake.t > 0) { R.shake.t -= dt; if (R.shake.t <= 0 && !R.shake.done) { R.shake.count = 0; R.shake.last = null; } }
     }
     function tapLamp(l) {
+      if (R.lampTimer) {
+        const lt = R.lampTimer;
+        if (lt.t > 0 || !l.on) return;
+        if (lt.used && lt.once) { msg = 'The wick won’t go out twice.'; msgT = 1.6; return; }
+        l.on = false; l.lit = 1; lt.used = true; lt.t = lt.sec; R.dark = !R.lamps.some(q => q.on); sfx('ink_lamp', { vol: 0.7 });
+        return;
+      }
       if (R.order) {
-        if (l.on) return;
+        if (l.on || R.order.lock > 0) return;
         l.on = true; l.lit = 1; sfx('ink_lamp', { vol: 0.7 });
         R.order.got.push(l.sym);
         const n = R.order.got.length, ok = R.order.got.every((s, i) => s === R.order.want[i]);
-        if (!ok) { sfx('ink_wrong', { vol: 0.8 }); msg = 'Wrong order.'; msgT = 1.6; R.api.after(0.5, () => { R.lamps.forEach(q => { q.on = false; }); R.order.got = []; }); }
+        if (!ok) { sfx('ink_wrong', { vol: 0.8 }); msg = 'Wrong order.'; msgT = 1.6; R.order.lock = 3; R.api.after(0.5, () => { R.lamps.forEach(q => { q.on = false; }); R.order.got = []; }); }
         else if (n === R.order.want.length) R.api.unlock();
         return;
       }
@@ -604,7 +669,7 @@
       if (R.t - k.lastT > 2.2) k.count = 0;
       k.count++; k.lastT = R.t;
       if (!k.exact && k.count >= k.n) { k.done = true; R.api.after(0.25, k.fn); }
-      if (k.exact && k.count > k.n) { k.count = 0; sfx('ink_wrong', { vol: 0.8 }); msg = 'Too many.'; msgT = 1.4; }
+      if (k.exact && k.count > k.n) { k.count = 0; sfx('ink_wrong', { vol: 0.8 }); msg = 'Too many.'; msgT = 1.4; if (k.punish) k.punish(); }
     }
     function flipGravity() {
       R.gdir = -R.gdir; P.ground = false; P.vy = 0;
@@ -672,7 +737,8 @@
       timeLeft -= dt * env.clock;
       if (timeLeft <= 0) { timeLeft = 0; done = true; env.lose('Time’s up'); return; }
       persist.time += dt;
-      if (!persist.hinted && (persist.time > 50 || persist.deaths >= 5)) { persist.hinted = true; hints++; sfx('ink_brush', { vol: 0.5, rate: 0.7 }); }
+      const HINT = LV <= 3 ? [60, 6] : LV <= 7 ? [120, 10] : null;     // (seconds, deaths) before a note; none from stage 8
+      if (HINT && !persist.hinted && (persist.time > HINT[0] || persist.deaths >= HINT[1])) { persist.hinted = true; hints++; sfx('ink_brush', { vol: 0.5, rate: 0.7 }); }
       if (P.dead) { deadT += dt; stepWorld(dt); if (deadT > 0.7) { R = build(rooms[ri]); spawn(); bakeRoom(); } return; }
       if (P.entering > 0) {
         P.entering += dt; stepWorld(dt);
@@ -691,9 +757,10 @@
       stepWorld(dt);
       // stand still (no input at all) for a while
       const idle = !dir && !jp && !jh && !finger && P.ground;
+      R.idleT = idle ? (R.idleT || 0) + dt : 0;
       if (R.still && !R.still.done) {
-        const near = !R.still.near || Math.abs(P.x - R.door.x) < R.still.near * T;
-        R.still.t = idle && near ? R.still.t + dt : 0;
+        const near = !R.still.near || Math.abs(P.x - R.door.x) < R.still.near * T, far = !R.still.far || Math.abs(P.x - R.door.x) >= R.still.far * T;
+        R.still.t = idle && near && far ? R.still.t + dt : 0;
         if (R.still.t >= R.still.sec) { R.still.done = true; R.still.fn(); }
       }
       // run + belts
@@ -709,6 +776,7 @@
       if (P.buf > 0 && (onGround || P.coy > 0)) {
         P.buf = 0; P.coy = 0; P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; sfx('ink_jump', { vol: 0.4 });
         if (R.tally && R.jumpsLeft > 0) { R.jumpsLeft--; sfx('ink_erase', { vol: 0.5 }); if (R.jumpsLeft === 0) R.api.unlock(); }
+        else if (R.tally && R.tallyExact) { R.jumpsLeft = R.tally; R.api.lock(); sfx('ink_wrong', { vol: 0.8 }); msg = 'Too many.'; msgT = 1.6; }
       }
       const rising = P.vy * R.gdir < 0;
       if (rising && !jh && !P.cut) { P.vy *= CUT; P.cut = true; }
@@ -755,7 +823,10 @@
       // keys: pick up (if you can see it)
       for (const k of R.keys) {
         if (!k.alive || k.carried || k.hidden || k.hang || (k.lightOnly && R.dark)) continue;
-        if (Math.abs(k.x - P.x) < 14 && Math.abs(k.y - (P.y - R.gdir * 12)) < 20) { k.carried = true; P.carry = k; sfx('ink_key', { vol: 0.8 }); }
+        if (Math.abs(k.x - P.x) < 14 && Math.abs(k.y - (P.y - R.gdir * 12)) < 20) {
+          if (k.fake) { k.alive = false; burst(k.x, k.y, 10, '21,18,15'); die('trap'); msg = 'It bit.'; msgT = 1.8; break; }
+          k.carried = true; P.carry = k; sfx('ink_key', { vol: 0.8 });
+        }
       }
       // the record of this try (an echo page replays it next time)
       if (R.echo) persist.rec.push({ x: P.x, y: P.y, f: P.face, g: R.gdir });
@@ -795,8 +866,9 @@
       }
       // keys that fall (title key, tree key) land on the ground
       for (const k of R.keys) {
-        if (k.hidden && R.title && R.title.moved) { k.hidden = false; k.falls = true; }
-        if (k.falls && !k.carried) {
+        if (k.hidden && R.title && R.title.moved && !k.under) { k.hidden = false; k.falls = true; }
+        if (k.hidden && k.under && Math.abs(k.under.x - k.ux) > T * 0.8) { k.hidden = false; sfx('ink_key', { vol: 0.5, rate: 1.2 }); }
+        if (k.falls && !k.carried && !k.hidden) {
           k.vy = Math.min(600, k.vy + 1500 * dt); const ny = k.y + k.vy * dt;
           const S = solids(); const fl = S.find(o => k.x > o.x0 && k.x < o.x1 && ny + 8 > o.y0 && k.y + 8 <= o.y0 + 1);
           if (fl) { k.y = fl.y0 - 8; k.vy = 0; k.falls = false; sfx('ink_key', { vol: 0.4, rate: 1.4 }); } else k.y = ny;
@@ -835,6 +907,9 @@
       if (R.echo && persist.ghost && persist.ghost.length) persist.gi = Math.min(persist.ghost.length - 1, persist.gi + 1);
       // lamps, darkness, night
       for (const l of R.lamps) l.lit = Math.max(0, l.lit - dt * 2);
+      if (R.lampTimer && R.lampTimer.t > 0) { R.lampTimer.t -= dt; if (R.lampTimer.t <= 0) { for (const l of R.lamps) { l.on = true; l.lit = 1; } R.dark = false; sfx('ink_lamp', { vol: 0.6, rate: 1.2 }); } }
+      if (R.order && R.order.lock > 0) R.order.lock -= dt;
+      for (const b of R.blist) if (b.dayOnly) b.solid = !R.night;
       R.darkA += ((R.dark ? 1 : 0) - R.darkA) * Math.min(1, dt * 5);
       R.nightA += ((R.night ? 1 : 0) - R.nightA) * Math.min(1, dt * 2);
       if (R.sun && !(finger && finger.mode === 'drag:sun') && !R.night) { R.sun.x += (R.sun.x0 - R.sun.x) * Math.min(1, dt * 3); R.sun.y += (R.sun.y0 - R.sun.y) * Math.min(1, dt * 3); }
@@ -843,15 +918,19 @@
       // cloud, rain, the bamboo that grows from it
       if (R.cloud) {
         const c = R.cloud;
-        if (c.rain <= 0) { c.x += c.dir * 1.6 * T * dt; if (c.x > RW - 3 * T) c.dir = -1; if (c.x < 3 * T) c.dir = 1; }
+        if (c.rain <= 0) { c.hit = false; c.x += c.dir * (c.speed || 1.6) * T * dt; if (c.x > RW - 3 * T) c.dir = -1; if (c.x < 3 * T) c.dir = 1; }
         else {
           c.rain -= dt;
           for (let i = 0; i < 3; i++) fx.spawn({ x: c.x + (Math.random() - 0.5) * 60, y: c.y + 14, vx: -10, vy: 420, kind: 'spark', rgb: '70,80,95', size: 1.2, life: 0.8 });
-          if (Math.abs(c.x - R.plant.x) < T * 1.6 && R.plant.grow === 0) { R.plant.grow = 0.0001; sfx('ink_grow', { vol: 0.8 }); }
+          const pl = R.plant;
+          if (Math.abs(c.x - pl.x) < T * 1.6 && !c.hit && pl.rains < pl.need) {
+            c.hit = true; pl.rains++; pl.target = Math.min(1, pl.rains / pl.need); if (pl.grow === 0) pl.grow = 0.0001; sfx('ink_grow', { vol: 0.8 });
+            if (pl.rains < pl.need) { c.speed = (c.speed || 1.6) * 1.6; msg = 'Not enough.'; msgT = 1.6; }
+          }
         }
       }
-      if (R.plant && R.plant.grow > 0 && R.plant.grow < 1) {
-        R.plant.grow = Math.min(1, R.plant.grow + dt / 2.2);
+      if (R.plant && R.plant.grow > 0 && R.plant.grow < (R.plant.target || 1)) {
+        R.plant.grow = Math.min(R.plant.target || 1, R.plant.grow + dt / 2.2);
         if (R.plant.grow >= 1 && !R.bodies.bamboo) {
           const px = R.plant.tx;
           const tiles = [[px - 2, 9], [px - 1, 9], [px + 1, 7], [px + 2, 7]];
@@ -1012,9 +1091,12 @@
       c.beginPath(); c.rect(0, 0, RW, RH); c.clip();
       if (bake.room) c.drawImage(bake.room, 0, 0, RW, RH);
       if (R.nightA > 0.01) { c.fillStyle = `rgba(20,26,48,${(0.5 * R.nightA).toFixed(3)})`; c.fillRect(0, 0, RW, RH); drawMoon(c); }
-      if (R.cranes) for (let i = 0; i < R.cranes; i++) crane(c, ((t * (14 + i * 3) + i * 170) % (RW + 120)) - 60, 46 + (i % 3) * 22 + Math.sin(t + i) * 5, 0.75, 0.6, t * 5 + i);
+      if (R.cranes && R.craneSeq) {
+        const gap = 1.3, cross = 4.2, cyc = R.cranes * gap + cross + 2, ct = R.t % cyc;
+        for (let i = 0; i < R.cranes; i++) { const k = (ct - i * gap) / cross; if (k >= 0 && k <= 1) crane(c, k * (RW + 120) - 60, 46 + (i % 3) * 22 + Math.sin(t + i) * 5, 0.75, 0.6, t * 5 + i); }
+      } else if (R.cranes) for (let i = 0; i < R.cranes; i++) crane(c, ((t * (14 + i * 3) + i * 170) % (RW + 120)) - 60, 46 + (i % 3) * 22 + Math.sin(t + i) * 5, 0.75, 0.6, t * 5 + i);
       for (const sp of persist.splats) if (!sp.tile || !R.splatSolid) { c.globalAlpha = 0.92; splatShape(c, sp.x, sp.y, sp.r, sp.seed); c.globalAlpha = 1; }
-      for (const b of R.blist) if (b.sprite && b.alive) c.drawImage(b.sprite, b.sx + b.ox, b.sy + b.oy, b.sprite.width / bake.K, b.sprite.height / bake.K);
+      for (const b of R.blist) if (b.sprite && b.alive) { if (b.dayOnly) c.globalAlpha = 1 - R.nightA * 0.92; c.drawImage(b.sprite, b.sx + b.ox, b.sy + b.oy, b.sprite.width / bake.K, b.sprite.height / bake.K); c.globalAlpha = 1; }
       for (const e of R.erasers) if (e.alive || e.rub < 1.3) drawInkWall(c, e);
       for (const bl of R.belts) drawBelt(c, bl);
       for (const p of R.plates) drawPlate(c, p);
@@ -1034,7 +1116,7 @@
       if (R.cloud) drawCloud(c);
       if (R.sun) drawSun(c);
       if (R.title) drawTitle(c);
-      if (R.seal && !R.seal.used) drawSeal(c, R.seal);
+      if (R.seal && !R.seal.used && !sealHidden()) drawSeal(c, R.seal);
       if (R.order) drawScroll(c);
       if (R.darkA > 0.01) {
         const a = R.darkA;
@@ -1131,7 +1213,8 @@
       c.fillStyle = 'rgba(248,242,228,0.97)'; c.strokeStyle = INK; c.lineWidth = 1.6;
       c.fillRect(x - w / 2, y - h / 2, w, h); c.strokeRect(x - w / 2, y - h / 2, w, h);
       c.fillStyle = INK; c.fillRect(x - w / 2 - 6, y - h / 2 - 3, w + 12, 4); c.fillRect(x - w / 2 - 6, y + h / 2 - 1, w + 12, 4);
-      R.order.want.forEach((s, i) => symbol(c, s, x - 36 + i * 36, y, 9, INK));
+      (R.order.reverse ? R.order.want.slice().reverse() : R.order.want).forEach((s, i) => symbol(c, s, x - 36 + i * 36, y - (R.order.reverse ? 4 : 0), 9, INK));
+      if (R.order.reverse) { c.strokeStyle = INK; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + 30, y + 13); c.lineTo(x - 30, y + 13); c.moveTo(x - 25, y + 9); c.lineTo(x - 30, y + 13); c.lineTo(x - 25, y + 17); c.stroke(); }
     }
     function drawTree(c) {
       const x = R.tree.x, y = R.tree.y;
@@ -1308,7 +1391,8 @@
       update, render,
       debug: () => ({ level: LV, room: ri + 1, rooms: rooms.length, deaths, roomDeaths: persist.deaths, hints, time: +timeLeft.toFixed(1), done,
         x: +(P.x / T).toFixed(2), y: +(P.y / T).toFixed(2), ground: P.ground, dead: P.dead, flipped: R.gdir < 0, bot: bot.i,
-        locked: R.door ? R.door.locked : null, entering: P.entering > 0 })
+        locked: R.door ? R.door.locked : null, entering: P.entering > 0,
+        keys: R.keys.map(k => [+(k.x / T).toFixed(2), +(k.y / T).toFixed(2), k.hidden ? 'h' : '', k.falls ? 'f' : '', k.carried ? 'c' : '', k.alive ? '' : 'x'].join(' ')), strokes: R.strokes.map(st => +st.life.toFixed(2)) })
     };
   }
 })();
