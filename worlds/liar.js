@@ -1,13 +1,14 @@
 // ============================================================================
-// Drift & Bloom — LIAR'S PATH (Adventure round 3). A troll platformer in the spirit of Level Devil.
-// A shadow child walks a foggy forest to a lit doorway, one screen per room, and the path lies:
-// floors drop away, thorns spring up, stalactites fall, ceilings slam, saws roll in, the door runs
-// off, gravity turns over, the lights go out. Every trap is scripted and always the same, so each
-// death teaches the room; respawn is instant, only the round clock is at stake. Stage n = harder rooms.
+// Drift & Bloom — LIAR'S PATH (Adventure round 3). A troll platformer in the spirit of Level Devil, in its own look:
+// flat night rooms cut into pale moonstone, a small glowing seed-spirit, a round moon-gate door, crystal thorns.
+// The path lies: floors drop away, thorns spring up, stalactites fall, ceilings slam, saws roll in, the gate runs
+// off or bites, gravity turns over, the lights go out. Every trap is scripted and always the same, so each death
+// teaches the room; respawn is instant, only the round clock is at stake. Stage n = harder rooms.
+// Feel (measured off Level Devil footage, not its art): instant run/stop, one fixed low floaty jump.
 //
 // A room = an ASCII map (32 x 15 tiles of 26 px) + setup(R), a script of triggers (the R api below).
 //   .  air          #  ground        S  start            D  door        Q  a door that lies (it bites)
-//   ^ v < >  thorns (always out)    A-Z  hidden thorns (a group; R.pop / R.fall / R.show ...)
+//   ^ v < >  crystal thorns (always out)    A-Z  hidden thorns (a group; R.pop / R.fall / R.show ...)
 //   a-z  ground that moves (a group: R.drop / R.$('a').move ...; not v)   ~  fake ground (you fall through)
 //   +  invisible ground              %  ground that crumbles when R.chase() runs   *  spring
 //   @  a rune that turns gravity over                                1-9  saw blades
@@ -17,12 +18,12 @@
 (function () {
   'use strict';
   const T = 26, COLS = 32, ROWS = 15, RW = COLS * T, RH = ROWS * T, TAU = Math.PI * 2;
-  // feel: run 6.6 tiles/s; a held jump rises 2.6 tiles and carries 3.3; release early = a hop
-  const RUN = 172, ACC = 2300, DEC = 3000, AIR_ACC = 1700, AIR_DEC = 260;
-  const G_UP = 1750, G_DN = 2700, JUMP_V = 485, CUT = 0.42, MAXF = 780, COYOTE = 0.08, BUFFER = 0.12;
-  const SPRING_V = 640, SPRING_HI = 800;
-  const PW = 12, PH = 22;
-  const INK = '#0b0c0a';
+  // feel, measured off Level Devil footage (body = 24 px): runs 6.4 bodies/s with no wind-up or slide,
+  // one fixed jump 1.7 bodies high and 0.55 s long, the same gravity up and down (it carries ~3.3 tiles)
+  const RUN = 154, ACC = 14000, DEC = 14000, AIR_ACC = 14000, AIR_DEC = 14000;
+  const G_UP = 1085, G_DN = 1085, JUMP_V = 298, CUT = 1, MAXF = 620, COYOTE = 0.07, BUFFER = 0.1;
+  const SPRING_V = 504, SPRING_HI = 630;
+  const PW = 9, PH = 22;
   const E = '.'.repeat(32), G = '#'.repeat(32);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const EASE = { lin: k => k, io: k => k * k * (3 - 2 * k), in: k => k * k, out: k => 1 - (1 - k) * (1 - k), slam: k => k * k * k };
@@ -110,9 +111,9 @@
           '.S...................^.......D..',
           ...fill(4, '##############...###############')],
         setup(R) {
-          const s1 = R.saw({ x: -1, y: 10.15 }), s2 = R.saw({ x: 33.5, y: 10.15 });
-          R.when(R.at(4.5), () => s1.go([[13.6, 10.15], [13.6, 18]], 5.2));
-          R.when(R.at(21.0), () => s2.go([[-3, 10.15]], 4.6));
+          const s1 = R.saw({ x: -1, y: 10.4 }), s2 = R.saw({ x: 33.5, y: 10.4 });
+          R.when(R.at(4.5), () => s1.go([[13.6, 10.4], [13.6, 18]], 5.2));
+          R.when(R.at(21.0), () => s2.go([[-3, 10.4]], 4.6));
         },
         bot: [['jumpAt', 13.8], ['land'], ['jumpAt', 19.9], ['land'], ['until', (R, P) => R.saws[1].x / T - P.x < 3.0], ['jump'], ['land'], ['go', 29.5]] },
       { name: 'Gatekeeper', t: 55,
@@ -125,24 +126,22 @@
         setup(R) {
           R.show('A'); R.show('B'); R.attach('B', 'g');
           R.when(R.at(14.3), () => R.fall('A', 0.25));
-          R.every(R.at(21.0), () => R.$('g').stop().goTo(0, -2.5, 1.39));
+          R.every(R.at(21.0), () => R.$('g').stop().goTo(0, -2.0, 0.9));
           R.every(R.atL(18.5), () => R.$('g').stop().goTo(0, 0, 5));
         },
         bot: [['go', 14.4], ['go', 13.4], ['wait', 1.0], ['go', 17.0], ['jumpAt', 22.7], ['land'], ['go', 30.5]] },
       { name: 'Leap of faith', t: 60,
-        map: [...fill(9, E),
-          '.............++++...............',
-          '.S..................++.......D..',
+        map: [...fill(10, E),
+          '.S...........++++...++.......D..',
           '########+++++....+++....##~~####',
           ...fill(3, '########................##..####')],
         setup(R) { R.leaves(); R.sign(6, 10, 'JUMP!'); },
-        bot: [['run', 12.2], ['jump', 0.35], ['run', 16.9], ['run', 19.3], ['jump', 0.2], ['land'], ['jumpAt', 21.4], ['land'], ['jumpAt', 25.3], ['land'], ['go', 29.5]] },
+        bot: [['run', 12.4], ['jump'], ['land'], ['run', 16.9], ['land'], ['jumpAt', 18.2], ['land'], ['jumpAt', 21.6], ['land'], ['jumpAt', 25.3], ['land'], ['go', 29.5]] },
       { name: 'Run', t: 45,
-        map: [...fill(9, E),
-          '..........%.....................',
+        map: [...fill(10, E),
           '.S........%.................B.D.',
           ...fill(4, '%%%%%%%%%%%%%%...%%%%%%%%%%#####')],
-        setup(R) { R.when(R.at(2.2), () => { R.chase(5.6, 0); R.say('Run.'); }); R.when(R.at(26.6), () => R.pop('B')); },
+        setup(R) { R.when(R.at(2.2), () => { R.chase(5.0, 0); R.say('Run.'); }); R.when(R.at(26.6), () => R.pop('B')); },
         bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 13.7], ['land'], ['jumpAt', 26.9], ['land'], ['go', 30.5]] }
     ],
     // ── Stage 4: door problems
@@ -278,7 +277,7 @@
           R.when(R.at(17.2), () => R.wind(115));
           R.when(R.at(26), () => R.wind(0));
         },
-        bot: [['jumpAt', 7.8], ['land'], ['jumpAt', 12.8], ['land'], ['jumpAt', 19.0, 0.06], ['land'], ['jumpAt', 22.4], ['land'], ['go', 30.5]] }
+        bot: [['jumpAt', 7.8], ['land'], ['jumpAt', 12.8], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 23.3], ['land'], ['go', 30.5]] }
     ],
     // ── Stage 7: it plays dirty
     [
@@ -301,8 +300,8 @@
           '.S..........................D...',
           ...fill(4, '##################aaa###########')],
         setup(R) {
-          R.saw({ x: 7, y: 10.15 }).go([[12, 10.15], [7, 10.15]], 3.6, true);
-          R.saw({ x: 16.5, y: 10.15 }).go([[13.5, 10.15], [16.5, 10.15]], 3.0, true);
+          R.saw({ x: 7, y: 10.4 }).go([[12, 10.4], [7, 10.4]], 3.6, true);
+          R.saw({ x: 16.5, y: 10.4 }).go([[13.5, 10.4], [16.5, 10.4]], 3.0, true);
           R.when(R.at(16.6), () => R.drop('a'));
           R.when(R.at(25.6), () => { R.$('D').hop(2, 10, 1.1); R.say('Forgot something?'); });
         },
@@ -315,7 +314,7 @@
           ...fill(4, '%%%%%%%%%%%%%%%%%%..%%%%%%%%####')],
         setup(R) {
           R.show('A'); R.show('B'); R.show('C');
-          R.when(R.at(2.2), () => { R.chase(5.9, 0); R.say('Don’t stop.'); });
+          R.when(R.at(2.2), () => { R.chase(5.2, 0); R.say('Don’t stop.'); });
           R.when(R.at(4.6), () => R.fall('A', 0.3));
           R.when(R.at(12.4), () => R.fall('B', 0.45));
           R.when(R.at(22.4), () => R.fall('C', 0.3));
@@ -366,15 +365,15 @@
           '.S...........................D..',
           ...fill(4, G)],
         setup(R) {
-          R.when(R.at(2.5), () => { R.echo(1.2); R.say('Something follows. Never stop.'); });
-          const cyc = id => R.$(id).move(0, 4, 0.12, 'in', 'slam').call(() => R.slamFx(id)).wait(0.5, 'hold').move(0, -4, 0.8, 'io', 'rise').wait(1.0, 'top').loop();
+          R.when(R.at(2.5), () => { R.echo(1.6); R.say('Something follows. Never stop.'); });
+          const cyc = id => R.$(id).move(0, 4, 0.12, 'in', 'slam').call(() => R.slamFx(id)).wait(0.5, 'hold').move(0, -4, 0.8, 'io', 'rise').wait(1.4, 'top').loop();
           R.$('a').wait(0.5, 'w0').call(() => cyc('a'));
           R.$('b').wait(1.65, 'w0').call(() => cyc('b'));
           R.when(R.at(27.2), () => { R.$('D').hop(4, 10, 1.0); R.say('Turn around.'); });
         },
         bot: [['go', 2.2], ['until', R => R.$('a').phase === 'slam' || R.$('a').phase === 'hold'], ['go', 27.4], ['dir', -1], ['shadowjump', 0, 0.45], ['land'], ['go', 21.0],
-          ['until', R => (R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25) || (R.$('b').phase === 'top' && R.$('b').phaseK < 0.4)], ['go', 14.0],
-          ['until', R => (R.$('a').phase === 'rise' && R.$('a').phaseK > 0.25) || (R.$('a').phase === 'top' && R.$('a').phaseK < 0.4)], ['go', 4.5]] },
+          ['until', R => (R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25) || (R.$('b').phase === 'top' && R.$('b').phaseK < 0.55)], ['go', 14.0],
+          ['until', R => (R.$('a').phase === 'rise' && R.$('a').phaseK > 0.25) || (R.$('a').phase === 'top' && R.$('a').phaseK < 0.55)], ['go', 4.5]] },
       { name: 'The door is the liar', t: 75,
         map: [G, G,
           '........CC....................@.',
@@ -459,7 +458,7 @@
           ...fill(4, '%%%%%%%..%%%%%%%%%%%%%%%%%%%####')],
         setup(R) {
           R.show('A'); R.show('C');
-          R.when(R.at(2.0), () => { R.chase(6.0, 0); R.say('Everything at once.'); });
+          R.when(R.at(2.0), () => { R.chase(5.4, 0); R.say('Everything at once.'); });
           R.when(R.at(14.4), () => R.fall('A', 0.35));
           R.when(R.at(19.4), () => R.pop('B'));
           R.when(R.at(22.4), () => R.fall('C', 0.3));
@@ -485,7 +484,7 @@
         setup(R) {
           R.when(R.at(2), () => R.echo(1.3));
           R.when(R.at(4), () => { R.dark(true); R.say('Don’t stop. Don’t forget.'); });
-          R.saw({ x: 10.6, y: 10.15 }).go([[15.4, 10.15], [10.6, 10.15]], 3.4, true);
+          R.saw({ x: 10.6, y: 10.4 }).go([[15.4, 10.4], [10.6, 10.4]], 3.4, true);
         },
         bot: [['go', 1.8], ['until', R => R.saws[0].vx > 0 && R.saws[0].x / T < 11.2], ['jumpAt', 6.8], ['land'], ['sawjump', 0], ['land'], ['jumpAt', 16.6], ['land'], ['jumpAt', 20.0], ['land'],
           ['jumpAt', 23.6], ['land'], ['jumpAt', 27.0], ['land'], ['go', 30.5]] },
@@ -505,8 +504,8 @@
           R.when(p => p.ground && p.x >= 4 && p.x < 6, () => R.drop('a', 0.05));
           R.when(R.at(9.2), () => R.fall('A', 0.25));
           R.when(R.at(14.6), () => R.pop('B'));
-          const s = R.saw({ x: 33.5, y: 10.15 });
-          R.when(R.at(17.6), () => s.go([[-3, 10.15]], 5));
+          const s = R.saw({ x: 33.5, y: 10.4 });
+          R.when(R.at(17.6), () => s.go([[-3, 10.4]], 5));
           R.when(R.at(26.5), () => {
             R.$('D').hop(2, 10, 1.3); R.say('Almost.');
             R.spawnDoor(30, 10, { fake: true, quiet: true });
@@ -531,13 +530,14 @@
   };
 
   DABWorlds.register('liar', {
-    title: 'Liar’s Path', color: '226,214,188', opaque: true, hud: 'none',
+    title: 'Liar’s Path', color: '255,210,122', opaque: true, hud: 'none',
     landscape: { top: 0, h: RH },
     music: 'music_liar',
     sounds: ['lp_jump', 'lp_land', 'lp_die', 'lp_pop', 'lp_crumble', 'lp_slam', 'lp_door', 'lp_saw', 'lp_exit', 'lp_flip', 'lp_thunder', 'lp_spring'],
-    subtitle: () => 'A forest path that lies. The floor, the thorns, even the door.',
+    subtitle: () => 'A little seed-spirit, a night cut into moonstone, and a path that lies. The floor, the thorns, even the door.',
     hint: 'Reach the lit door. Trust nothing.',
-    howto: ['◀ ▶ run  ·  jump (hold for higher)', 'Every room lies. Deaths are free, the clock is not.'],
+    howto: ['◀ ▶ run  ·  jump', 'Every room lies. Deaths are free, the clock is not.'],
+    rooms: () => STAGES.slice(1).map(st => st.map(r => r.name)),   // Test Lab: room names per level
     controls: { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }], layout: 'platform' },
     create
   });
@@ -609,7 +609,7 @@
     const sfx = (n, o) => env.sfx(n, o);
     const rooms = STAGES[Math.max(1, Math.min(STAGES.length - 1, LV))];
     const q = new URLSearchParams(location.search);
-    let ri = Math.max(0, Math.min(rooms.length - 1, (+q.get('room') || 1) - 1));
+    let ri = Math.max(0, Math.min(rooms.length - 1, (env.startRoom || +q.get('room') || 1) - 1));
     const totalTime = rooms.reduce((s, r) => s + (r.t || 50), 0) + 10;
     let timeLeft = totalTime, deaths = 0, roomDeaths = 0, t = 0, done = false;
     let R = null, P = null, introT = 0, taunt = '', tauntT = 0, fade = 1, fadeDir = -1, nextAfterFade = null, deadT = 0, flashT = 0;
@@ -658,11 +658,24 @@
         return b;
       };
       body('#', ground, 'ground').static = true;
+      const fixed = (x, y) => x < 0 || x >= COLS || y >= ROWS || (y >= 0 && (g[y][x] === '#' || g[y][x] === '='));
       for (const k in groups) body(k, groups[k], 'ground');
       // fake ground: each run of tiles is its own lie (it crumbles away when you sink into it)
       rowRects(fake).forEach((q, i) => { const tl = fake.filter(([x, y]) => y * T === q.y && x * T >= q.x && x * T < q.x + q.w); body('~' + i, tl, 'fake'); });
       if (ghost.length) body('+', ghost, 'ghost');
       Object.keys(crumble).forEach(x => { body('%' + x, crumble[x], 'crumble').col = +x; });
+      // every piece that can move or vanish bleeds a hair into the fixed stone around it (no seam), never into the night
+      for (const b of r.blist) {
+        if (b.static || b.kind === 'ghost') continue;
+        const own = new Set(b.tiles.map(([x, y]) => x + ',' + y)), B = 0.8;
+        const solid = (x, y) => fixed(x, y) || own.has(x + ',' + y);
+        for (const q of b.rects) {
+          const x0 = q.x / T, x1 = (q.x + q.w) / T - 1, y = q.y / T;
+          let up = true, dn = true;
+          for (let x = x0; x <= x1; x++) { if (!solid(x, y - 1)) up = false; if (!solid(x, y + 1)) dn = false; }
+          q.bleed = [fixed(x0 - 1, y) ? B : 0, up ? B : 0, fixed(x1 + 1, y) ? B : 0, dn ? B : 0];
+        }
+      }
       for (const k in spk) {
         const s = mover({ id: k, tiles: spk[k], ext: k === '_' ? 1 : 0, alive: true, attach: null, fallDist: 0 });
         r.spikes[k] = s; r.slist.push(s);
@@ -673,7 +686,7 @@
       def.setup && def.setup(api);
       return r;
     }
-    function makeSaw(x, y, id) { return mover({ id, x0: x, y0: y, x, y, r: 0.85 * T, ang: 0, path: null, seg: 0, speed: 0, alive: true, moving: false }); }
+    function makeSaw(x, y, id) { return mover({ id, x0: x, y0: y, x, y, r: 0.6 * T, ang: 0, path: null, seg: 0, speed: 0, alive: true, moving: false }); }
 
     function makeApi(r) {
       const handle = id => {
@@ -797,22 +810,18 @@
       sfx('lp_die', { vol: 0.9 });
       env.shake(0.35);
       const cy = P.y - R.gdir * PH * 0.6;
-      for (let i = 0; i < 16; i++) {
-        const a = Math.random() * TAU, v = 80 + Math.random() * 260;
-        fx.spawn({ x: P.x, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120 * R.gdir, g: 1100 * R.gdir, drag: 0.6, kind: 'debris', rgb: '11,12,10', size: 2.5 + Math.random() * 3.5, life: 0.9 + Math.random() * 0.5, spin: (Math.random() - 0.5) * 20 });
+      for (let i = 0; i < 14; i++) {                          // black pixel bits
+        const a = Math.random() * TAU, v = 70 + Math.random() * 200;
+        fx.spawn({ x: P.x, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 140 * R.gdir, g: 900 * R.gdir, drag: 0.4, kind: 'debris', rgb: i < 3 ? '143,214,122' : '246,241,228', size: 4, life: 0.8 + Math.random() * 0.3, spin: 0 });
       }
-      for (let i = 0; i < 2; i++) fx.spawn({ x: P.x + P.face * (2 + i * 2.4), y: cy - 6 * R.gdir, vx: (Math.random() - 0.5) * 40, vy: -60 * R.gdir, kind: 'glow', rgb: '255,255,255', size: 1.6, life: 0.8 });
-      dust(P.x, cy, 10, 8);
       const list = TAUNT[cause] || TAUNT.any;
       taunt = roomDeaths >= 9 && Math.random() < 0.5 ? ['Still here?', 'Breathe. Look again.', 'Every trap is the same each time.'][deaths % 3] : list[deaths % list.length];
       tauntT = 2.2;
     }
     function burst(x, y, n) {
-      for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = 30 + Math.random() * 90; fx.spawn({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, kind: 'glow', rgb: '255,226,170', size: 1.4 + Math.random(), life: 0.6 }); }
+      for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = 40 + Math.random() * 90; fx.spawn({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, kind: 'debris', rgb: '255,255,255', size: 3, life: 0.5, spin: 0 }); }
     }
-    function dust(x, y, w, n) {
-      for (let i = 0; i < n; i++) fx.spawn({ x: x + (Math.random() - 0.5) * w * 2, y, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 40, kind: 'smoke', rgb: '170,172,164', size: 6 + Math.random() * 8, grow: 18, life: 0.7, alpha: 0.7, drag: 2 });
-    }
+    function dust() { /* flat look: no dust */ }
 
     // ── per-frame simulation ───────────────────────────────────────────────
     // the test autopilot: steps per room (see the header). Directions are meant on screen; the bot
@@ -884,7 +893,7 @@
         if (P.entering > 0.55 && !nextAfterFade) {
           fadeDir = 1;
           nextAfterFade = () => {
-            if (ri + 1 >= rooms.length) { finish(); return; }
+            if (ri + 1 >= rooms.length || env.onlyRoom) { finish(); return; }
             loadRoom(ri + 1, false);
           };
         }
@@ -972,7 +981,7 @@
       const pb = box();
       for (const b of R.blist) if (b.kind === 'fake' && b.alive && b.rects.some(q => hit(pb, { x0: q.x, y0: q.y - 1, x1: q.x + q.w, y1: q.y + q.h }))) {
         b.alive = false; sfx('lp_crumble', { vol: 0.6, rate: 1.3 });
-        for (const q of b.rects) for (let i = 0; i < 10; i++) fx.spawn({ x: q.x + Math.random() * q.w, y: q.y + Math.random() * 8, vx: (Math.random() - 0.5) * 60, vy: 40 + Math.random() * 80, g: 900, kind: 'debris', rgb: '11,12,10', size: 2 + Math.random() * 4, life: 1, spin: 6 });
+        for (const q of b.rects) for (let i = 0; i < 10; i++) fx.spawn({ x: q.x + Math.random() * q.w, y: q.y + Math.random() * 8, vx: (Math.random() - 0.5) * 60, vy: 40 + Math.random() * 80, g: 900, kind: 'debris', rgb: MASS_RGB, size: 4, life: 1, spin: 0 });
       }
       // runes turn gravity over (once per touch)
       for (const ru of R.runes) {
@@ -1015,7 +1024,7 @@
         if (s.attach) { s.ox = s.attach.ox; s.oy = s.attach.oy; }
         if (s.falling !== undefined && s.cur && s.cur.k === 'fall' && s.fallDist && s.oy >= s.fallDist && s.alive) {
           s.alive = false; sfx('lp_crumble', { vol: 0.5, rate: 1.6 });
-          for (const tl of s.tiles) for (let i = 0; i < 5; i++) fx.spawn({ x: (tl.x + 0.5) * T + (Math.random() - 0.5) * 12, y: tl.y * T + s.oy + T * 0.6, vx: (Math.random() - 0.5) * 140, vy: -60 - Math.random() * 100, g: 900, kind: 'debris', rgb: '11,12,10', size: 2 + Math.random() * 3, life: 0.8, spin: 10 });
+          for (const tl of s.tiles) for (let i = 0; i < 5; i++) fx.spawn({ x: (tl.x + 0.5) * T + (Math.random() - 0.5) * 12, y: tl.y * T + s.oy + T * 0.6, vx: (Math.random() - 0.5) * 140, vy: -60 - Math.random() * 100, g: 900, kind: 'debris', rgb: MASS_RGB, size: 4, life: 0.8, spin: 0 });
         }
       }
       for (const d of R.doors) {
@@ -1048,7 +1057,7 @@
       if (R.dark) { R.darkA = Math.min(1, R.darkA + dt * 3); R.storm -= dt; if (R.storm <= 0) { R.storm = 2.0 + Math.random() * 0.6; R.light = 0.16; sfx('lp_thunder', { vol: 0.5 }); } }
       else R.darkA = Math.max(0, R.darkA - dt * 3);
       R.light = Math.max(0, (R.light || 0) - dt);
-      if (R.wind) { R.windT += dt; if (Math.random() < dt * 30) fx.spawn({ x: R.wind > 0 ? -10 : RW + 10, y: Math.random() * RH * 0.8, vx: R.wind * 4 + (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 30, kind: 'debris', rgb: '20,22,18', size: 2 + Math.random() * 2, life: 2.2, spin: 8, drag: 0 }); }
+      if (R.wind) { R.windT += dt; if (Math.random() < dt * 30) fx.spawn({ x: R.wind > 0 ? -10 : RW + 10, y: Math.random() * RH * 0.8, vx: R.wind * 4 + (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 30, kind: 'debris', rgb: MASS_RGB, size: 2.5, life: 2.2, spin: 0, drag: 0 }); }
     }
     function hazards() {
       const b = box(), sb = { x0: b.x0 + 1.5, y0: b.y0 + 1.5, x1: b.x1 - 1.5, y1: b.y1 - 1 };
@@ -1064,7 +1073,7 @@
       if ((R.gdir > 0 && P.y - PH > RH + 30) || (R.gdir < 0 && P.y + PH < -30)) { die('fall'); return; }
     }
     function spikeBox(s, tl) {
-      const x = tl.x * T + s.ox, y = tl.y * T + s.oy, h = T * 0.82 * s.ext;
+      const x = tl.x * T + s.ox, y = tl.y * T + s.oy, h = T * 0.5 * s.ext;
       switch (tl.dir) {
         case 'down': return { x0: x + 4, y0: y, x1: x + T - 4, y1: y + h * 0.9 };
         case 'left': return { x0: x + T - h * 0.9, y0: y + 4, x1: x + T, y1: y + T - 4 };
@@ -1078,7 +1087,7 @@
         const dx = d.x + d.ox, dy = d.y + d.oy;
         const moving = d.cur && d.cur.k === 'hop';
         if (d.fake) {
-          const r = d.hang ? { x0: dx - 9, y0: dy, x1: dx + 9, y1: dy + 38 } : { x0: dx - 9, y0: dy - 38, x1: dx + 9, y1: dy };
+          const r = d.hang ? { x0: dx - 9, y0: dy, x1: dx + 9, y1: dy + 29 } : { x0: dx - 9, y0: dy - 29, x1: dx + 9, y1: dy };
           if (hit(box(), r)) { d.bit = 0.4; die('door'); return; }
           continue;
         }
@@ -1098,130 +1107,51 @@
     }
     function hudSet() { /* own HUD (def.hud none) */ }
 
-    // ── art: the backdrop (baked once per round) and each room's static ground ─
-    function backdrop(K) {
-      const cv = document.createElement('canvas'); cv.width = Math.round(RW * K); cv.height = Math.round(RH * K);
-      const g = cv.getContext('2d'); g.scale(K, K);
-      const rnd = rng(9001 + LV * 77);
-      const sky = g.createLinearGradient(0, 0, 0, RH);
-      sky.addColorStop(0, '#c6c8bf'); sky.addColorStop(0.45, '#a5a89f'); sky.addColorStop(1, '#5d615a');
-      g.fillStyle = sky; g.fillRect(0, 0, RW, RH);
-      const sun = g.createRadialGradient(RW * 0.22, -30, 10, RW * 0.22, -30, RW * 0.7);
-      sun.addColorStop(0, 'rgba(255,253,240,0.75)'); sun.addColorStop(0.4, 'rgba(255,250,235,0.18)'); sun.addColorStop(1, 'rgba(255,250,235,0)');
-      g.fillStyle = sun; g.fillRect(0, 0, RW, RH);
-      const layer = (n, col, wMin, wMax, lean, base) => {
-        for (let i = 0; i < n; i++) {
-          const x = (i + rnd()) / n * (RW + 80) - 40, w = wMin + rnd() * (wMax - wMin);
-          tree(g, x, base + rnd() * 20, w, col, rnd, (rnd() - 0.5) * lean);
-        }
-      };
-      layer(16, 'rgba(120,124,116,0.55)', 4, 9, 0.12, RH * 0.82);
-      fog(g, RH * 0.55, 0.22);
-      layer(9, 'rgba(78,82,76,0.8)', 8, 15, 0.16, RH * 0.9);
-      fog(g, RH * 0.7, 0.18);
-      layer(4, 'rgba(36,39,34,0.92)', 14, 26, 0.1, RH);
-      // light shafts from the top-left
-      g.save(); g.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 6; i++) {
-        const x = 40 + rnd() * RW * 0.6, w = 18 + rnd() * 50, a = 0.04 + rnd() * 0.05;
-        const gr = g.createLinearGradient(0, 0, 0, RH); gr.addColorStop(0, `rgba(255,252,236,${a})`); gr.addColorStop(1, 'rgba(255,252,236,0)');
-        g.fillStyle = gr; g.beginPath(); g.moveTo(x, -10); g.lineTo(x + w, -10); g.lineTo(x + w + RH * 0.55, RH); g.lineTo(x + RH * 0.55, RH); g.closePath(); g.fill();
-      }
-      g.restore();
-      fog(g, RH * 0.92, 0.25);
-      return cv;
-    }
-    function fog(g, y, a) {
-      const gr = g.createLinearGradient(0, y - 90, 0, y + 30);
-      gr.addColorStop(0, 'rgba(220,222,214,0)'); gr.addColorStop(0.7, `rgba(220,222,214,${a})`); gr.addColorStop(1, `rgba(220,222,214,${a * 0.6})`);
-      g.fillStyle = gr; g.fillRect(0, y - 90, RW, 120);
-    }
-    function tree(g, x, base, w, col, rnd, lean) {
-      g.fillStyle = col; g.strokeStyle = col; g.lineCap = 'round';
-      const top = -40, h = base - top;
-      g.beginPath();
-      g.moveTo(x - w * 0.9, base + 4);
-      g.quadraticCurveTo(x - w * 0.55 + lean * h * 0.3, base - h * 0.5, x - w * 0.42 + lean * h, top);
-      g.lineTo(x + w * 0.42 + lean * h, top);
-      g.quadraticCurveTo(x + w * 0.55 + lean * h * 0.3, base - h * 0.5, x + w * 0.9, base + 4);
-      g.closePath(); g.fill();
-      // roots flaring into the ground
-      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(x + s * w * 0.4, base - 10); g.quadraticCurveTo(x + s * w * 1.3, base - 2, x + s * w * 2.2, base + 4); g.lineTo(x + s * w * 0.5, base + 4); g.fill(); }
-      const nb = 2 + Math.floor(rnd() * 3);
-      for (let i = 0; i < nb; i++) {
-        const yy = base - h * (0.25 + rnd() * 0.55), s = rnd() < 0.5 ? -1 : 1;
-        const xx = x + lean * (base - yy);
-        branch(g, xx, yy, s > 0 ? -0.5 - rnd() * 0.5 : Math.PI + 0.5 + rnd() * 0.5, w * (3 + rnd() * 3), w * 0.35, 2, rnd);
-      }
-    }
-    function branch(g, x, y, a, len, wid, d, rnd) {
-      const x1 = x + Math.cos(a) * len, y1 = y + Math.sin(a) * len;
-      g.lineWidth = Math.max(0.6, wid);
-      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + x1) / 2, (y + y1) / 2 + len * 0.12, x1, y1); g.stroke();
-      if (d > 0) {
-        const n = 2 + (rnd() < 0.35 ? 1 : 0);
-        for (let i = 0; i < n; i++) branch(g, x1, y1, a + (rnd() - 0.5) * 1.3, len * 0.62, wid * 0.6, d - 1, rnd);
-      } else if (rnd() < 0.6) {                                // hanging moss
-        g.lineWidth = 0.7; g.beginPath(); g.moveTo(x1, y1); g.quadraticCurveTo(x1 + 2, y1 + 8, x1 - 1, y1 + 8 + rnd() * 16); g.stroke();
-      }
-    }
-    // the silhouette ground look: black mass, grass blades on top, roots under, nicks on the sides
-    function earth(g, tiles, solidAt, seedK) {
-      g.fillStyle = INK;
-      for (const [x, y] of tiles) g.fillRect(x * T - 0.4, y * T - 0.4, T + 0.8, T + 0.8);
-      g.strokeStyle = INK;
-      for (const [x, y] of tiles) {
-        const r0 = hr(x, y, seedK);
-        if (!solidAt(x, y - 1)) {                             // grass on top
-          for (let i = 0; i < 7; i++) {
-            const bx = x * T + (i + hr(x, y, i + 10)) * T / 7, hh = 2.5 + hr(x, y, i + 20) * 6 + (hr(x, y, i + 30) < 0.12 ? 6 : 0);
-            const lean = (hr(x, y, i + 40) - 0.5) * 4;
-            g.beginPath(); g.moveTo(bx - 1.3, y * T + 1); g.quadraticCurveTo(bx + lean * 0.3, y * T - hh * 0.6, bx + lean, y * T - hh); g.lineTo(bx + 1.3, y * T + 1); g.closePath(); g.fill();
-          }
-          if (r0 < 0.12) { g.beginPath(); g.ellipse(x * T + T * 0.5, y * T, 5, 3.5, 0, Math.PI, 0); g.fill(); }   // a stone
-        }
-        if (!solidAt(x, y + 1)) {                             // roots hanging under a ledge
-          const n = hr(x, y, 50) < 0.5 ? 1 : 2;
-          for (let i = 0; i < n; i++) {
-            const bx = x * T + (0.2 + 0.6 * hr(x, y, 60 + i)) * T, len = 4 + hr(x, y, 70 + i) * 13;
-            g.lineWidth = 1 + hr(x, y, 80 + i); g.beginPath(); g.moveTo(bx, (y + 1) * T - 1); g.quadraticCurveTo(bx + 3, (y + 1) * T + len * 0.5, bx - 1, (y + 1) * T + len); g.stroke();
-          }
-        }
-        for (const s of [-1, 1]) if (!solidAt(x + s, y)) {        // nicks on open sides
-          const ex = s < 0 ? x * T : (x + 1) * T;
-          for (let i = 0; i < 2; i++) { const yy = y * T + (0.2 + 0.6 * hr(x, y, 90 + i + s)) * T; g.beginPath(); g.arc(ex, yy, 1.4 + hr(x, y, 95 + i) * 1.6, 0, TAU); g.fill(); }
-        }
-      }
-    }
+    // ── art: night rooms cut into pale moonstone. Flat and clear: the stone is solid, the night is air;
+    // a small glowing seed-spirit, a round moon-gate door, crystal thorns. One palette per stage: [stone, night, glow]
+    const PALETTES = [null,
+      ['#e9e2d2', '#243149', '#ffd27a'], ['#dfe8d4', '#1e3b33', '#ffe08a'], ['#eadbe7', '#36223f', '#ffc2e0'], ['#d7e3ec', '#1a2a3d', '#bfe4ff'],
+      ['#ece2cf', '#2e2a3d', '#ffd9a0'], ['#d6ebe5', '#11343a', '#a8fff0'], ['#ecdfe8', '#3d1a30', '#ffb3cf'], ['#e3e4ee', '#20203a', '#d4c8ff'],
+      ['#efd8cf', '#3a1717', '#ffb199'], ['#f1ebdf', '#0c0c11', '#ff6a5a']];
+    const PAL = PALETTES[clamp(LV, 1, 10)], STONE = PAL[0], NIGHT = PAL[1], GLOW = PAL[2];
+    const rgbOf = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(',');
+    const MASS = STONE, MASS_RGB = rgbOf(STONE), GLOW_RGB = rgbOf(GLOW);
+    const BODY = '#f6f1e4', EYE = '#1d2333', SPROUT = '#8fd67a';
     function bakeRoom() {
       const S = fit().s, K = Math.min(2, Math.max(1, (env.dpr || 1) * S));
-      if (!bake.bg || Math.abs(bake.K - K) > 0.3) { bake.bg = backdrop(K); bake.K = K; bake.rooms = {}; }
-      const cv = document.createElement('canvas'); cv.width = bake.bg.width; cv.height = bake.bg.height;
-      const g = cv.getContext('2d'); g.drawImage(bake.bg, 0, 0); g.scale(K, K);
-      const G0 = R.g;
-      const renderSolid = (x, y) => { if (x < 0 || x >= COLS) return renderSolid(clamp(x, 0, COLS - 1), y); if (y < 0 || y >= ROWS) return y >= ROWS ? renderSolid(x, ROWS - 1) : false; const ch = G0[y][x]; return SOLIDISH(ch); };
-      earth(g, R.bodies['#'].rects.length ? tilesOf(R.bodies['#']) : [], renderSolid, 1);
-      for (const sg of R.signs) drawSign(g, sg);
-      bake.room = cv;
-      // every moving/fake/crumbling piece gets its own sprite (it looks exactly like the ground)
-      for (const b of R.blist) {
-        if (b.static || b.kind === 'ghost') continue;
-        const pad = 16, w = b.bounds.x1 - b.bounds.x0 + pad * 2, h = b.bounds.y1 - b.bounds.y0 + pad * 2;
-        const sc = document.createElement('canvas'); sc.width = Math.ceil(w * K); sc.height = Math.ceil(h * K);
-        const sg = sc.getContext('2d'); sg.scale(K, K); sg.translate(pad - b.bounds.x0, pad - b.bounds.y0);
-        earth(sg, b.tiles, renderSolid, 2);
-        b.sprite = sc; b.pad = pad;
+      bake.K = K;
+      const cv = document.createElement('canvas'); cv.width = Math.round(RW * K); cv.height = Math.round(RH * K);
+      const g = cv.getContext('2d'); g.scale(K, K);
+      g.fillStyle = STONE; g.fillRect(0, 0, RW, RH);
+      // the night: every tile that isn't fixed stone (moving / fake / crumbling stone is drawn on top, live)
+      const G0 = R.g, open = (x, y) => G0[y][x] !== '#' && G0[y][x] !== '=';
+      g.fillStyle = NIGHT;
+      for (let y = 0; y < ROWS; y++) {
+        let run = -1;
+        for (let x = 0; x <= COLS; x++) {
+          const o = x < COLS && open(x, y);
+          if (o && run < 0) run = x;
+          if (!o && run >= 0) { g.fillRect(run * T, y * T, (x - run) * T + 0.5, T + 0.5); run = -1; }
+        }
       }
+      // the room is a hollow in the stone: unused sky above it stays stone (three tiles of headroom)
+      let top = ROWS;
+      for (let y = 0; y < ROWS && top === ROWS; y++) for (let x = 0; x < COLS; x++) if (G0[y][x] !== '.') { top = y; break; }
+      const cut = Math.max(0, top - 3);
+      if (cut > 0) { g.fillStyle = STONE; g.fillRect(0, 0, RW, cut * T); }
+      R.cutTop = cut;
+      // a few stars in the night
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let y = cut; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (open(x, y) && hr(x, y, 3) < 0.07) g.fillRect(x * T + hr(x, y, 4) * T, y * T + hr(x, y, 5) * T, 1.6, 1.6);
+      for (const s of R.signs) drawSign(g, s);
+      bake.room = cv;
     }
-    function tilesOf(b) { return b.tiles; }
     function drawSign(g, s) {
-      g.fillStyle = INK; g.fillRect(s.x - 1.6, s.y - 30, 3.2, 30);
-      g.save(); g.translate(s.x, s.y - 34); g.rotate(-0.04);
-      g.font = 'bold 11px Georgia, serif';
-      const w = Math.max(40, g.measureText(s.text).width + 14);
-      g.fillStyle = INK; g.beginPath(); g.roundRect(-w / 2, -10, w, 20, 2); g.fill();
-      g.fillStyle = 'rgba(214,206,186,0.92)'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s.text, 0, 1);
-      g.restore();
+      g.fillStyle = STONE; g.fillRect(s.x - 1.5, s.y - 26, 3, 26);
+      g.font = 'bold 10px system-ui, sans-serif';
+      const w = Math.max(36, g.measureText(s.text).width + 12);
+      g.beginPath(); g.roundRect(s.x - w / 2, s.y - 41, w, 17, 3); g.fill();
+      g.fillStyle = NIGHT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s.text, s.x, s.y - 32);
     }
 
     // ── drawing ───────────────────────────────────────────────────────────
@@ -1229,231 +1159,159 @@
       const W = env.W, v = env.view, s = Math.min(W / RW, v.h / RH);
       return { s, x: (W - RW * s) / 2, y: v.top + (v.h - RH * s) / 2 };
     }
-    let fogT = Math.random() * 100;
     function render(c) {
       const F = fit(), W = env.W, v = env.view;
-      // around the room (portrait letterbox / landscape edges): sky above, earth below
-      c.fillStyle = '#a3a69d'; c.fillRect(0, v.top, W, F.y - v.top + 1);
-      c.fillStyle = INK; c.fillRect(0, F.y + RH * F.s - 1, W, v.top + v.h - (F.y + RH * F.s) + 2);
-      const below = v.top + v.h - (F.y + RH * F.s);
-      if (below > 4 && bake.room) {                           // pits run on down into the dark (portrait)
-        const h = Math.min(below, 120), y0 = F.y + RH * F.s - 1;
-        c.drawImage(bake.room, 0, bake.room.height - 2, bake.room.width, 1, F.x, y0, RW * F.s, h);
-        const gr = c.createLinearGradient(0, y0, 0, y0 + h); gr.addColorStop(0, 'rgba(11,12,10,0.2)'); gr.addColorStop(1, INK);
-        c.fillStyle = gr; c.fillRect(F.x, y0, RW * F.s, h + 1);
-      }
-      if (F.x > 0) { c.fillStyle = '#7f827a'; c.fillRect(0, F.y, F.x + 1, RH * F.s); c.fillRect(F.x + RW * F.s - 1, F.y, F.x + 2, RH * F.s); }
+      c.fillStyle = STONE; c.fillRect(0, v.top, W, v.h);
       c.save(); c.translate(F.x, F.y); c.scale(F.s, F.s);
       c.beginPath(); c.rect(0, 0, RW, RH); c.clip();
       if (bake.room) c.drawImage(bake.room, 0, 0, RW, RH);
-      fogT += 1 / 60;
-      // ghost ground just stood on shows faintly
-      const gb = R.bodies['+'];
-      if (gb && gb.seen > 0) { c.fillStyle = `rgba(11,12,10,${(gb.seen * 0.4).toFixed(3)})`; for (const q of gb.rects) c.fillRect(q.x, q.y, q.w, q.h); }
-      if (R.leavesOn && gb) drawLeaves(c, gb);
+      c.fillStyle = STONE;
       for (const b of R.blist) {
-        if (!b.sprite || !b.alive) continue;
-        const jx = b.shk ? (Math.random() - 0.5) * b.shk * 2 : 0, jy = b.shk ? (Math.random() - 0.5) * b.shk : 0;
-        c.drawImage(b.sprite, b.bounds.x0 - b.pad + b.ox + jx, b.bounds.y0 - b.pad + b.oy + jy, b.sprite.width / bake.K, b.sprite.height / bake.K);
+        if (b.static || !b.alive || b.kind === 'ghost') continue;
+        const jx = b.shk ? (Math.random() - 0.5) * b.shk * 2 : 0;
+        // (bleeds a hair into neighbouring fixed stone so no seam shows; never into the night)
+        for (const q of b.rects) { const e = q.bleed || [0, 0, 0, 0]; c.fillRect(q.x + b.ox + jx - e[0], q.y + b.oy - e[1], q.w + e[0] + e[2], q.h + e[1] + e[3]); }
       }
+      const gb = R.bodies['+'];
+      if (gb && gb.seen > 0) { c.globalAlpha = gb.seen * 0.35; for (const q of gb.rects) c.fillRect(q.x, q.y, q.w, q.h); c.globalAlpha = 1; }
+      if (R.leavesOn && gb) { c.fillStyle = SPROUT; for (const [x, y] of gb.tiles) if (!(y > 0 && R.g[y - 1][x] === '+') && hr(x, y, 7) > 0.3) c.fillRect(x * T + T * (0.2 + 0.5 * hr(x, y, 8)), y * T - 3 + Math.sin(t * 2 + x) * 0.6, 5, 2); }
       for (const sp of R.springs) drawSpring(c, sp);
       for (const ru of R.runes) drawRune(c, ru);
       for (const s of R.slist) if (s.alive && s.ext > 0.01) drawThorns(c, s);
       for (const s of R.saws) if (s.alive) drawSaw(c, s);
       for (const d of R.doors) if (d.alive) drawDoor(c, d);
-      if (R.echo && R.echo.on) drawKid(c, R.echo.x, R.echo.y, 1, 0.45, true);
-      if (!P.dead) drawKid(c, P.x, P.y, P.face, 1, false);
+      if (R.echo && R.echo.on) drawSpirit(c, R.echo.x, R.echo.y, 1, true);
+      if (!P.dead) drawSpirit(c, P.x, P.y, P.face, false);
       fx.draw(c);
-      // drifting fog over everything alike (drawn under the moving pieces it would give them away)
-      c.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 3; i++) { const x = ((fogT * (8 + i * 5) + i * 300) % (RW + 500)) - 250, y = RH * (0.45 + i * 0.16); c.globalAlpha = 0.08; c.drawImage(env.glowSprite('236,238,230'), x - 220, y - 70, 440, 140); }
-      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-      // darkness: only the door and the eyes show, lightning shows the rest for a blink
+      // lights out: you see as far as your own glow (and the door's); lightning shows the rest for a blink
       if (R.darkA > 0) {
         const a = R.darkA * (1 - Math.min(1, (R.light || 0) * 7));
-        c.fillStyle = `rgba(4,5,4,${(0.96 * a).toFixed(3)})`; c.fillRect(0, 0, RW, RH);
-        c.globalCompositeOperation = 'lighter';
-        for (const d of R.doors) if (d.alive && !d.fake) { c.globalAlpha = 0.5 * a; c.drawImage(env.glowSprite('255,214,150'), d.x + d.ox - 60, d.y + d.oy - 80, 120, 120); }
-        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-        if (!P.dead) eyes(c, P.x, P.y, P.face, a);
-        for (const s of R.saws) if (s.alive) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 * a; c.drawImage(env.glowSprite('255,170,110'), s.x - s.r * 1.4, s.y - s.r * 1.4, s.r * 2.8, s.r * 2.8); c.restore(); c.strokeStyle = `rgba(255,190,140,${(0.55 * a).toFixed(3)})`; c.lineWidth = 1.2; c.beginPath(); c.arc(s.x, s.y, s.r * 0.95, s.ang, s.ang + 1.2); c.stroke(); c.beginPath(); c.arc(s.x, s.y, s.r * 0.95, s.ang + Math.PI, s.ang + Math.PI + 1.2); c.stroke(); }
-        for (const d of R.doors) if (d.alive && !d.fake) { c.globalAlpha = a; drawDoorLight(c, d.x + d.ox, d.y + d.oy, d.hang); c.globalAlpha = 1; }
+        const hx = P.x, hy = P.y - R.gdir * 11;
+        const gr = c.createRadialGradient(hx, hy, 22, hx, hy, 86);
+        gr.addColorStop(0, 'rgba(4,4,8,0)'); gr.addColorStop(1, `rgba(4,4,8,${(0.97 * a).toFixed(3)})`);
+        c.fillStyle = P.dead ? `rgba(4,4,8,${(0.97 * a).toFixed(3)})` : gr; c.fillRect(0, 0, RW, RH);
+        for (const d of R.doors) if (d.alive && !d.fake) { c.globalAlpha = a; drawDoor(c, d); c.globalAlpha = 1; }
+        for (const s of R.saws) if (s.alive) { c.strokeStyle = `rgba(${GLOW_RGB},${(0.6 * a).toFixed(3)})`; c.lineWidth = 1.5; c.beginPath(); c.arc(s.x, s.y, s.r, s.ang, s.ang + 1.3); c.stroke(); c.beginPath(); c.arc(s.x, s.y, s.r, s.ang + Math.PI, s.ang + Math.PI + 1.3); c.stroke(); }
       }
-      if (flashT > 0) { c.fillStyle = `rgba(255,255,255,${(flashT * 0.6).toFixed(3)})`; c.fillRect(0, 0, RW, RH); }
-      // fade between rooms / respawns
-      const fd = Math.max(fade, P.dead ? Math.max(0, (deadT - 0.35) / 0.27) : 0);
-      if (fd > 0) { c.fillStyle = `rgba(6,7,6,${fd.toFixed(3)})`; c.fillRect(0, 0, RW, RH); }
+      if (flashT > 0) { c.fillStyle = `rgba(255,255,255,${(flashT * 0.5).toFixed(3)})`; c.fillRect(0, 0, RW, RH); }
+      const fd = Math.max(fade, P.dead ? Math.max(0, (deadT - 0.4) / 0.22) : 0);
+      if (fd > 0) { c.globalAlpha = fd; c.fillStyle = NIGHT; c.fillRect(0, 0, RW, RH); c.globalAlpha = 1; }
       c.restore();
       drawHud(c, F);
     }
-    function drawLeaves(c, gb) {
-      for (const [x, y] of gb.tiles) {
-        if (y > 0 && R.g[y - 1][x] === '+') continue;
-        if (hr(x, y, 7) < 0.25) continue;
-        const bx = x * T + T * (0.2 + 0.6 * hr(x, y, 8)), by = y * T - 2 + Math.sin(t * 2 + x) * 0.8;
-        c.save(); c.translate(bx, by); c.rotate((hr(x, y, 9) - 0.5) * 1.2 + Math.sin(t * 1.5 + x) * 0.05);
-        c.fillStyle = INK; c.beginPath(); c.ellipse(0, 0, 4.5, 1.8, 0, 0, TAU); c.fill();
-        c.strokeStyle = INK; c.lineWidth = 0.8; c.beginPath(); c.moveTo(4, 0); c.lineTo(7, -1); c.stroke();
-        c.restore();
-      }
-    }
+    // crystal thorns: pale, sharp, three to a tile
     function drawThorns(c, s) {
-      c.fillStyle = INK;
+      c.fillStyle = STONE;
       const jx = s.shk ? (Math.random() - 0.5) * s.shk * 2 : 0;
       for (const tl of s.tiles) {
-        const x = tl.x * T + s.ox + jx, y = tl.y * T + s.oy;
-        c.save();
-        c.translate(x + T / 2, y + T / 2);
+        if (tl.smeared) continue;
+        c.save(); c.translate(tl.x * T + s.ox + jx + T / 2, tl.y * T + s.oy + T / 2);
         c.rotate({ up: 0, down: Math.PI, left: -Math.PI / 2, right: Math.PI / 2 }[tl.dir]);
-        const H = T * 0.85 * s.ext;
-        for (let i = 0; i < 3; i++) {
-          const bx = -T / 2 + 3 + i * (T - 6) / 2.4 + hr(tl.x, tl.y, i) * 2, hh = H * (0.7 + 0.3 * hr(tl.x, tl.y, i + 5)), bw = 4.5 + hr(tl.x, tl.y, i + 9) * 2;
-          const tip = (hr(tl.x, tl.y, i + 13) - 0.5) * 3;
-          c.beginPath(); c.moveTo(bx - bw / 2, T / 2 + 1); c.quadraticCurveTo(bx - bw * 0.2, T / 2 - hh * 0.5, bx + tip, T / 2 - hh); c.quadraticCurveTo(bx + bw * 0.25, T / 2 - hh * 0.45, bx + bw / 2, T / 2 + 1); c.closePath(); c.fill();
-        }
+        const H = T * 0.5 * s.ext;
+        c.beginPath();
+        c.moveTo(-T / 2, T / 2 + 0.5); c.lineTo(-T / 2 + 4, T / 2 - H * 0.7); c.lineTo(-T / 2 + 8, T / 2 + 0.5);
+        c.moveTo(-6, T / 2 + 0.5); c.lineTo(0, T / 2 - H); c.lineTo(6, T / 2 + 0.5);
+        c.moveTo(T / 2 - 8, T / 2 + 0.5); c.lineTo(T / 2 - 4, T / 2 - H * 0.7); c.lineTo(T / 2, T / 2 + 0.5);
+        c.fill();
         c.restore();
       }
     }
     function drawSaw(c, s) {
       c.save(); c.translate(s.x, s.y); c.rotate(s.ang);
-      c.fillStyle = INK; c.beginPath();
-      const n = 14;
-      for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n, rr = i % 2 ? s.r * 0.82 : s.r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      c.fillStyle = STONE; c.beginPath();
+      const n = 8;
+      for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n, rr = i % 2 ? s.r * 0.62 : s.r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
       c.closePath(); c.fill();
-      c.strokeStyle = 'rgba(160,162,155,0.55)'; c.lineWidth = 1.2; c.beginPath(); c.arc(0, 0, s.r * 0.5, 0.3, 2.2); c.stroke(); c.beginPath(); c.arc(0, 0, s.r * 0.5, 3.4, 5.3); c.stroke();
-      c.fillStyle = 'rgba(160,162,155,0.6)'; c.beginPath(); c.arc(0, 0, 2.2, 0, TAU); c.fill();
+      c.fillStyle = NIGHT; c.beginPath(); c.arc(0, 0, s.r * 0.25, 0, TAU); c.fill();
       c.restore();
     }
     function drawSpring(c, sp) {
-      const k = sp.sq, h = 9 - k * 5;
-      c.fillStyle = INK; c.strokeStyle = INK; c.lineWidth = 1.6;
-      c.fillRect(sp.x - 11, sp.y - 3, 22, 3);
-      c.beginPath(); for (let i = 0; i <= 4; i++) { c.lineTo(sp.x + (i % 2 ? 7 : -7), sp.y - 3 - i * h / 4); } c.stroke();
-      c.fillRect(sp.x - 12, sp.y - 6 - h, 24, 3.5);
+      const h = 8 - sp.sq * 5;
+      c.fillStyle = STONE;
+      c.fillRect(sp.x - 10, sp.y - 3, 20, 3);
+      c.fillRect(sp.x - 2, sp.y - 3 - h, 4, h);
+      c.beginPath(); c.roundRect(sp.x - 11, sp.y - 7 - h, 22, 4, 2); c.fill();
     }
     function drawRune(c, ru) {
-      const y = ru.y + (ru.up ? 3 : -3), a = 0.55 + 0.25 * Math.sin(t * 3);
-      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a * 0.6;
-      c.drawImage(env.glowSprite('230,236,255'), ru.x - 22, y - 22, 44, 44); c.restore();
-      c.strokeStyle = `rgba(240,244,255,${a.toFixed(3)})`; c.lineWidth = 1.5;
-      c.beginPath(); c.ellipse(ru.x, y, 10, 3.5, 0, 0, TAU); c.stroke();
-      const d = ru.up ? -1 : 1;
-      c.beginPath(); c.moveTo(ru.x, y); c.lineTo(ru.x, y + d * 12); c.moveTo(ru.x - 4, y + d * 8); c.lineTo(ru.x, y + d * 12); c.lineTo(ru.x + 4, y + d * 8); c.stroke();
+      const d = ru.up ? -1 : 1, y = ru.y + (ru.up ? 2 : -2);
+      c.fillStyle = GLOW; c.globalAlpha = 0.65 + 0.35 * Math.sin(t * 4);
+      c.beginPath(); c.ellipse(ru.x, y, 9, 2, 0, 0, TAU); c.fill();
+      c.beginPath(); c.moveTo(ru.x - 5, y + d * 5); c.lineTo(ru.x, y + d * 11); c.lineTo(ru.x + 5, y + d * 5); c.closePath(); c.fill();
+      c.fillRect(ru.x - 1.5, y, 3, d * 6);
+      c.globalAlpha = 1;
     }
-    function drawDoorLight(c, x, y, hang) {
-      c.save(); c.translate(x, y); if (hang) c.scale(1, -1);
-      const g = c.createLinearGradient(0, -36, 0, 0); g.addColorStop(0, '#ffe9b8'); g.addColorStop(1, '#f2b766');
-      c.fillStyle = g; c.beginPath(); c.moveTo(-8, 0); c.lineTo(-8, -26); c.arc(0, -26, 8, Math.PI, 0); c.lineTo(8, 0); c.closePath(); c.fill();
-      c.restore();
-    }
+    // the moon gate: a round doorway of light in a stone ring (a lying gate looks exactly the same)
     function drawDoor(c, d) {
-      const x = d.x + d.ox, y = d.y + d.oy;
-      c.save(); c.globalAlpha = d.alpha;
-      const fl = 0.85 + 0.15 * Math.sin(t * 7 + x) * Math.sin(t * 3.1);
-      c.globalCompositeOperation = 'lighter'; c.globalAlpha = d.alpha * 0.55 * fl;
-      c.drawImage(env.glowSprite('255,214,150'), x - 58, y - (d.hang ? -40 : 76), 116, 112);
-      c.globalAlpha = d.alpha * 0.25; c.drawImage(env.glowSprite('255,200,120'), x - 40, y - 8, 80, 16);
-      c.globalCompositeOperation = 'source-over'; c.globalAlpha = d.alpha;
-      c.translate(x, y); if (d.hang) c.scale(1, -1);
-      // stone frame
-      c.fillStyle = INK; c.beginPath(); c.moveTo(-14, 0); c.lineTo(-14, -28); c.arc(0, -28, 14, Math.PI, 0); c.lineTo(14, 0); c.closePath(); c.fill();
-      c.fillRect(-17, -3, 34, 3);
-      c.restore();
-      drawDoorLight(c, x, y, d.hang);
-      if (d.fake && d.bit > 0) {                              // the lying door bites shut
+      const x = Math.round(d.x + d.ox), y = Math.round(d.y + d.oy);
+      c.save(); c.globalAlpha *= d.alpha; c.translate(x, y); if (d.hang) c.scale(1, -1);
+      const pulse = 0.85 + 0.15 * Math.sin(t * 3 + x);
+      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.35 * pulse; c.drawImage(env.glowSprite(GLOW_RGB), -34, -50, 68, 68); c.restore();
+      c.fillStyle = STONE; c.beginPath(); c.arc(0, -15, 15, 0, TAU); c.fill(); c.fillRect(-15, -3, 30, 3);
+      c.fillStyle = GLOW; c.beginPath(); c.arc(0, -15, 11, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.arc(-2.5, -17.5, 5, 0, TAU); c.fill();
+      if (d.fake && d.bit > 0) {                                  // it bites shut
         d.bit = Math.max(0, d.bit - 1 / 60);
-        c.save(); c.translate(x, y); if (d.hang) c.scale(1, -1); c.fillStyle = INK;
-        for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-8 + i * 4, -36); c.lineTo(-6 + i * 4, -20); c.lineTo(-4 + i * 4, -36); c.fill(); c.beginPath(); c.moveTo(-8 + i * 4, 0); c.lineTo(-6 + i * 4, -16); c.lineTo(-4 + i * 4, 0); c.fill(); }
-        c.restore();
+        c.fillStyle = STONE;
+        for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; c.beginPath(); c.moveTo(Math.cos(a) * 11, -15 + Math.sin(a) * 11); c.lineTo(Math.cos(a + 0.6) * 2, -15 + Math.sin(a + 0.6) * 2); c.lineTo(Math.cos(a + 0.7) * 11, -15 + Math.sin(a + 0.7) * 11); c.fill(); }
       }
+      c.restore();
     }
-    function eyes(c, x, y, face, a) {
-      const hy = y - R.gdir * 24, ex = x + face * 2.2;
-      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.6 * a;
-      c.drawImage(env.glowSprite('255,255,255'), ex - 8, hy - 8, 16, 16); c.restore();
-      c.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
-      c.beginPath(); c.arc(ex - face * 1.6, hy, 1.15, 0, TAU); c.arc(ex + face * 1.4, hy, 1.15, 0, TAU); c.fill();
-    }
-    // the shadow child: big head, thin limbs, two white eyes
-    function drawKid(c, x, y, face, alpha, ghostly) {
-      const g = R.gdir, air = !P.ground && !ghostly, sp = Math.min(1, Math.abs(P.vx) / RUN);
-      const ph = P.run;
-      c.save(); c.translate(x, y); if (g < 0) c.scale(1, -1); c.scale(face, 1);
-      if (P.land > 0 && !ghostly) c.scale(1 + P.land * 0.12, 1 - P.land * 0.14);
-      if (P.entering > 0 && !ghostly) c.globalAlpha = Math.max(0, 1 - P.entering * 2);
-      else c.globalAlpha = alpha;
-      const ink = ghostly ? '#1d1f1b' : INK;
-      c.strokeStyle = ink; c.fillStyle = ink; c.lineCap = 'round'; c.lineJoin = 'round';
-      const lean = ghostly ? 0 : sp * 0.12 + (air ? 0.05 : 0);
-      const hipX = 0, hipY = -9, neckX = Math.sin(lean) * 9, neckY = -18;
-      // legs
-      c.lineWidth = 2.6;
-      const leg = (k) => {
-        let a1, a2;
-        if (air) { a1 = k ? 0.5 : -0.35; a2 = k ? -0.9 : -0.3; if (P.vy * g > 0) { a1 = k ? 0.3 : -0.2; a2 = -0.25; } }
-        else if (sp > 0.05) { const s = Math.sin(ph + (k ? Math.PI : 0)); a1 = s * 0.75 * sp; a2 = -Math.max(0, -Math.cos(ph + (k ? Math.PI : 0))) * 1.1 * sp; }
-        else { a1 = k ? 0.08 : -0.08; a2 = 0; }
-        const kx = hipX + Math.sin(a1) * 5, ky = hipY + Math.cos(a1) * 5;
-        const fx2 = kx + Math.sin(a1 + a2) * 4.6, fy2 = ky + Math.cos(a1 + a2) * 4.6;
-        c.beginPath(); c.moveTo(hipX, hipY); c.lineTo(kx, ky); c.lineTo(fx2, Math.min(0, fy2)); c.stroke();
-      };
-      leg(0); leg(1);
-      // body
-      c.lineWidth = 5; c.beginPath(); c.moveTo(hipX, hipY + 1); c.lineTo(neckX, neckY); c.stroke();
-      // arms
-      c.lineWidth = 2;
-      for (const k of [0, 1]) {
-        let a = air ? (k ? -2.4 : -2.0) + Math.sin(t * 18 + k) * 0.15 : sp > 0.05 ? Math.sin(ph + (k ? 0 : Math.PI)) * 0.8 * sp : (k ? 0.15 : -0.1);
-        const sx = neckX, sy = neckY + 2, ex = sx + Math.sin(a) * 5, ey = sy + Math.cos(a) * 5, hx = ex + Math.sin(a + (air ? 0.3 : -0.4)) * 4.4, hy = ey + Math.cos(a + (air ? 0.3 : -0.4)) * 4.4;
-        c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.lineTo(hx, hy); c.stroke();
+    // the hero: a seed-spirit in 2 px pixels (B body, E eye, G sprout): stand, step, tucked in the air
+    const POSES = {
+      stand: ['...G..', '..GG..', '...G..', '.BBBB.', 'BBBBBB', 'BBBEBE', 'BBBBBB', 'BBBBBB', 'BBBBBB', '.BBBB.', '.B..B.', '.B..B.'],
+      step: ['...G..', '..GG..', '...G..', '.BBBB.', 'BBBBBB', 'BBBEBE', 'BBBBBB', 'BBBBBB', 'BBBBBB', '.BBBB.', 'B...B.', '....B.'],
+      air: ['...G.G', '..GG..', '...G..', '.BBBB.', 'BBBBBB', 'BBBEBE', 'BBBBBB', 'BBBBBB', '.BBBB.', 'B....B']
+    };
+    const PCOL = { B: BODY, E: EYE, G: SPROUT };
+    function drawSpirit(c, x, y, face, ghostly) {
+      const air = !P.ground && !ghostly, moving = Math.abs(P.vx) > 20 && !ghostly;
+      const pose = POSES[air ? 'air' : moving && Math.floor(P.run * 1.1) % 2 ? 'step' : 'stand'];
+      const px = 2, w = pose[0].length, h = pose.length;
+      c.save();
+      c.translate(Math.round(x), Math.round(y)); if (R.gdir < 0) c.scale(1, -1);
+      if (P.entering > 0 && !ghostly) c.globalAlpha *= Math.max(0, 1 - P.entering * 2.2);
+      if (!ghostly) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= 0.22; c.drawImage(env.glowSprite('255,245,215'), -24, -36, 48, 48); c.restore(); }
+      c.scale(face, 1);
+      for (let r = 0; r < h; r++) {
+        const row = pose[r];
+        for (let k = 0; k < w; k++) {
+          const ch = row[k]; if (ch === '.') continue;
+          c.fillStyle = ghostly ? (ch === 'E' ? '#ffffff' : 'rgba(255,90,80,0.75)') : PCOL[ch];
+          c.fillRect((k - w / 2) * px, (r - h) * px, px, px);
+        }
       }
-      // head + hair
-      const hx = neckX + 0.8, hy = neckY - 5.6;
-      c.beginPath(); c.arc(hx, hy, 6, 0, TAU); c.fill();
-      c.beginPath();
-      for (let i = 0; i < 6; i++) { const a = -2.6 + i * 0.5, r0 = 5.5, r1 = 8 + (i % 2) * 1.6; c.moveTo(hx + Math.cos(a - 0.18) * r0, hy + Math.sin(a - 0.18) * r0); c.lineTo(hx + Math.cos(a) * r1, hy + Math.sin(a) * r1); c.lineTo(hx + Math.cos(a + 0.18) * r0, hy + Math.sin(a + 0.18) * r0); }
-      c.fill();
-      // eyes
-      if (!ghostly && P.blink > 0) {
-        c.fillStyle = '#ffffff';
-        c.beginPath(); c.arc(hx + 1.3, hy - 0.4, 1.15, 0, TAU); c.arc(hx + 4.0, hy - 0.4, 1.0, 0, TAU); c.fill();
-      } else if (ghostly) { c.fillStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(hx + 1.3, hy - 0.4, 1.1, 0, TAU); c.arc(hx + 4.0, hy - 0.4, 1.0, 0, TAU); c.fill(); }
       c.restore();
     }
     function drawHud(c, F) {
-      const W = env.W, v = env.view, top = v.top;
-      const land = env.land;
-      const y0 = land ? top + 22 : Math.max(top + 46, F.y - 58);
-      c.save(); c.textBaseline = 'middle';
-      const light = 'rgba(236,232,220,0.96)';
-      // text on a soft dark pill: readable over the pale sky and the black ceilings alike
-      const txt = (s, x, y, font, al, col, padX) => {
-        c.font = font; c.textAlign = al;
-        const w = c.measureText(s).width, px = padX === undefined ? 10 : padX, h = parseInt(font.match(/(\d+)px/)[1], 10) + 10;
-        const x0 = al === 'center' ? x - w / 2 - px : al === 'right' ? x - w - px : x - px;
-        c.fillStyle = 'rgba(8,9,7,0.5)'; c.beginPath(); c.roundRect(x0, y - h / 2, w + px * 2, h, h / 2); c.fill();
-        c.fillStyle = col || light; c.fillText(s, x, y + 0.5);
-      };
+      const W = env.W, v = env.view, land = env.land;
+      const y0 = land ? v.top + 20 : Math.max(v.top + 40, F.y - 50);
+      c.save();
+      // the rooms of this round as little moons: full = done, glowing ring = this one
+      const n = rooms.length, r = 6, gap = 10, x0 = W / 2 - (n * r * 2 + (n - 1) * gap) / 2 + r;
+      for (let i = 0; i < n; i++) {
+        const x = x0 + i * (r * 2 + gap);
+        c.beginPath(); c.arc(x, y0, r, 0, TAU);
+        if (i < ri) { c.fillStyle = NIGHT; c.fill(); }
+        else { c.lineWidth = 2; c.strokeStyle = i === ri ? NIGHT : 'rgba(0,0,0,0.25)'; c.stroke(); if (i === ri) { c.fillStyle = NIGHT; c.beginPath(); c.arc(x, y0, r * (0.35 + 0.15 * Math.sin(t * 5)), 0, TAU); c.fill(); } }
+      }
+      c.textBaseline = 'middle'; c.font = 'bold 14px system-ui, sans-serif';
       const tl = Math.ceil(timeLeft), mm = Math.floor(tl / 60), ss = String(tl % 60).padStart(2, '0');
-      const low = timeLeft < 20 && Math.sin(t * 8) > 0;
-      txt(`${mm}:${ss}`, W / 2, y0, 'bold 20px Georgia, serif', 'center', low ? '#ff8a7a' : light, 14);
-      txt(`room ${ri + 1} of ${rooms.length}`, W / 2, y0 + 25, 'italic 11px Georgia, serif', 'center', 'rgba(236,232,220,0.8)');
-      txt(`deaths  ${deaths}`, 22, y0, 'bold 13px Georgia, serif', 'left');
-      if (R.mirror) txt('◀ ▶  swapped', 22, y0 + 26, 'italic 12px Georgia, serif', 'left', '#ffb0a0');
-      // the room's name as it opens
-      if (introT < 2.4) {
-        const a = Math.min(1, introT * 2.5) * Math.min(1, (2.4 - introT) * 2);
-        c.globalAlpha = a;
-        txt(rooms[ri].name, W / 2, F.y + RH * F.s * 0.24, `italic ${land ? 24 : 18}px Georgia, serif`, 'center', light, 18);
+      const dark = R.darkA > 0.5, INKC = dark ? '#e9e6dc' : NIGHT;
+      const tag = (s, x, al, col) => { c.textAlign = al; c.lineWidth = 3; c.strokeStyle = dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)'; c.strokeText(s, x, y0); c.fillStyle = col; c.fillText(s, x, y0); };
+      tag(`✕ ${deaths}`, 18, 'left', INKC);
+      tag(`${mm}:${ss}`, W - 62, 'right', timeLeft < 20 && Math.sin(t * 8) > 0 ? '#c0392b' : INKC);
+      if (R.mirror) tag('◀▶ swapped', W / 2, 'center', INKC);
+      if (introT < 2.0) {
+        c.globalAlpha = Math.min(1, introT * 3) * Math.min(1, (2.0 - introT) * 2.5);
+        c.font = `bold ${land ? 17 : 14}px system-ui, sans-serif`; c.textAlign = 'center';
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.45)'; c.strokeText(rooms[ri].name.toUpperCase(), W / 2, y0 + 28);
+        c.fillStyle = NIGHT; c.fillText(rooms[ri].name.toUpperCase(), W / 2, y0 + 28);
         c.globalAlpha = 1;
       }
       if (tauntT > 0) {
-        const a = Math.min(1, tauntT * 2);
-        c.globalAlpha = a;
-        c.font = `italic ${land ? 17 : 15}px Georgia, serif`; c.textAlign = 'center';
-        c.fillStyle = 'rgba(232,226,210,0.95)';
-        const ty = land ? F.y + RH * F.s - 30 : F.y + RH * F.s + 34;
-        c.fillText(taunt, W / 2, ty);
+        c.globalAlpha = Math.min(1, tauntT * 2);
+        c.font = `bold ${land ? 15 : 13}px system-ui, sans-serif`; c.textAlign = 'center'; c.fillStyle = INKC;
+        c.fillText(taunt, W / 2, land ? F.y + RH * F.s - 26 : F.y + RH * F.s + 30);
         c.globalAlpha = 1;
       }
       c.restore();

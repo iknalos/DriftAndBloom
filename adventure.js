@@ -182,13 +182,16 @@
         c.fillStyle = '#f2c27a';
         c.beginPath(); c.ellipse(x, y + r * 0.35, r * 0.52, r * 0.42, 0, 0, TAU); c.fill();
         [[-0.62, -0.18], [-0.24, -0.58], [0.24, -0.58], [0.62, -0.18]].forEach(([dx, dy]) => { c.beginPath(); c.ellipse(x + dx * r, y + dy * r, r * 0.2, r * 0.26, dx * 0.5, 0, TAU); c.fill(); }); break;
-      case 'liar': {                                            // a black stone arch with a lit doorway
-        const g = c.createRadialGradient(x, y + r * 0.2, 0, x, y + r * 0.2, r * 1.2);
-        g.addColorStop(0, 'rgba(255,214,150,0.55)'); g.addColorStop(1, 'rgba(255,214,150,0)');
-        c.fillStyle = g; c.fillRect(x - r * 1.3, y - r * 1.2, r * 2.6, r * 2.6);
-        c.fillStyle = '#16170f'; c.beginPath(); c.moveTo(x - r * 0.72, y + r * 0.9); c.lineTo(x - r * 0.72, y - r * 0.15); c.arc(x, y - r * 0.15, r * 0.72, Math.PI, 0); c.lineTo(x + r * 0.72, y + r * 0.9); c.closePath(); c.fill();
-        c.fillStyle = '#ffd99a'; c.beginPath(); c.moveTo(x - r * 0.4, y + r * 0.9); c.lineTo(x - r * 0.4, y - r * 0.1); c.arc(x, y - r * 0.1, r * 0.4, Math.PI, 0); c.lineTo(x + r * 0.4, y + r * 0.9); c.closePath(); c.fill();
-        c.fillStyle = '#16170f'; c.fillRect(x - r * 0.95, y + r * 0.82, r * 1.9, r * 0.16); break;
+      case 'liar': {                                            // a moon-gate glowing in a night window cut into pale stone
+        c.fillStyle = '#e9e2d2'; c.fillRect(x - r, y - r, r * 2, r * 2);
+        c.fillStyle = '#243149'; c.fillRect(x - r * 0.78, y - r * 0.62, r * 1.56, r * 1.24);
+        const g = c.createRadialGradient(x, y + r * 0.05, 0, x, y + r * 0.05, r * 0.9);
+        g.addColorStop(0, 'rgba(255,210,122,0.55)'); g.addColorStop(1, 'rgba(255,210,122,0)');
+        c.fillStyle = g; c.fillRect(x - r * 0.78, y - r * 0.62, r * 1.56, r * 1.24);
+        c.fillStyle = '#e9e2d2'; c.beginPath(); c.arc(x + r * 0.2, y + r * 0.05, r * 0.42, 0, TAU); c.fill();
+        c.fillStyle = '#ffd27a'; c.beginPath(); c.arc(x + r * 0.2, y + r * 0.05, r * 0.3, 0, TAU); c.fill();
+        c.fillStyle = '#f6f1e4'; c.fillRect(x - r * 0.52, y + r * 0.08, r * 0.24, r * 0.32);
+        c.fillStyle = '#8fd67a'; c.fillRect(x - r * 0.44, y - r * 0.04, r * 0.08, r * 0.12); break;
       }
       case 'moonbeat': {                                        // crescent moon + a note
         c.fillStyle = '#ffb0f0';

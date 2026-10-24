@@ -20,6 +20,21 @@ h1 { font-size: 42px; font-weight: bold; color: #9FE1CB; text-align: center; mar
 .mode-card:active { transform: scale(.98); }
 .mode-icon { font-size: 40px; } .mode-name { font: bold 26px Georgia, serif; margin-top: 4px; color: #ffe3a0; }
 .mode-card.classic .mode-name { color: #9FE1CB; } .mode-sub { font-size: 13.5px; opacity: .75; margin-top: 6px; }
+.mode-card.lab { border-color: rgba(190,170,255,.5); background: rgba(170,150,255,.10); padding: 14px 18px; }
+.mode-card.lab .mode-name { color: #d6ccff; font-size: 22px; }
+/* Test Lab (dev builds): every game on its own */
+.lab-sub { font-size: 13px; color: rgba(255,255,255,.65); margin: -14px 0 12px; text-align: center; }
+#lab-body { width: 100%; max-width: 360px; flex: 1; overflow-y: auto; padding-bottom: 30px; -webkit-overflow-scrolling: touch; }
+.lab-game { display: flex; align-items: center; gap: 10px; width: 100%; margin: 6px 0; padding: 12px 14px; border-radius: 14px; text-align: left;
+  background: rgba(var(--c), .12); border: 1.5px solid rgba(var(--c), .45); color: #fff; font: bold 17px system-ui, sans-serif; }
+.lab-game.on { background: rgba(var(--c), .26); border-color: rgba(var(--c), .9); }
+.lab-n { width: 22px; opacity: .55; font-size: 14px; } .lab-ic { font-size: 22px; }
+.lab-levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin: 6px 4px 10px; }
+.lab-levels button, .lab-rooms button { padding: 10px 0; border-radius: 10px; background: rgba(255,255,255,.1); color: #fff; font: bold 16px system-ui, sans-serif; border: 1px solid rgba(255,255,255,.2); }
+.lab-levels button.on { background: rgba(255,215,90,.85); color: #071828; }
+.lab-rooms { display: flex; flex-direction: column; gap: 6px; margin: 0 4px 14px; }
+.lab-rooms button { text-align: left; padding: 11px 14px; font-size: 15px; }
+.lab-rooms button:first-child { background: rgba(93,202,165,.85); color: #071828; }
 h2 { font-size: 22px; color: #5DCAA5; text-align: center; margin-bottom: 24px; }
 .subtitle { color: rgba(245,210,100,0.9); font-size: 26px; font-weight: bold; margin-top: 6px; }
 .tagline { color: rgba(160,220,200,0.6); font-size: 14px; margin-top: 12px; }
@@ -186,6 +201,18 @@ if ('serviceWorker' in navigator) {
       <div class="mode-icon">🪷</div><div class="mode-name">Classic Pond</div>
       <div class="mode-sub">the 100 lily-pad levels</div>
     </button>
+    <button class="mode-card lab" id="lab-card" style="display:none" onclick="labOpen()">
+      <div class="mode-name">🧪 Test Lab</div>
+      <div class="mode-sub">each game on its own · any level · any room</div>
+    </button>
+  </div>
+
+  <!-- Screen 2d: Test Lab (developer builds only) -->
+  <div id="s-lab" class="screen">
+    <button class="btn-back" onclick="goTo('s-mode')">← Back</button>
+    <h2 style="margin-top:62px">🧪 Test Lab</h2>
+    <div class="lab-sub">Every game on its own. Pick a game, a level, a room.</div>
+    <div id="lab-body"></div>
   </div>
 
   <!-- Screen 2c: Adventure map (adventure.js) -->
@@ -506,6 +533,33 @@ function selectChar(id) {
 // ── Screen 3 — Level Select ─────────────────────────────────────────────────
 // TESTING: every stage open. Set to false to restore clear-N-to-unlock-N+1.
 const UNLOCK_ALL = true;
+
+// ── Test Lab (developer builds): the ten games one by one, any level (1-10), any room of the room games ──
+const lab = { game: null, level: 0 };
+if (UNLOCK_ALL) document.getElementById('lab-card').style.display = '';
+function labOpen() { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); }
+function labRender() {
+  const games = window.DABAdventure ? DABAdventure.ROUNDS : [];
+  let h = '';
+  games.forEach((g, i) => {
+    const on = lab.game === g.id;
+    h += `<button class="lab-game${on ? ' on' : ''}" style="--c:${g.rgb}" onclick="labGame('${g.id}')"><span class="lab-n">${i + 1}</span><span class="lab-ic">${g.icon}</span>${g.name}</button>`;
+    if (!on) return;
+    h += '<div class="lab-levels">' + Array.from({ length: 10 }, (_, k) => `<button class="${lab.level === k + 1 ? 'on' : ''}" onclick="labLevel(${k + 1})">${k + 1}</button>`).join('') + '</div>';
+    const rooms = lab.level && window.DABWorlds && DABWorlds.rooms(g.id);
+    if (rooms && rooms[lab.level - 1]) h += `<div class="lab-rooms"><button onclick="labPlay(0)">▶ Whole level ${lab.level}</button>` + rooms[lab.level - 1].map((n, k) => `<button onclick="labPlay(${k + 1})">${k + 1}. ${n}</button>`).join('') + '</div>';
+  });
+  document.getElementById('lab-body').innerHTML = h;
+}
+function labGame(id) { lab.game = lab.game === id ? null : id; lab.level = 0; labRender(); }
+function labLevel(n) { lab.level = n; if (window.DABWorlds && DABWorlds.rooms(lab.game)) labRender(); else labPlay(0); }
+function labPlay(room) {
+  const id = lab.game, lv = lab.level, badge = `TEST LAB · LEVEL ${lv}` + (room ? ` · ROOM ${room}` : '');
+  const back = () => { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); };
+  if (id === 'pond') { window.__pondRound = { badge, stage: lv, clock: 1, onEnd: () => { window.__pondRound = null; back(); } }; startLevel(DABAdventure.POND[lv]); return; }
+  if (!window.DABWorlds || !DABWorlds.has(id)) return;
+  DABWorlds.enter(id, { charId: selectedChar, reason: '', level: lv, badge, round: true, music: 'music_pond', startRoom: room || 0, onlyRoom: !!room }).then(back);
+}
 function isUnlocked(n){
   if (UNLOCK_ALL) return true;
   if (localStorage.getItem('dab_debug')==='1') return true;

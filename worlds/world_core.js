@@ -15,7 +15,7 @@
 //     assets: { key: 'assets/worlds/animal/croc.png', ... },   // preloaded
 //     create(env) { return { update(dt, input), render(ctx), debug?(), destroy?() }; }
 //   });
-// and game.html enters it with   DABWorlds.enter('animal', { charId, reason, level, badge, round })
+// and game.html enters it with   DABWorlds.enter('animal', { charId, reason, level, badge, round, startRoom?, onlyRoom? })
 // which resolves { won: true|false, aborted?, stars 1..3 } once the world is over.
 // Adventure mode (10 stages x 10 rounds) passes level 1..10 (the stage: difficulty), a badge
 // ('STAGE 3 · ROUND 4') for the intro card and round: true (round-style result card).
@@ -797,10 +797,10 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     { x: SW - 92, y: SH - 96, r: 42 }, { x: SW - 196, y: SH - 58, r: 34 }, { x: SW - 82, y: SH - 206, r: 30 }, { x: SW - 186, y: SH - 160, r: 27 }];
   const L_STICK = () => ({ x: 118, y: SH - 104, r: 62 });
   // controls.layout 'platform' (one-screen platformers): every button kept low in the corners so the room stays clear
-  const P_BTN = () => (SW !== W ? [{ x: SW - 70, y: SH - 58, r: 44 }, { x: SW - 172, y: SH - 46, r: 32 }]
-    : [{ x: 318, y: 762, r: 46 }, { x: 222, y: 790, r: 32 }]);
-  const P_DPAD = () => (SW !== W ? [{ id: 'left', x: 62, y: SH - 54, r: 38 }, { id: 'right', x: 158, y: SH - 54, r: 38 }]
-    : [{ id: 'left', x: 56, y: 768, r: 40 }, { id: 'right', x: 148, y: 768, r: 40 }]);
+  const P_BTN = () => (SW !== W ? [{ x: SW - 66, y: SH - 60, r: 40 }, { x: SW - 160, y: SH - 46, r: 26 }]
+    : [{ x: 320, y: 764, r: 44 }, { x: 228, y: 792, r: 28 }]);
+  const P_DPAD = () => (SW !== W ? [{ id: 'left', x: 56, y: SH - 56, r: 34 }, { id: 'right', x: 140, y: SH - 56, r: 34 }]
+    : [{ id: 'left', x: 54, y: 768, r: 36 }, { id: 'right', x: 136, y: 768, r: 36 }]);
   const platform = () => active && active.controls && active.controls.layout === 'platform';
   const btnPos = () => (platform() ? P_BTN() : SW !== W ? L_BTN() : BTN_POS);
   const dpadPos = () => (platform() ? P_DPAD() : DPAD.lr);
@@ -962,6 +962,29 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     c.restore();
   }
 
+  // a flat key: dark see-through face, thin light edge, crisp white symbol; pressed = lighter, a touch smaller
+  function flatKey(c, x, y, r, pressed, name, square) {
+    c.save();
+    const k = pressed ? 0.93 : 1, s = r * k;
+    c.fillStyle = pressed ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.26)';
+    c.strokeStyle = pressed ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.55)'; c.lineWidth = 2;
+    c.beginPath();
+    if (square) c.roundRect(x - s, y - s, s * 2, s * 2, s * 0.32); else c.arc(x, y, s, 0, TAU);
+    c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.strokeStyle = '#ffffff'; c.lineCap = 'round'; c.lineJoin = 'round';
+    const u = s * 0.42;
+    if (name === 'left' || name === 'right') {
+      c.translate(x, y); if (name === 'left') c.scale(-1, 1);
+      c.beginPath(); c.moveTo(-u * 0.55, -u * 0.85); c.lineTo(u * 0.75, 0); c.lineTo(-u * 0.55, u * 0.85); c.closePath(); c.fill();
+    } else if (name === 'jump') {
+      c.lineWidth = s * 0.16; c.beginPath(); c.moveTo(x - u * 0.95, y + u * 0.45); c.lineTo(x, y - u * 0.55); c.lineTo(x + u * 0.95, y + u * 0.45); c.stroke();
+    } else if (name === 'restart') {
+      c.lineWidth = s * 0.13; c.beginPath(); c.arc(x, y, u * 0.85, -0.3, Math.PI * 1.55); c.stroke();
+      const ex = x + Math.cos(-0.3) * u * 0.85, ey = y + Math.sin(-0.3) * u * 0.85;
+      c.beginPath(); c.moveTo(ex + u * 0.42, ey - u * 0.05); c.lineTo(ex - u * 0.06, ey - u * 0.5); c.lineTo(ex - u * 0.12, ey + u * 0.32); c.closePath(); c.fill();
+    } else icon(c, name, x, y, r);
+    c.restore();
+  }
   function drawButton(c, x, y, r, pressed, name, rgb, count) {
     c.save();
     const g = c.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.1, x, y, r);
@@ -1036,6 +1059,8 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
       assets: {},
       get health() { return S.health; }, get maxHealth() { return S.maxHealth; },
       get level() { return S.level; }, get round() { return S.round; },
+      // Test Lab: start a room game on room n, and/or end it when that one room is cleared
+      get startRoom() { return +S.opts.startRoom || 0; }, get onlyRoom() { return !!S.opts.onlyRoom; },
       // Adventure toughness: enemy / boss health x tough (stage 1 0.82 .. stage 10 1.45); 1 outside Adventure
       get tough() { return S.round ? 0.75 + 0.07 * S.level : 1; },
       setStars(n) { S.stars = Math.max(1, Math.min(3, n | 0)); },
@@ -1384,6 +1409,12 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
 
   Session.prototype.drawControls = function (c) {
     const cfg = this.controls, held = this.input.held;
+    if (platform()) {                                           // one-screen platformers: flat keys
+      for (const d of dpadPos()) flatKey(c, d.x, d.y, d.r, !!this.touch.dirs[d.id] || this.input[d.id], d.id, true);
+      const bs = cfg.buttons || [], BP = btnPos();
+      for (let i = 0; i < bs.length && i < BP.length; i++) flatKey(c, BP[i].x, BP[i].y, BP[i].r, !!held[bs[i].id], bs[i].icon || bs[i].id, false);
+      return;
+    }
     if (cfg.dirs === 'lr') {
       for (const d of dpadPos()) drawButton(c, d.x, d.y, d.r, !!this.touch.dirs[d.id] || this.input[d.id], d.id, this.rgb);
     } else if (cfg.dirs === 'stick') {
@@ -1594,6 +1625,7 @@ float voronoi(vec2 p){ vec2 i=floor(p), f=fract(p); float d=1.0;
     register(id, def) { registry[id] = def; },
     has(id) { return !!registry[id]; },
     list() { return Object.keys(registry); },
+    rooms(id) { const d = registry[id]; return d && d.rooms ? d.rooms() : null; },   // Test Lab: room names per level
     enter,
     isActive() { return !!active; },
     abort() { if (active) active.end(false, true); },

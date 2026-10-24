@@ -286,6 +286,7 @@
     subtitle: () => 'One red door per page. It never opens the same way twice. Stuck long enough, a note appears.',
     hint: 'The room’s name is the clue.',
     howto: ['◀ ▶ walk  ·  jump  ·  ↻ restart the page', 'Touch the page too: tap, drag, draw, rub, swipe'],
+    rooms: () => STAGES.slice(1).map(st => st.map(r => r.name)),   // Test Lab: room names per level
     controls: { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }, { id: 'special', icon: 'restart' }], layout: 'platform', touch: true },
     create
   });
@@ -326,7 +327,7 @@
     const sfx = (n, o) => env.sfx(n, o);
     const rooms = STAGES[Math.max(1, Math.min(STAGES.length - 1, LV))];
     const q = new URLSearchParams(location.search);
-    let ri = Math.max(0, Math.min(rooms.length - 1, (+q.get('room') || 1) - 1));
+    let ri = Math.max(0, Math.min(rooms.length - 1, (env.startRoom || +q.get('room') || 1) - 1));
     let timeLeft = rooms.reduce((s, r) => s + (r.t || 70), 0) + 10, deaths = 0, hints = 0, t = 0, done = false;
     let R = null, P = null, introT = 0, msg = '', msgT = 0, fade = 1, fadeDir = -1, nextAfterFade = null, deadT = 0;
     let persist = null;                                    // survives deaths / restarts inside one room
@@ -479,8 +480,11 @@
       // an ink splat that stays on the page
       const sp = { x: P.x, y: cy, r: 9 + Math.random() * 4, seed: Math.random() * 1000, tile: null };
       if (R.splatSolid) {
+        // the splat sets on the thorn that killed you (else on the tile you died in)
+        const pb = box();
+        for (const s of R.slist) for (const tl of s.tiles) if (!tl.smeared && s.ext > 0.4 && hit(pb, spikeBox(s, tl))) sp.tile = { x: tl.x, y: tl.y };
         const tx = Math.floor(P.x / T), ty = Math.floor((P.y - 2) / T);
-        if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS && !SOLIDISH(R.g[ty][tx])) sp.tile = { x: tx, y: ty };
+        if (!sp.tile && tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS && !SOLIDISH(R.g[ty][tx])) sp.tile = { x: tx, y: ty };
       }
       persist.splats.push(sp);
       for (let i = 0; i < 14; i++) { const a = Math.random() * TAU, v = 60 + Math.random() * 200; fx.spawn({ x: P.x, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, g: 900, drag: 0.8, kind: 'debris', rgb: '21,18,15', size: 2 + Math.random() * 3, life: 0.7 }); }
@@ -672,7 +676,7 @@
       if (P.dead) { deadT += dt; stepWorld(dt); if (deadT > 0.7) { R = build(rooms[ri]); spawn(); bakeRoom(); } return; }
       if (P.entering > 0) {
         P.entering += dt; stepWorld(dt);
-        if (P.entering > 0.6 && !nextAfterFade) { fadeDir = 1; nextAfterFade = () => { if (ri + 1 >= rooms.length) finish(); else loadRoom(ri + 1, false); }; }
+        if (P.entering > 0.6 && !nextAfterFade) { fadeDir = 1; nextAfterFade = () => { if (ri + 1 >= rooms.length || env.onlyRoom) finish(); else loadRoom(ri + 1, false); }; }
         return;
       }
       let L = I.left, Rt = I.right, jp = !!I.pressed.jump, jh = !!I.held.jump, rs = !!I.pressed.special;
