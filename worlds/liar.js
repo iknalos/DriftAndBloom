@@ -12,12 +12,18 @@
 //   a-z  ground that moves (a group: R.drop / R.$('a').move ...; not v)   ~  fake ground (you fall through)
 //   +  invisible ground              %  ground that crumbles when R.chase() runs   *  spring
 //   @  a rune that turns gravity over                                1-9  saw blades
+//   H  ladder (hold jump to climb, let go to slide down)   [ ]  blocks that swap places on every jump ([ starts solid)
+//   R.hole({...}): a gap in a floor trench that patrols / hunts you / slides to where you'll land; R.blink(id, on, off)
+//   R.fragile(id): ground that vanishes once you stand on it (and maybe comes back)
+//   R.escalator({from, to, speed}): moving stairs (open pit in the map). It can stop (= stairs), run backwards,
+//     shudder, break into floating spare parts, and spill wheels / bearings / gears that bounce down at you
 // bot: the room's solution as autopilot steps (tests: window.__liarBot = true), so every room is
 // proven beatable. Test a stage: game.html?world=liar&lv=6 (&room=2 to start on a room).
 // ============================================================================
 (function () {
   'use strict';
-  const T = 26, COLS = 32, ROWS = 15, RW = COLS * T, RH = ROWS * T, TAU = Math.PI * 2;
+  const T = 26, VIEW_C = 32, VIEW_R = 15, TAU = Math.PI * 2;
+  let COLS = 32, ROWS = 15, RW = COLS * T, RH = ROWS * T;      // the current room (set by grid(); one room runs at a time)
   // feel, measured off Level Devil footage (body = 24 px): runs 6.4 bodies/s with no wind-up or slide,
   // one fixed jump 1.7 bodies high and 0.55 s long, the same gravity up and down (it carries ~3.3 tiles)
   const RUN = 154, ACC = 14000, DEC = 14000, AIR_ACC = 14000, AIR_DEC = 14000;
@@ -67,7 +73,29 @@
           R.when(p => p.ground && p.x >= 6 && p.x < 8, () => R.drop('a', 0.05));
           R.when(p => p.air && p.x >= 12.5 && p.x < 16, () => R.pop('C'));
         },
-        bot: [['jumpAt', 5.4], ['land'], ['run', 21.8], ['jump'], ['land'], ['go', 27.5]] }
+        bot: [['jumpAt', 5.4], ['land'], ['run', 21.8], ['jump'], ['land'], ['go', 27.5]] },
+      { name: 'It moves', t: 55,
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '.S..........................D...',
+          '#####.....................######',
+          '#####.....................######',
+          '#####.....................######',
+          '#####.....................######'],
+        setup(R) {
+          const h = R.hole({ x0: 5, x1: 25, y: 11, w: 2, speed: 3, mode: 'patrol', at: 15 });
+          R.when(R.at(14.5), () => { h.set('hunt', 4.2); R.say('It follows you.'); });
+        },
+        bot: [['go', 3.8], ['until', R => R.holeAt(0).dir < 0 && R.holeAt(0).x <= 15.5 && R.holeAt(0).x >= 12], ['dir', 1], ['holejump', 0], ['land'], ['go', 28.5]] }
     ],
     // ── Stage 2: it learns
     [
@@ -102,7 +130,30 @@
           R.when(p => p.air && p.x >= 22.8 && p.x <= 26.5, () => R.pop('F'));
           R.when(R.at(27.6), () => { R.drop('d', 0.2); R.$('D').ride('d'); R.after(1.3, () => { R.$('D').appear(1, 10); R.say('It went down with the floor.'); }); });
         },
-        bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 1.5], ['wait', 1]] }
+        bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 1.5], ['wait', 1]] },
+      { name: 'Every jump', t: 60,
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '.S........................B..D..',
+          '#####..]]..[[..]]..[[..#########',
+          '#####..................#########',
+          '#####..................#########',
+          '#####..................#########'],
+        setup(R) {
+          R.when(p => p.air, () => R.say('Every jump changes something.'));
+          R.when(R.at(24.6), () => R.pop('B'));
+        },
+        bot: [['swapset', true], ['jumpAt', 4.4], ['land'], ['jumpAt', 8.4], ['land'], ['jumpAt', 12.4], ['land'], ['jumpAt', 16.4], ['land'], ['jumpAt', 20.4], ['land'],
+          ['jumpAt', 25.0], ['land'], ['go', 29.5]] }
     ],
     // ── Stage 3: saws & shortcuts
     [
@@ -142,7 +193,34 @@
           '.S........%.................B.D.',
           ...fill(4, '%%%%%%%%%%%%%%...%%%%%%%%%%#####')],
         setup(R) { R.when(R.at(2.2), () => { R.chase(5.0, 0); R.say('Run.'); }); R.when(R.at(26.6), () => R.pop('B')); },
-        bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 13.7], ['land'], ['jumpAt', 26.9], ['land'], ['go', 30.5]] }
+        bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 13.7], ['land'], ['jumpAt', 26.9], ['land'], ['go', 30.5]] },
+      { name: 'The long way', t: 75,
+        map: [
+          '################################################################',
+          '################################################################',
+          '................................................................',
+          '................................................................',
+          '.........................................................B...D..',
+          '....................................................H###########',
+          '....................................................H###########',
+          '.........###########..aa..bb..cc..######............H###########',
+          '........f###########..............######............H###########',
+          '.......#f###########..............######............H###########',
+          '.S....##f###########..............######............H###########',
+          '########f###########..............##############################',
+          '########f###########..............##############################',
+          '########f###########^^^^^^^^^^^^^^##############################',
+          '########f#######################################################'],
+        setup(R) {
+          R.sign(3, 10, 'LONG WAY  →');
+          R.when(R.stand('f'), () => R.drop('f', 0.2));
+          ['a', 'b', 'c'].forEach(id => R.fragile(id, 0.35, 2.5));
+          const s = R.saw({ x: 53.5, y: 10.4 });
+          R.when(R.at(41.5), () => { s.go([[38.5, 10.4]], 5); R.say('Something in the wall.'); });
+          R.when(R.at(55.0), () => R.pop('B'));
+        },
+        bot: [['go', 5.0], ['dodge', 10.6], ['jumpAt', 19.6], ['land'], ['jumpAt', 23.6], ['land'], ['jumpAt', 27.6], ['land'], ['jumpAt', 31.6], ['land'],
+          ['go', 41.0], ['sawjump', 0], ['land'], ['go', 52.5], ['climb', 5], ['go', 54.6], ['jumpAt', 55.4], ['land'], ['go', 61.5]] }
     ],
     // ── Stage 4: door problems
     [
@@ -198,7 +276,33 @@
           R.when(R.at(25.6), () => R.pop('C'));
         },
         bot: [['go', 5.9], ['until', R => R.$('p').phase === 'rwait' && ((R.$('q').phase === 'low' && R.$('q').phaseK < 0.5) || (R.$('q').phase === 'down' && R.$('q').phaseK > 0.6))],
-          ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['until', R => R.$('q').phase === 'low'], ['jumpAt', 14.9], ['land'], ['jumpAt', 19.9], ['land'], ['jumpAt', 26.0], ['land'], ['go', 29.5]] }
+          ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['until', R => R.$('q').phase === 'low'], ['jumpAt', 14.9], ['land'], ['jumpAt', 19.9], ['land'], ['jumpAt', 26.0], ['land'], ['go', 29.5]] },
+      { name: 'Escalator', t: 70,
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '.............................D..',
+          '....................############',
+          '....................############',
+          '....................############',
+          '....................############',
+          '....................############',
+          '.S...C..............############',
+          '########............############',
+          '########............############',
+          '########............############',
+          '########............############'],
+        setup(R) {
+          const e = R.escalator({ from: [8, 11], to: [20, 5], speed: 1.4 });
+          R.sign(3, 10, 'UP ↗');
+          R.when(p => p.ground && p.x >= 12.5, () => { e.reverse(2.0); R.say('Going down.'); });
+          let back = false;
+          R.when(R.at(24.5), () => { back = true; R.$('D').hop(2, 10, 1.3); R.say('Wrong floor.'); });
+          R.when(p => back && p.x <= 6.8 && p.y > 9, () => R.pop('C'));
+        },
+        bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['dodge', 20.6], ['go', 24.7], ['wait', 1.4], ['go', 7.6], ['jumpAt', 6.4], ['land'], ['go', 2.5]] }
     ],
     // ── Stage 5: upside down
     [
@@ -231,7 +335,61 @@
           '.......................^^^^.D...',
           ...fill(4, G)],
         setup(R) { R.when(R.at(3.6), () => R.drop('b', 0, -1)); R.when(R.at(9.6), () => R.pop('C')); },
-        bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 22.6, 0.12], ['land'], ['go', 27.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 28.5], ['wait', 1]] }
+        bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 22.6, 0.12], ['land'], ['go', 27.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 28.5], ['wait', 1]] },
+      { name: 'Two skies', t: 75,
+        map: [
+          '##############..################################################',
+          '##############..################################################',
+          '.........................@..vvvvvvvvvvvvv.......KK........@.....',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '.S....@...^^^^^^^^^^^^^...................@.^^^^^^^^^^^^^....D..',
+          '##############################..####~~##########################',
+          '##############################..####..##########################',
+          '##############################..####..##########################',
+          '##############################..####..##########################'],
+        setup(R) {
+          R.when(p => p.flipped && p.x >= 45.6, () => R.pop('K'));
+        },
+        bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 13.3], ['land'], ['go', 25.5], ['until', (R, P) => !P.flipped && P.ground],
+          ['jumpAt', 29.2], ['land'], ['jumpAt', 34.9], ['land'], ['go', 42.5], ['until', (R, P) => P.flipped && P.ground],
+          ['jumpAt', 47.15], ['land'], ['go', 58.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 61.5]] },
+      { name: 'Climb', t: 75,
+        map: [
+          '################################',
+          '################################',
+          '................................',
+          '................................',
+          '................................',
+          '#########.......................',
+          '...........bb...................',
+          '...............aa...............',
+          '..................############H.',
+          '..............................H.',
+          '..............................H.',
+          '..............................H.',
+          '..............................H.',
+          '........................########',
+          '.....................##.........',
+          '..........H#########............',
+          '..........H.....................',
+          '..........H.....................',
+          '..........H.....................',
+          '.S........H.................D...',
+          '################################',
+          '################################'],
+        setup(R) {
+          ['a', 'b'].forEach(id => R.fragile(id, 0.3, 2.0));
+          R.when(p => p.x >= 23.5 && p.y > 17, () => { R.$('D').hop(29, 12, 1.0); R.say('Upstairs.'); });
+          R.when(p => p.x >= 27.4 && p.y < 14, () => { R.$('D').hop(2, 4, 1.3); R.say('Top floor.'); });
+        },
+        bot: [['go', 23.7], ['wait', 1.2], ['go', 10.5], ['climb', 15], ['go', 19.4], ['jumpAt', 19.6], ['land'], ['jumpAt', 22.6], ['land'], ['go', 27.6], ['wait', 1.5],
+          ['go', 30.5], ['climb', 8], ['jumpAt', 18.3], ['land'], ['jumpAt', 15.2], ['land'], ['jumpAt', 11.2], ['land'], ['go', 2.5]] }
     ],
     // ── Stage 6: no help
     [
@@ -277,7 +435,30 @@
           R.when(R.at(17.2), () => R.wind(115));
           R.when(R.at(26), () => R.wind(0));
         },
-        bot: [['jumpAt', 7.8], ['land'], ['jumpAt', 12.8], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 23.3], ['land'], ['go', 30.5]] }
+        bot: [['jumpAt', 7.8], ['land'], ['jumpAt', 12.8], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 23.3], ['land'], ['go', 30.5]] },
+      { name: 'Out of order', t: 70,
+        map: [
+          '................................',
+          '................................',
+          '.............................D..',
+          '......................##########',
+          '......................##########',
+          '......................##########',
+          '......................##########',
+          '......................##########',
+          '......................##########',
+          '......................##########',
+          '.S....................##########',
+          '######................##########',
+          '######................##########',
+          '######................##########',
+          '######................##########'],
+        setup(R) {
+          const e = R.escalator({ from: [6, 11], to: [22, 3], speed: 1.4 });
+          R.when(p => p.ground && p.x >= 9.5, () => { e.shake(0.9); R.after(0.9, () => { e.stop(); e.spill({ every: 1.6, kinds: 'wbgb', first: 0.4 }); R.say('Out of order. Take the stairs.'); }); });
+          R.when(R.at(18.5), () => e.stopSpill());
+        },
+        bot: [['go', 6.6], ['until', (R, P) => P.x >= 9.6], ['until', R => R.esc(0).speed === 0], ['dodge', 22.6], ['go', 29.5]] }
     ],
     // ── Stage 7: it plays dirty
     [
@@ -332,7 +513,49 @@
           R.when(p => p.flipped && p.x >= 11.4, () => { up('a'); R.$('b').wait(0.3, 'w0').call(() => up('b')); });
         },
         bot: [['go', 4.5], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 8.8], ['land'], ['go', 12.4], ['until', R => R.$('a').phase === 'down' && R.$('a').phaseK < 0.25],
-          ['run', 24.3], ['jumpAt', 24.4, 0.15], ['land'], ['go', 29.5]] }
+          ['run', 24.3], ['jumpAt', 24.4, 0.15], ['land'], ['go', 29.5]] },
+      { name: 'Tower', t: 70,
+        map: [
+          '################################',
+          '################################',
+          '................................',
+          '..........D.....................',
+          '.H###########...................',
+          '.H..............................',
+          '.H..............................',
+          '.H..............................',
+          '.H..............................',
+          '#######.........................',
+          '........kk......................',
+          '...........jj...................',
+          '..............####ffgghh######H.',
+          '..............................H.',
+          '..............................H.',
+          '..............................H.',
+          '..............................H.',
+          '..........................######',
+          '.......................cc.......',
+          '....................bb..........',
+          '.................aa.............',
+          '......H#########................',
+          '......H.........................',
+          '......H.........................',
+          '......H.........................',
+          '..S...H.........................',
+          '################################',
+          '................................',
+          '................................',
+          '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'],
+        setup(R) {
+          ['a', 'b', 'c'].forEach(id => R.fragile(id, 0.45, 2.0));
+          ['f', 'g', 'h'].forEach(id => R.fragile(id, 0.4, 2.5));
+          R.blink('j', 1.8, 0.8, 0); R.blink('k', 1.8, 0.8, 2.0);
+          R.when(p => p.y < 24.5, () => { R.$('_').move(0, -24, 26, 'lin', 'rise'); R.say('The floor is rising.'); });
+        },
+        bot: [['go', 6.5], ['climb', 21], ['go', 15.4], ['jumpAt', 15.8], ['land'], ['jumpAt', 18.8], ['land'], ['jumpAt', 21.8], ['land'], ['jumpAt', 24.8], ['land'],
+          ['go', 30.5], ['climb', 12], ['go', 14.4],
+          ['until', R => R.blinkOn('j') && R.blinkAge('j') < 0.25], ['jumpAt', 14.2], ['land'], ['until', R => R.blinkOn('k') && R.blinkAge('k') < 1.0], ['jumpAt', 11.2], ['land'],
+          ['jumpAt', 8.2], ['land'], ['go', 1.5], ['climb', 4], ['go', 10.5]] }
     ],
     // ── Stage 8: nothing works
     [
@@ -391,7 +614,33 @@
           R.when(p => p.flipped && p.x >= 6.4, () => R.pop('C'));
         },
         bot: [['jumpAt', 4.4, 0.15], ['land'], ['jumpAt', 13.8], ['land'], ['run', 25.6], ['go', 23.0], ['wait', 1.0], ['jumpAt', 17.2], ['land'], ['go', 12.3], ['wait', 1.9], ['go', 5.6], ['until', (R, P) => P.flipped && P.ground],
-          ['jumpAt', 7.4], ['land'], ['go', 25.5]] }
+          ['jumpAt', 7.4], ['land'], ['go', 25.5]] },
+      { name: 'Spare parts', t: 70,
+        map: [
+          '................................',
+          '................................',
+          '..............................D.',
+          '........................########',
+          '........................########',
+          '........................########',
+          '........................########',
+          '........................########',
+          '........................########',
+          '........................########',
+          '.S......................########',
+          '######..................########',
+          '######..................########',
+          '######..................########',
+          '######..................########'],
+        setup(R) {
+          const e = R.escalator({ from: [6, 11], to: [24, 3], speed: 1.6 });
+          R.when(p => p.ground && p.x >= 12.2, () => {
+            e.shake(0.7);
+            R.after(0.7, () => { e.break([[15, 7], [17.5, 6, { swing: 0.6, period: 2.6 }], [20, 5], [22.2, 4, { drop: 0.45 }]]); R.say('Spare parts.'); });
+          });
+        },
+        bot: [['go', 6.4], ['until', R => R.esc(0).broken], ['wait', 1.3], ['partjump', 0], ['land'], ['partjump', 1], ['land'], ['partjump', 2], ['land'], ['partjump', 3], ['land'],
+          ['jumpAt', 23.0], ['land'], ['go', 30.5]] }
     ],
     // ── Stage 9: precision
     [
@@ -446,7 +695,32 @@
           R.sign(3, 10, 'EXIT  →'); R.sign(17, 10, 'IT’S FINE');
           R.when(R.at(13.8), () => R.pop('B'));
         },
-        bot: [['jumpAt', 4.6], ['land'], ['jumpAt', 10.8], ['land'], ['jumpAt', 14.1], ['land'], ['jumpAt', 18.6], ['land'], ['go', 30.5]] }
+        bot: [['jumpAt', 4.6], ['land'], ['jumpAt', 10.8], ['land'], ['jumpAt', 14.1], ['land'], ['jumpAt', 18.6], ['land'], ['go', 30.5]] },
+      { name: 'Gauntlet', t: 85,
+        map: [
+          '################################################################',
+          '################################################################',
+          '................................................................',
+          '................................................................',
+          '................................................................',
+          '..................................................Q...........D.',
+          '.............................................H#######ffgghh#####',
+          '.............................................H.............#####',
+          '.............................................H.............#####',
+          '.............................................H.............#####',
+          '.S...........................................H.............#####',
+          '####............###..]]..[[..]]..####################......#####',
+          '####............###..............####################......#####',
+          '####............###^^^^^^^^^^^^^^####################^^^^^^#####',
+          '####............################################################'],
+        setup(R) {
+          R.hole({ x0: 4, x1: 15, y: 11, w: 2, speed: 4.0, mode: 'hunt', at: 14 });
+          R.saw({ x: 35, y: 10.4 }).go([[39.5, 10.4], [35, 10.4]], 3.4, true);
+          R.saw({ x: 43, y: 10.4 }).go([[40.5, 10.4], [43, 10.4]], 3.0, true);
+          ['f', 'g', 'h'].forEach(id => R.fragile(id, 0.4, 0));
+        },
+        bot: [['dir', 1], ['holejump', 0], ['land'], ['go', 17.6], ['swapset', true], ['jumpAt', 18.3], ['land'], ['jumpAt', 22.4], ['land'], ['jumpAt', 26.4], ['land'], ['jumpAt', 30.4], ['land'],
+          ['go', 33.6], ['sawjump', 0], ['land'], ['sawjump', 1], ['land'], ['go', 45.5], ['climb', 6], ['go', 48.0], ['jumpAt', 48.9], ['land'], ['go', 62.5]] }
     ],
     // ── Stage 10: the devil's mile
     [
@@ -515,7 +789,33 @@
         },
         bot: [['jumpAt', 3.3], ['land'], ['go', 9.3], ['wait', 1.0], ['run', 14.0], ['jumpAt', 15.0], ['land'], ['jumpAt', 21.6], ['land'], ['sawjump', 0], ['land'], ['go', 26.7], ['wait', 0.3],
           ['jumpAt', 25.2], ['land'], ['go', 18.3], ['until', R => R.$('e').phase === 'top' && R.$('e').phaseK < 0.2], ['jumpAt', 18.0], ['land'], ['go', 9.4], ['wait', 0.4],
-          ['dir', -1], ['jump', 0.32], ['land'], ['dir', 0], ['wait', 0.15], ['dir', -1], ['jump', 0.32], ['land'], ['go', 2.5]] }
+          ['dir', -1], ['jump', 0.32], ['land'], ['dir', 0], ['wait', 0.15], ['dir', -1], ['jump', 0.32], ['land'], ['go', 2.5]] },
+      { name: "The Devil's Mile", t: 95,
+        map: [
+          '........................................................................',
+          '........................................................................',
+          '........................................................................',
+          '........................................................................',
+          '.....................................########..]]..[[..####.............',
+          '.....................................########..........####.............',
+          '.....................................########..........####.............',
+          '.....................................########..........####.............',
+          '.....................................########..........####.............',
+          '.....................................########..........####.............',
+          '.S............^......................########..........####...........D.',
+          '%%%%%%%%..%%%%%%%%%%.................########..........#####.........###',
+          '%%%%%%%%..%%%%%%%%%%.................########..........#####.........###',
+          '%%%%%%%%..%%%%%%%%%%.................########..........#####.........###',
+          '%%%%%%%%..%%%%%%%%%%.................########..........#####.........###'],
+        setup(R) {
+          R.when(R.at(2.0), () => { R.chase(5.4, 0); R.say('The last mile.'); });
+          const e = R.escalator({ from: [20, 11], to: [37, 4], speed: 1.4 });
+          R.when(p => p.ground && p.x >= 22.5, () => { e.shake(0.5); R.after(0.5, () => { e.stop(); e.spill({ every: 1.5, kinds: 'wgbw', first: 0.2 }); }); });
+          R.when(R.at(33.5), () => e.stopSpill());
+          R.hole({ x0: 60, x1: 68, y: 11, w: 2, speed: 4.4, mode: 'hunt', at: 66 });
+        },
+        bot: [['jumpAt', 6.6], ['land'], ['jumpAt', 12.6], ['land'], ['go', 20.6], ['until', R => R.esc(0).speed === 0], ['dodge', 37.6], ['go', 43.0],
+          ['swapset', true], ['jumpAt', 44.4], ['land'], ['jumpAt', 48.4], ['land'], ['jumpAt', 52.4], ['land'], ['go', 59.5], ['land'], ['dir', 1], ['holejump', 0], ['land'], ['go', 70.5]] }
     ]
   ];
 
@@ -526,6 +826,7 @@
     saw: ['Should’ve run.', 'It was rolling for a while.', 'Whirr.'],
     door: ['Not that door.', 'Doors lie too.', 'It bit.'],
     shadow: ['It caught up.', 'You stopped.', 'Never stop.'],
+    part: ['Spare parts.', 'Out of order.', 'It was under warranty.', 'Mind the wheels.'],
     any: ['Again.', 'The path remembers. Do you?', 'One more time.']
   };
 
@@ -533,7 +834,7 @@
     title: 'Liar’s Path', color: '255,210,122', opaque: true, hud: 'none',
     landscape: { top: 0, h: RH },
     music: 'music_liar',
-    sounds: ['lp_jump', 'lp_land', 'lp_die', 'lp_pop', 'lp_crumble', 'lp_slam', 'lp_door', 'lp_saw', 'lp_exit', 'lp_flip', 'lp_thunder', 'lp_spring'],
+    sounds: ['lp_jump', 'lp_land', 'lp_die', 'lp_pop', 'lp_crumble', 'lp_slam', 'lp_door', 'lp_saw', 'lp_exit', 'lp_flip', 'lp_thunder', 'lp_spring', 'lp_clank', 'lp_bounce', 'lp_grind'],
     subtitle: () => 'A little seed-spirit, a night cut into moonstone, and a path that lies. The floor, the thorns, even the door.',
     hint: 'Reach the lit door. Trust nothing.',
     howto: ['◀ ▶ run  ·  jump', 'Every room lies. Deaths are free, the clock is not.'],
@@ -546,9 +847,10 @@
   const GROUP = ch => ch >= 'a' && ch <= 'z' && ch !== 'v';            // 'v' is a thorn, not a group
   const SOLIDISH = ch => ch === '#' || ch === '=' || ch === '%' || ch === '~' || GROUP(ch);
   function grid(rows) {
+    ROWS = Math.max(VIEW_R, rows.length); COLS = Math.max(VIEW_C, ...rows.map(r => r.length)); RW = COLS * T; RH = ROWS * T;
     const g = [];
     for (let y = 0; y < ROWS; y++) {
-      const s = rows[y] || E;
+      const s = rows[y] || '.'.repeat(COLS);
       if (s.length !== COLS) console.warn('[liar] row', y, 'is', s.length, 'wide:', s);
       g.push(s.padEnd(COLS, '.').slice(0, COLS).split(''));
     }
@@ -615,7 +917,7 @@
     let R = null, P = null, introT = 0, taunt = '', tauntT = 0, fade = 1, fadeDir = -1, nextAfterFade = null, deadT = 0, flashT = 0;
     const bake = { bg: null, room: null, K: 0 };
     const bot = { on: false, i: 0, t: 0, dir: 0, hold: 0, press: false, waitT: 0 };
-    let musicOn = false;
+    let musicOn = false, lastCause = '';
     if (window.DABAudio && !musicOn) { DABAudio.music('music_liar', { restart: true, xf: 0.6 }); musicOn = true; }
 
     // ── build a room from its definition ──────────────────────────────────
@@ -624,7 +926,8 @@
       const r = {
         def, g, t: 0, gdir: 1, mirror: false, wind: 0, windT: 0, dark: false, darkA: 0, storm: 0, flipJumps: false,
         bodies: {}, blist: [], spikes: {}, slist: [], saws: [], doors: [], runes: [], springs: [], signs: [], leaves: [],
-        rules: [], timers: [], echo: null, chaseT: -1, chase: null, start: { x: 1.5 * T, y: 11 * T, flip: false }
+        rules: [], timers: [], echo: null, chaseT: -1, chase: null, start: { x: 1.5 * T, y: 11 * T, flip: false },
+        ladders: new Set(), ladderTops: [], swaps: [], swapOn: true, holes: [], blinks: [], escs: [], parts: [], fragiles: []
       };
       const at = (x, y) => (y < 0 || y >= ROWS || x < 0 || x >= COLS ? '.' : g[y][x]);
       const ground = [], groups = {}, spk = {}, fake = [], ghost = [], crumble = {};
@@ -642,6 +945,8 @@
         }
         else if (ch === '@') r.runes.push({ x: (x + 0.5) * T, y: SOLIDISH(at(x, y + 1)) ? (y + 1) * T : y * T, up: !SOLIDISH(at(x, y + 1)), arm: true });
         else if (ch === '*') r.springs.push({ x: (x + 0.5) * T, y: (y + 1) * T, sq: 0 });
+        else if (ch === 'H') r.ladders.add(x + ',' + y);
+        else if (ch === '[' || ch === ']') r.swaps.push({ x: x * T, y: y * T, set: ch === '[' ? 0 : 1, pend: false });
         else if (ch >= '1' && ch <= '9') r.saws.push(makeSaw((x + 0.5) * T, (y + 0.5) * T, ch));
         else if ('^v<>'.includes(ch)) (spk._ = spk._ || []).push({ x, y, dir: { '^': 'up', 'v': 'down', '<': 'left', '>': 'right' }[ch] });
         else if (ch >= 'A' && ch <= 'Z') {
@@ -649,6 +954,7 @@
           (spk[ch] = spk[ch] || []).push({ x, y, dir });
         }
       }
+      for (const k of r.ladders) { const [x, y] = k.split(',').map(Number); if (!r.ladders.has(x + ',' + (y - 1))) r.ladderTops.push({ x0: x * T, y0: y * T, x1: (x + 1) * T, y1: y * T + 6, b: LADDER_B }); }
       const body = (id, tiles, kind) => {
         const b = mover({ id, kind, tiles, rects: rowRects(tiles), solid: kind !== 'fake', visible: kind !== 'ghost', alive: true, carry: true, seen: 0, sprite: null });
         let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -685,6 +991,63 @@
       r.api = api;
       def.setup && def.setup(api);
       return r;
+    }
+    // ── escalators ────────────────────────────────────────────────────────
+    function makeEsc(r, o) {
+      const dir = Math.sign(o.to[0] - o.from[0]) || 1, n = Math.max(1, Math.abs(o.to[0] - o.from[0]) - 2);
+      const e = { id: r.escs.length, dir, n, x0: (o.from[0] + 0.5) * T, yb: o.from[1] * T, yt: o.to[1] * T, v: (o.speed === undefined ? 1.4 : o.speed) * T,
+        rise: (o.from[1] - o.to[1]) * T / n, steps: [], serial: 0, shakeT: 0, amp: 0, broken: false, railK: 0, spill: null, kinds: 0 };
+      for (let u = -T; u <= (n + 1) * T + 1; u += T) addStep(e, u);
+      return e;
+    }
+    function addStep(e, u) { const st = { id: 'e' + e.id + '_' + (e.serial++), kind: 'step', esc: e, u, x: 0, y: 0, dx: 0, dy: 0, h: Math.max(9, e.rise) }; escPos(e, st); st.px = st.x; st.py = st.y; e.steps.push(st); return st; }
+    function escPos(e, st) { st.x = e.x0 + e.dir * st.u; st.y = e.yb - e.rise * clamp(st.u / T, 0, e.n); }
+    const stepRect = st => ({ x0: st.x - T / 2, y0: st.y, x1: st.x + T / 2, y1: st.y + st.h, b: st });
+    function escApi(r, e) {
+      return {
+        get speed() { return e.v / T; }, get broken() { return e.broken; },
+        stop() { e.v = 0; sfx('lp_slam', { vol: 0.5, rate: 1.4 }); return this; },
+        go(speed) { e.v = speed * T; return this; },
+        reverse(speed) { e.v = -(speed === undefined ? Math.abs(e.v / T) || 1.4 : speed) * T; sfx('lp_grind', { vol: 0.6 }); return this; },
+        shake(dur, amp) { e.shakeT = dur || 0.6; e.amp = amp || 1.6; sfx('lp_grind', { vol: 0.7 }); return this; },
+        // it comes apart: each listed spot [x, row, opts] gets the nearest step, the rest drop away.
+        //   opts: { drop: s } falls s after you land on it, { swing: tiles, period } drifts side to side, { lift: tiles, period } bobs up and down
+        break(spots, o) {
+          o = o || {}; e.broken = true; e.v = 0; e.railK = 0.0001; sfx('lp_clank', { vol: 0.9 }); sfx('lp_crumble', { vol: 0.6, rate: 0.8 }); env.shake(0.3);
+          const free = e.steps.filter(st => st.u > -T * 0.5 && st.u < (e.n + 1.5) * T);
+          for (const st of e.steps) if (!free.includes(st)) st.gone = true;
+          const mine = P && P.ground && free.find(st => st.id === P.on);
+          if (mine) { mine.part = { fx: mine.x, fy: mine.y, tx: mine.x, ty: mine.y, t: 0, dur: 0.01, ph: 0, bob: 0 }; mine.h = 9; }
+          (spots || []).forEach(([x, y, so], i) => {
+            const tx = (x + 0.5) * T, ty = y * T;
+            let best = null, bd = 1e9;
+            for (const st of free) if (!st.part) { const d = Math.hypot(st.x - tx, st.y - ty); if (d < bd) { bd = d; best = st; } }
+            if (!best) return;
+            best.part = Object.assign({ fx: best.x, fy: best.y, tx, ty, t: -(o.delay === undefined ? 0.35 : o.delay) - i * 0.04, dur: o.dur || 0.8, ph: i * 1.7, bob: o.bob === undefined ? 2.5 : o.bob, order: i }, so || {});
+            best.h = 9;
+          });
+          free.forEach((st, i) => { if (!st.part) st.drop = { t: -0.15 - hr(i, e.id, 9) * 0.35, vy: 0 }; });
+          return this;
+        },
+        // spare parts pop out of the top and bounce down the steps: kinds 'w' wheel, 'b' bearing, 'g' gear (cycled)
+        spill(o) { o = o || {}; e.spill = { every: o.every || 1.3, kinds: o.kinds || 'wbg', t: o.first === undefined ? 0 : -o.first, count: o.count || 1e9, n: 0 }; return this; },
+        stopSpill() { e.spill = null; return this; },
+        // a step's top (tiles) by its position from the bottom (0 = the flat bottom step)
+        partAt(k) { const st = e.steps.find(q => q.part && q.part.order === k); return st ? { x: st.x / T, y: st.y / T } : null; },
+        stepTop(k) { const st = e.steps.filter(q => !q.gone).sort((a, b) => a.u - b.u)[k]; return st ? { x: st.x / T, y: st.y / T } : null; }
+      };
+    }
+    // the bounce path of a spilled part: out of the top, down every step (big wheels take two at a time), then along the floor
+    function spillPart(e, kind) {
+      const R0 = { w: 0.32 * T, b: 0.18 * T, g: 0.3 * T }[kind], hopT = { w: 0.31, b: 0.25, g: 0.38 }[kind], H = { w: 0.12 * T, b: 0.2 * T, g: 0.15 * T }[kind];   // (they roll down the step edges, bumping)
+      const steps = e.steps.filter(st => !st.gone && !st.drop).sort((a, b) => b.u - a.u);
+      const pts = [{ x: e.x0 + e.dir * (e.n + 2) * T, y: e.yt }];
+      const skip = 1;
+      steps.forEach((st, i) => { const pp = st.part; if (i % skip === 0 || i === steps.length - 1) pts.push({ x: pp ? pp.tx : st.x, y: pp ? pp.ty : st.y }); });
+      const p = { kind, r: R0, pts, i: 0, k: 0, hopT, H, x: pts[0].x, y: pts[0].y - R0, ang: 0, roll: -e.dir * T / hopT * 1.1 * skip, alive: true, floorY: e.yb };
+      p.hops = pts.map((q, i) => (i ? Math.max(hopT * 0.8, hopT * Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) / (T * skip * 1.25)) : 0));
+      sfx('lp_clank', { vol: 0.45, rate: kind === 'b' ? 1.6 : kind === 'g' ? 1.2 : 0.9 });
+      return p;
     }
     function makeSaw(x, y, id) { return mover({ id, x0: x, y0: y, x, y, r: 0.6 * T, ang: 0, path: null, seg: 0, speed: 0, alive: true, moving: false }); }
 
@@ -755,7 +1118,23 @@
         mirror(on, quiet) { r.mirror = on; if (quiet) return; flashT = 0.35; sfx('lp_flip', { vol: 0.5, rate: on ? 0.8 : 1.2 }); },
         dark(on) { r.dark = on; if (on) { r.storm = 2.0; sfx('lp_thunder', { vol: 0.8 }); } },
         echo(delay) { r.echo = { delay, trail: [], t: 0, x: P.x, y: P.y }; },
-        wind(vx) { if (vx !== r.wind) r.windT = 0; r.wind = vx; }
+        wind(vx) { if (vx !== r.wind) r.windT = 0; r.wind = vx; },
+        // a floor trench (x0..x1 tiles, floor top at row y, open in the map) with a w-tile gap that moves:
+        //   mode 'patrol' (back and forth), 'hunt' (toward you), 'land' (toward where you'll land while you're in the air)
+        hole(o) { const h = { x0: o.x0 * T, x1: (o.x1 + 1) * T, y: o.y * T, w: (o.w || 2) * T, speed: (o.speed || 3) * T, mode: o.mode || 'patrol', dir: 1, on: o.on !== false };
+          h.hx = (o.at !== undefined ? o.at : o.x0 + 1) * T; r.holes.push(h);
+          return { start() { h.on = true; }, stop() { h.on = false; }, set(mode, speed) { h.mode = mode; if (speed) h.speed = speed * T; }, get x() { return h.hx / T; } }; },
+        blinkOn(id) { const bl = r.blinks.find(q => q.b.id === id); return !!bl && bl.t % (bl.on + bl.off) < bl.on; },
+        blinkAge(id) { const bl = r.blinks.find(q => q.b.id === id); return bl ? bl.t % (bl.on + bl.off) : 0; },
+        holeAt(i) { const h = r.holes[i || 0]; return h ? { x: h.hx / T, dir: h.dir, w: h.w / T, mode: h.mode } : null; },
+        esc(i) { return r.escs[i || 0] ? escApi(r, r.escs[i || 0]) : null; },
+        blink(id, on, off, phase) { const b = r.bodies[id]; if (b) { b.live = true; r.blinks.push({ b, on, off, t: phase || 0 }); } },
+        cutLadder(x, y0, y1) { for (let y = y0; y <= y1; y++) r.ladders.delete(x + ',' + y); r.ladderTops = r.ladderTops.filter(q => q.x0 !== x * T || q.y0 < y0 * T || q.y0 > y1 * T); sfx('lp_crumble', { vol: 0.6, rate: 1.5 }); },
+        // ground that gives way a moment after you stand on it; back (s) = it returns after that long (0 = gone for good)
+        fragile(id, delay, back) { const b = r.bodies[id]; if (!b) return; b.fragile = { delay: delay === undefined ? 0.3 : delay, back: back || 0 }; b.vanT = -1; b.backT = -1; r.fragiles.push(b); },
+        // moving stairs. from = [x, row]: the bottom column (its steps rise out of the floor, level with that row's top);
+        // to = [x, row]: the first tile of the top landing (steps sink into it). Two flat steps at the top, one at the bottom.
+        escalator(o) { const e = makeEsc(r, o); r.escs.push(e); return escApi(r, e); }
       };
     }
     // how far a falling thorn group drops before it shatters on the ground below
@@ -779,7 +1158,7 @@
       bot.i = 0; bot.t = 0; bot.dir = 0; bot.hold = 0; bot.press = false; bot.init = false;
     }
     function loadRoom(i, keepDeaths) {
-      ri = i; R = build(rooms[ri]); spawn();
+      ri = i; R = build(rooms[ri]); spawn(); camera(0, true);
       if (!keepDeaths) { roomDeaths = 0; introT = 0; }
       bakeRoom();
     }
@@ -792,11 +1171,34 @@
     function solids(except) {
       const out = [];
       for (const b of R.blist) {
-        if (!b.alive || !b.solid || b === except) continue;
+        if (!b.alive || !b.solid || b === except || b.hidden) continue;
         if (b.falling > 0.15) continue;                       // a dropping floor stops holding anything up
         for (const q of b.rects) out.push({ x0: q.x + b.ox, y0: q.y + b.oy, x1: q.x + q.w + b.ox, y1: q.y + q.h + b.oy, b });
       }
+      for (const h of R.holes) for (const q of holeRects(h)) out.push(q);
+      for (const w of R.swaps) if (swapSolid(w)) out.push({ x0: w.x, y0: w.y, x1: w.x + T, y1: w.y + T, b: SWAP_B });
+      for (const e of R.escs) for (const st of e.steps) if (!st.gone && !(st.drop && st.drop.t > 0.12)) out.push(stepRect(st));
+      if (R.ladderTops.length && P && R.gdir > 0 && !P.climb) for (const q of R.ladderTops) if (P.y <= q.y0 + 0.5) out.push(q);
       return out;
+    }
+    const HOLE_B = { id: 'hole', kind: 'hole' }, SWAP_B = { id: 'swap', kind: 'swap' }, LADDER_B = { id: 'ladder', kind: 'ladder' };
+    function holeRects(h) {
+      const a = clamp(h.hx - h.w / 2, h.x0, h.x1), b = clamp(h.hx + h.w / 2, h.x0, h.x1), out = [];
+      if (a > h.x0) out.push({ x0: h.x0, y0: h.y, x1: a, y1: RH + 60, b: HOLE_B });
+      if (b < h.x1) out.push({ x0: b, y0: h.y, x1: h.x1, y1: RH + 60, b: HOLE_B });
+      return out;
+    }
+    const swapSolid = w => !w.pend && (w.set === 0) === R.swapOn;
+    function onLadder() {
+      if (!R.ladders.size || R.gdir < 0) return false;
+      const tx = Math.floor(P.x / T);
+      return R.ladders.has(tx + ',' + Math.floor((P.y - 1) / T)) || R.ladders.has(tx + ',' + Math.floor((P.y - PH * 0.5) / T));
+    }
+    // swap blocks: every jump trades the two sets; a block never appears inside you (it waits till you leave)
+    function swapBlocks() {
+      R.swapOn = !R.swapOn; sfx('lp_flip', { vol: 0.35, rate: 1.6 });
+      const pb = box();
+      for (const w of R.swaps) w.pend = (w.set === 0) === R.swapOn && hit(pb, { x0: w.x, y0: w.y, x1: w.x + T, y1: w.y + T });
     }
     function flipGravity(r) {
       r.gdir = -r.gdir; P.ground = false; P.vy = 0; P.coy = 0;
@@ -806,7 +1208,7 @@
     }
     function die(cause) {
       if (P.dead || done) return;
-      P.dead = true; deadT = 0; deaths++; roomDeaths++;
+      P.dead = true; deadT = 0; deaths++; roomDeaths++; lastCause = cause;
       sfx('lp_die', { vol: 0.9 });
       env.shake(0.35);
       const cy = P.y - R.gdir * PH * 0.6;
@@ -842,6 +1244,7 @@
           }
           if (k === 'wait') bot.dir = 0;
           if ((k === 'sawjump' || k === 'shadowjump') && !bot.dir) bot.dir = 1;
+          if (k === 'dodge') bot.dir = bot.dir0 = Math.sign(a - px) || 1;
         }
         bot.t += dt;
         const reached = () => bot.past || (bot.dir > 0 ? px >= a : px <= a);
@@ -851,6 +1254,21 @@
         else if (k === 'jump') { bot.press = true; bot.hold = a || 0.32; next = true; }
         else if (k === 'dir') { bot.dir = a; next = true; }
         else if (k === 'hold') { bot.hold = a; next = true; }
+        else if (k === 'holejump') {
+          // jump the moving hole a when its near edge comes close (keep running the way you go)
+          const h = R.holes[a], d = bot.dir || 1;
+          if (!bot.dir) bot.dir = 1;
+          const near = d > 0 ? (h.hx - h.w / 2) - (P.x + PW / 2) : (P.x - PW / 2) - (h.hx + h.w / 2);
+          if (near < -h.w) next = true;
+          else if (P.ground && near < (b === undefined ? 5 : b) && near > -3) { bot.press = true; bot.hold = 0.32; next = true; }
+        }
+        else if (k === 'swapset') {
+          // make sure the '[' set is solid (a = true) or not before hopping onto swap blocks: hop in place if it isn't
+          bot.dir = 0;
+          if (R.swapOn === a && P.ground && bot.t > 0.12) next = true;
+          else if (R.swapOn !== a && P.ground && !bot.hopped) { bot.press = true; bot.hold = 0.32; bot.hopped = true; }
+          else if (P.ground && bot.hopped && bot.t > 0.3) bot.hopped = false;
+        }
         else if (k === 'sawjump' || k === 'shadowjump') {
           // jump the saw blade (or the shadow) about to meet you, keep running the way you go
           const o = k === 'sawjump' ? R.saws[a] : (R.echo && R.echo.on ? { x: R.echo.x, vx: R.echo.vx || 0 } : null), d = bot.dir || 1;
@@ -862,6 +1280,39 @@
             if (ahead < -0.6) next = true;
             else if (!bot.pause && P.ground && rel > 0.5 && (ahead - (b || 1.25)) / rel < 0.2) { bot.press = true; bot.hold = 0.32; next = true; }
             if (next) bot.pause = false;
+          }
+        }
+        else if (k === 'partjump' || k === 'hopto') {
+          // jump onto a spare part (a = its number, b = which escalator) or a target fn(R, P) -> {x}, steering in the air to land on its middle
+          const tg = k === 'partjump' ? (R.api.esc(b || 0) || { partAt: () => null }).partAt(a) : a(R.api, pview());
+          if (!tg) next = true;
+          else {
+            const dx = tg.x - px;
+            if (!bot.air) { if (P.ground && bot.t > 0.05) { bot.dir = Math.sign(dx) || 1; bot.press = true; bot.hold = 0.32; bot.air = true; } }
+            else if (!P.ground) bot.dir = Math.abs(dx) > 0.12 ? Math.sign(dx) : 0;
+            else if (bot.t > 0.12) { bot.dir = 0; next = true; }
+          }
+        }
+        else if (k === 'climb') {
+          // hold jump on a ladder until the feet are up at row a (b = drift that way while climbing)
+          bot.dir = b || 0; bot.hold = 0.05;
+          if (P.y / T <= a + 0.02 && !onLadder()) { bot.hold = 0; next = true; }
+        }
+        else if (k === 'dodge') {
+          // climb toward x = a like a careful player: when a spilled part comes down at you, stop, let it come,
+          // hop over it in place, then carry on (hopping up any step in the way)
+          if ((bot.dir0 > 0 ? px >= a : px <= a) && P.ground) { bot.dir = 0; next = true; }
+          else if (P.ground) {
+            let tc = 9, near = 1e9;
+            for (const pt of R.parts) {
+              const dx = pt.x - P.x, gap = Math.abs(dx) - (pt.r * 0.85 + PW / 2), sp = -Math.sign(dx) * (pt.vx || 0);
+              if (gap > 4 && (Math.sign(dx) !== bot.dir0 || sp <= 5)) continue;            // behind us, or not coming
+              if (pt.y < P.y - PH - 3 * T) continue;                                      // far above
+              near = Math.min(near, gap); tc = Math.min(tc, gap <= 4 ? 0 : gap / sp);
+            }
+            if (tc < (b === undefined ? 0.13 : b)) { bot.dir = 0; bot.press = true; bot.hold = 0.32; }
+            else if (near < (bot.wz || 70)) bot.dir = 0;
+            else { bot.dir = bot.dir0; if (Math.abs(P.vx) < 5 && bot.t > 0.05) { bot.press = true; bot.hold = 0.32; } }
           }
         }
         else if (k === 'wait') { if (bot.t >= a) next = true; }
@@ -877,6 +1328,7 @@
 
     function update(dt, I) {
       if (R && R.rebake) { R.rebake = false; bakeRoom(); }
+      if (P) camera(dt);
       t += dt;
       if (done) return;
       introT += dt; tauntT = Math.max(0, tauntT - dt); flashT = Math.max(0, flashT - dt);
@@ -930,6 +1382,18 @@
           break;
         }
       }
+      // escalator steps and spare parts carry you; a step that moves into you lifts you or shoves you aside
+      for (const e of R.escs) for (const st of e.steps) {
+        if (st.gone || (!st.dx && !st.dy)) continue;
+        if (P.ground && P.on === st.id) { P.x += st.dx; P.y += st.dy; continue; }
+        if (st.drop && st.drop.t > 0.12) continue;
+        const pb = box(), rr = stepRect(st);
+        if (!deep(pb, rr, 0.5)) continue;
+        if (R.gdir > 0 && pb.y1 - rr.y0 <= 10) { P.y = rr.y0; P.ground = true; P.on = st.id; if (P.vy > 0) P.vy = 0; }
+        else P.x += (pb.x0 + pb.x1) / 2 > st.x ? rr.x1 - pb.x0 + 0.01 : rr.x0 - pb.x1 - 0.01;
+        const nb = box();
+        if (solids().some(q => q.b !== st && deep(nb, q, 0.5))) { die('crush'); hudSet(); return; }
+      }
       // run
       const onGround = P.ground;
       const target = dir * RUN + (onGround ? (dir ? R.wind * 0.5 : 0) : R.wind);
@@ -939,16 +1403,19 @@
       // jump (buffered, with coyote time); in a flip-jump room the button turns gravity over instead
       if (jp) P.buf = BUFFER; else P.buf = Math.max(0, P.buf - dt);
       P.coy = onGround ? COYOTE : Math.max(0, P.coy - dt);
-      if (P.buf > 0 && (onGround || P.coy > 0)) {
+      const ladder = onLadder();
+      if (P.buf > 0 && (onGround || P.coy > 0) && !ladder) {
         P.buf = 0; P.coy = 0;
         if (R.flipJumps) { flipGravity(R); }
         else { P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; P.launched = false; sfx('lp_jump', { vol: 0.45 }); }
+        if (R.swaps.length) swapBlocks();
       }
       const rising = P.vy * R.gdir < 0;
       if (rising && !jh && !P.cut && !P.launched) { P.vy *= CUT; P.cut = true; }
       const gg = rising && (jh || P.launched) ? G_UP : G_DN;
       P.vy += gg * R.gdir * dt;
       if (Math.abs(P.vy) > MAXF) P.vy = Math.sign(P.vy) * MAXF;
+      if (ladder) { P.vy = jh ? -112 : Math.min(P.vy, 64); P.vx *= 0.7; P.climb = jh; } else P.climb = false;
       // move with collisions (substeps keep fast falls honest)
       const wasGround = P.ground;
       const n = Math.max(1, Math.ceil(Math.max(Math.abs(P.vx), Math.abs(P.vy)) * dt / 7));
@@ -993,6 +1460,7 @@
       // the run cycle + idle blink
       P.run += Math.abs(P.vx) * dt / 15; P.land = Math.max(0, P.land - dt * 7); P.born += dt;
       P.blink -= dt; if (P.blink < -0.12) P.blink = 2 + Math.random() * 3;
+      if (P.ground) for (const b of R.fragiles) if (P.on === b.id && b.vanT < 0 && !b.hidden) b.vanT = b.fragile.delay;
       hazards();
       if (!P.dead) doorsCheck();
       if (!P.dead) rules();
@@ -1050,6 +1518,28 @@
         if (s.y > RH + 60) s.alive = false;
       }
       for (const sp of R.springs) sp.sq = Math.max(0, sp.sq - dt * 5);
+      for (const h of R.holes) {
+        if (!h.on) continue;
+        let target = null;
+        if (h.mode === 'patrol') { h.hx += h.dir * h.speed * dt; if (h.hx > h.x1 - h.w / 2) { h.hx = h.x1 - h.w / 2; h.dir = -1; } if (h.hx < h.x0 + h.w / 2) { h.hx = h.x0 + h.w / 2; h.dir = 1; } }
+        else if (h.mode === 'hunt' && !P.dead) {
+          // it slides toward you while you're on the ground; while you're in the air it keeps going the way it was (so a jump over it works)
+          if (P.ground) target = P.x; else h.hx = clamp(h.hx + h.dir * h.speed * dt, h.x0 + h.w / 2, h.x1 - h.w / 2);
+        }
+        else if (h.mode === 'land' && !P.dead && !P.ground && P.x > h.x0 - 3 * T && P.x < h.x1 + 3 * T) {
+          const vy = P.vy, dy = Math.max(0, h.y - P.y), tl = (-vy + Math.sqrt(vy * vy + 2 * G_DN * dy)) / G_DN;   // time until the feet reach the floor
+          target = P.x + P.vx * Math.min(0.7, tl);
+        }
+        if (target !== null) { const d = clamp(target, h.x0 + h.w / 2, h.x1 - h.w / 2) - h.hx; if (d) h.dir = Math.sign(d); h.hx += Math.sign(d) * Math.min(Math.abs(d), h.speed * dt); }
+      }
+      for (const e of R.escs) stepEsc(e, dt);
+      for (let i = R.parts.length - 1; i >= 0; i--) { const pt = R.parts[i]; stepPart(pt, dt); if (!pt.alive) R.parts.splice(i, 1); }
+      for (const b of R.fragiles) {
+        if (b.vanT >= 0) { b.vanT -= dt; b.shk = 1.4; if (!b.live) { b.live = true; R.rebake = true; } if (b.vanT < 0) { b.hidden = true; b.backT = b.fragile.back || -1; sfx('lp_crumble', { vol: 0.55, rate: 1.5 }); for (const q of b.rects) for (let k = 0; k < 8; k++) fx.spawn({ x: q.x + Math.random() * q.w, y: q.y + Math.random() * q.h, vx: (Math.random() - 0.5) * 80, vy: Math.random() * 60, g: 900, kind: 'debris', rgb: MASS_RGB, size: 4, life: 0.8, spin: 0 }); } }
+        else if (b.hidden && b.backT > 0) { b.backT -= dt; if (b.backT <= 0) { const pb = P && box(); if (pb && b.rects.some(q => hit(pb, { x0: q.x, y0: q.y, x1: q.x + q.w, y1: q.y + q.h }))) b.backT = 0.05; else { b.hidden = false; sfx('lp_pop', { vol: 0.4 }); } } }
+      }
+      for (const bl of R.blinks) { bl.t += dt; const on = bl.t % (bl.on + bl.off) < bl.on; bl.b.solid = on; bl.b.ghostly = !on; }
+      if (R.swaps.length && P) { const pb = box(); for (const w of R.swaps) if (w.pend && !hit(pb, { x0: w.x, y0: w.y, x1: w.x + T, y1: w.y + T })) w.pend = false; }
       if (R.chase) {
         const c = R.chase; c.t += dt; const front = c.x0 + c.speed * c.t;
         for (const b of R.blist) if (b.kind === 'crumble' && b.alive && !b.started && (b.col + 0.5) * T <= front + T * 0.6) {
@@ -1059,7 +1549,71 @@
       if (R.dark) { R.darkA = Math.min(1, R.darkA + dt * 3); R.storm -= dt; if (R.storm <= 0) { R.storm = 2.0 + Math.random() * 0.6; R.light = 0.16; sfx('lp_thunder', { vol: 0.5 }); } }
       else R.darkA = Math.max(0, R.darkA - dt * 3);
       R.light = Math.max(0, (R.light || 0) - dt);
-      if (R.wind) { R.windT += dt; if (Math.random() < dt * 30) fx.spawn({ x: R.wind > 0 ? -10 : RW + 10, y: Math.random() * RH * 0.8, vx: R.wind * 4 + (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 30, kind: 'debris', rgb: MASS_RGB, size: 2.5, life: 2.2, spin: 0, drag: 0 }); }
+      if (R.wind) { R.windT += dt; if (Math.random() < dt * 30) fx.spawn({ x: R.wind > 0 ? cam.x - 10 : cam.x + fit().vw + 10, y: cam.y + Math.random() * fit().vh * 0.8, vx: R.wind * 4 + (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 30, kind: 'debris', rgb: MASS_RGB, size: 2.5, life: 2.2, spin: 0, drag: 0 }); }
+    }
+    function stepEsc(e, dt) {
+      if (e.shakeT > 0) e.shakeT -= dt;
+      if (e.warn > 0) e.warn -= dt;
+      if (e.railK > 0) e.railK = Math.min(1, e.railK + dt * 1.6);
+      for (const st of e.steps) {
+        st.px = st.x; st.py = st.y;
+        if (st.part) {
+          const pp = st.part; pp.t += dt;
+          if (pp.t < 0) { st.dx = st.dy = 0; continue; }
+          const k = Math.min(1, pp.t / pp.dur), kk = EASE.io(k), tt = Math.max(0, pp.t - pp.dur);
+          let x = pp.fx + (pp.tx - pp.fx) * kk, y = pp.fy + (pp.ty - pp.fy) * kk;
+          if (k >= 1) {
+            y += Math.sin(tt * 2.4 + pp.ph) * pp.bob * Math.min(1, tt * 2) - (pp.lift ? Math.sin(tt * TAU / (pp.period || 2.4)) * pp.lift * T : 0);
+            if (pp.swing) x += Math.sin(tt * TAU / (pp.period || 2.4)) * pp.swing * T;
+            if (pp.drop !== undefined && pp.dropT === undefined && P && P.ground && P.on === st.id) { pp.dropT = pp.drop; sfx('lp_clank', { vol: 0.4, rate: 1.4 }); }
+            if (pp.dropT !== undefined) { pp.dropT -= dt; if (pp.dropT < 0) { st.drop = { t: 0.13, vy: 0 }; st.part = null; } }
+          }
+          if (st.part) { st.x = x; st.y = y; }
+        } else if (st.drop) {
+          st.drop.t += dt;
+          if (st.drop.t > 0) { st.drop.vy += 1800 * dt; st.y += st.drop.vy * dt; st.rot = (st.rot || 0) + dt * (st.id.length % 2 ? 2 : -2); }
+          if (st.y > RH + 80) st.gone = true;
+        } else if (!e.broken && e.v) { st.u += e.v * dt; escPos(e, st); }
+        st.dx = st.x - st.px; st.dy = st.y - st.py;
+      }
+      if (!e.broken && e.v) {
+        e.steps = e.steps.filter(st => (e.v > 0 ? st.u < (e.n + 2) * T - 0.01 : st.u > -T + 0.01));
+        const us = e.steps.map(st => st.u);
+        if (e.v > 0) { const lo = Math.min(...us); if (lo > 0) addStep(e, lo - T); }
+        else { const hi = Math.max(...us); if (hi < (e.n + 1) * T) addStep(e, hi + T); }
+      }
+      e.steps = e.steps.filter(st => !st.gone);
+      if (e.spill && !P.dead) {
+        const sp = e.spill; sp.t += dt;
+        if (sp.t >= sp.every - 0.5 && !sp.warned && sp.n < sp.count) { sp.warned = true; e.warn = 0.5; sfx('lp_grind', { vol: 0.3, rate: 1.7 }); }
+        if (sp.t >= sp.every && sp.n < sp.count) { sp.t -= sp.every; sp.warned = false; R.parts.push(spillPart(e, sp.kinds[sp.n % sp.kinds.length])); sp.n++; }
+      }
+    }
+    function stepPart(pt, dt) {
+      const ox = pt.x, oy = pt.y;
+      stepPart1(pt, dt);
+      pt.vx = dt > 0 ? (pt.x - ox) / dt : 0; pt.vy = dt > 0 ? (pt.y - oy) / dt : 0;
+    }
+    function stepPart1(pt, dt) {
+      pt.ang += dt * pt.roll / pt.r;
+      if (pt.i < pt.pts.length - 1) {
+        const A = pt.pts[pt.i], B = pt.pts[pt.i + 1], hop = pt.hops[pt.i + 1];
+        pt.k += dt / hop;
+        if (pt.k >= 1) { pt.k = 0; pt.i++; sfx('lp_bounce', { vol: 0.28, rate: pt.kind === 'b' ? 1.7 : pt.kind === 'g' ? 1.25 : 0.9 }); }
+        const k = Math.min(1, pt.k), H = pt.i === 0 ? T * 0.9 : Math.max(pt.H, (A.y - B.y) + pt.H * 0.6);   // (the hop out of the hatch goes higher)
+        const Ai = pt.pts[pt.i], Bi = pt.pts[Math.min(pt.pts.length - 1, pt.i + 1)];
+        if (pt.i >= pt.pts.length - 1) { pt.x = Ai.x; pt.y = Ai.y - pt.r; }
+        else { pt.x = Ai.x + (Bi.x - Ai.x) * k; pt.y = Ai.y + (Bi.y - Ai.y) * k - H * 4 * k * (1 - k) - pt.r; }
+      } else {
+        // rolling along the floor at the bottom until it hits a wall or leaves the room
+        pt.x += pt.roll * dt; pt.y = pt.floorY - pt.r;
+        const tx = Math.floor((pt.x + Math.sign(pt.roll) * pt.r) / T), ty = Math.floor(pt.y / T);
+        const ch = ty >= 0 && ty < ROWS && tx >= 0 && tx < COLS ? R.g[ty][tx] : '.';
+        if (ch === '#' || ch === '=') { pt.alive = false; sfx('lp_clank', { vol: 0.3, rate: 1.3 }); for (let k = 0; k < 6; k++) fx.spawn({ x: pt.x, y: pt.y, vx: (Math.random() - 0.5) * 140, vy: -80 - Math.random() * 80, g: 900, kind: 'debris', rgb: MASS_RGB, size: 3, life: 0.6, spin: 0 }); }
+        const fl = Math.floor((pt.floorY + 2) / T), cx = Math.floor(pt.x / T);
+        if (pt.fallV || !(fl < ROWS && cx >= 0 && cx < COLS && SOLIDISH(R.g[fl][cx]))) { pt.fallV = (pt.fallV || 0) + 1800 * dt; pt.floorY += pt.fallV * dt; }   // (off a ledge it drops away)
+        if (pt.x < -3 * T || pt.x > RW + 3 * T || pt.y > RH + 60) pt.alive = false;
+      }
     }
     function hazards() {
       const b = box(), sb = { x0: b.x0 + 1.5, y0: b.y0 + 1.5, x1: b.x1 - 1.5, y1: b.y1 - 1 };
@@ -1071,6 +1625,10 @@
         if (!s.alive) continue;
         const cx = clamp(s.x, sb.x0, sb.x1), cy = clamp(s.y, sb.y0, sb.y1);
         if (Math.hypot(cx - s.x, cy - s.y) < s.r * 0.8) { die('saw'); return; }
+      }
+      for (const s of R.parts) {
+        const cx = clamp(s.x, sb.x0, sb.x1), cy = clamp(s.y, sb.y0, sb.y1);
+        if (Math.hypot(cx - s.x, cy - s.y) < s.r * 0.85) { die('part'); return; }
       }
       if ((R.gdir > 0 && P.y - PH > RH + 30) || (R.gdir < 0 && P.y + PH < -30)) { die('fall'); return; }
     }
@@ -1120,7 +1678,7 @@
     const MASS = STONE, MASS_RGB = rgbOf(STONE), GLOW_RGB = rgbOf(GLOW);
     const BODY = '#f6f1e4', EYE = '#1d2333', SPROUT = '#8fd67a';
     function bakeRoom() {
-      const S = fit().s, K = Math.min(2, Math.max(1, (env.dpr || 1) * S));
+      const S = fit().s, K = Math.min(2, 3800 / RW, 3800 / RH, Math.max(1, (env.dpr || 1) * S));
       bake.K = K;
       const cv = document.createElement('canvas'); cv.width = Math.round(RW * K); cv.height = Math.round(RH * K);
       const g = cv.getContext('2d'); g.scale(K, K);
@@ -1163,19 +1721,29 @@
     }
 
     // ── drawing ───────────────────────────────────────────────────────────
+    // the window onto the room: one screen is 32 x 15 tiles; a bigger room scrolls under a camera
+    const cam = { x: 0, y: 0 };
     function fit() {
-      const W = env.W, v = env.view, s = Math.min(W / RW, v.h / RH);
-      return { s, x: (W - RW * s) / 2, y: v.top + (v.h - RH * s) / 2 };
+      const W = env.W, v = env.view, s = Math.min(W / (VIEW_C * T), v.h / (VIEW_R * T));
+      const vw = Math.min(RW, W / s), vh = Math.min(RH, v.h / s);
+      return { s, vw, vh, x: (W - vw * s) / 2, y: v.top + (v.h - vh * s) / 2 };
+    }
+    function camera(dt, snap) {
+      const F = fit(), tx = clamp(P.x - F.vw * 0.42, 0, RW - F.vw), ty = clamp(P.y - F.vh * 0.6, 0, RH - F.vh);
+      const k = snap ? 1 : Math.min(1, dt * 7);
+      cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
     }
     function render(c) {
       const F = fit(), W = env.W, v = env.view;
       c.fillStyle = STONE; c.fillRect(0, v.top, W, v.h);
       c.save(); c.translate(F.x, F.y); c.scale(F.s, F.s);
-      c.beginPath(); c.rect(0, 0, RW, RH); c.clip();
+      c.beginPath(); c.rect(0, 0, F.vw, F.vh); c.clip();
+      c.translate(-Math.round(cam.x * F.s) / F.s, -Math.round(cam.y * F.s) / F.s);
       if (bake.room) c.drawImage(bake.room, 0, 0, RW, RH);
       c.fillStyle = STONE;
       for (const b of R.blist) {
-        if (b.static || !b.alive || b.kind === 'ghost' || !b.live) continue;
+        if (b.static || !b.alive || b.kind === 'ghost' || !b.live || b.hidden) continue;
+        if (b.ghostly) { c.strokeStyle = STONE; c.globalAlpha = 0.35; c.lineWidth = 1.5; c.setLineDash([3, 3]); for (const q of b.rects) c.strokeRect(q.x + b.ox + 1, q.y + b.oy + 1, q.w - 2, q.h - 2); c.setLineDash([]); c.globalAlpha = 1; c.fillStyle = STONE; continue; }
         const jx = b.shk ? (Math.random() - 0.5) * b.shk * 2 : 0;
         // (bleeds a hair into neighbouring fixed stone so no seam shows; never into the night)
         for (const q of b.rects) { const e = q.bleed || [0, 0, 0, 0]; c.fillRect(q.x + b.ox + jx - e[0], q.y + b.oy - e[1], q.w + e[0] + e[2], q.h + e[1] + e[3]); }
@@ -1183,6 +1751,14 @@
       const gb = R.bodies['+'];
       if (gb && gb.seen > 0) { c.globalAlpha = gb.seen * 0.35; for (const q of gb.rects) c.fillRect(q.x, q.y, q.w, q.h); c.globalAlpha = 1; }
       if (R.leavesOn && gb) { c.fillStyle = SPROUT; for (const [x, y] of gb.tiles) if (!(y > 0 && R.g[y - 1][x] === '+') && hr(x, y, 7) > 0.3) c.fillRect(x * T + T * (0.2 + 0.5 * hr(x, y, 8)), y * T - 3 + Math.sin(t * 2 + x) * 0.6, 5, 2); }
+      for (const k of R.ladders) { const [x, y] = k.split(',').map(Number); c.fillStyle = STONE; c.fillRect(x * T + 4, y * T, 2.5, T); c.fillRect(x * T + T - 6.5, y * T, 2.5, T); for (let i = 0; i < 3; i++) c.fillRect(x * T + 4, y * T + 4 + i * 8, T - 8, 2); }
+      for (const h of R.holes) for (const q of holeRects(h)) { c.fillStyle = STONE; c.fillRect(q.x0 - (q.x0 === h.x0 ? 0.8 : 0), q.y0, q.x1 - q.x0 + (q.x1 === h.x1 ? 0.8 : 0) + (q.x0 === h.x0 ? 0.8 : 0), RH - q.y0 + 1); }
+      for (const w of R.swaps) {
+        if (swapSolid(w)) { c.fillStyle = STONE; c.fillRect(w.x, w.y, T, T); c.fillStyle = NIGHT; c.globalAlpha = 0.18; c.fillRect(w.x + 4, w.y + 4, T - 8, T - 8); c.globalAlpha = 1; }
+        else { c.strokeStyle = STONE; c.globalAlpha = 0.4; c.lineWidth = 1.5; c.setLineDash([3, 3]); c.strokeRect(w.x + 1.5, w.y + 1.5, T - 3, T - 3); c.setLineDash([]); c.globalAlpha = 1; }
+      }
+      for (const e of R.escs) drawEsc(c, e);
+      for (const pt of R.parts) drawPart(c, pt);
       for (const sp of R.springs) drawSpring(c, sp);
       for (const ru of R.runes) drawRune(c, ru);
       for (const s of R.slist) if (s.alive && s.ext > 0.01) drawThorns(c, s);
@@ -1199,6 +1775,7 @@
         gr.addColorStop(0, 'rgba(4,4,8,0)'); gr.addColorStop(1, `rgba(4,4,8,${(0.97 * a).toFixed(3)})`);
         c.fillStyle = P.dead ? `rgba(4,4,8,${(0.97 * a).toFixed(3)})` : gr; c.fillRect(0, 0, RW, RH);
         for (const d of R.doors) if (d.alive && !d.fake) { c.globalAlpha = a; drawDoor(c, d); c.globalAlpha = 1; }
+        for (const s of R.parts) { c.fillStyle = `rgba(${GLOW_RGB},${(0.7 * a).toFixed(3)})`; c.beginPath(); c.arc(s.x, s.y, 2, 0, TAU); c.fill(); }
         for (const s of R.saws) if (s.alive) { c.strokeStyle = `rgba(${GLOW_RGB},${(0.6 * a).toFixed(3)})`; c.lineWidth = 1.5; c.beginPath(); c.arc(s.x, s.y, s.r, s.ang, s.ang + 1.3); c.stroke(); c.beginPath(); c.arc(s.x, s.y, s.r, s.ang + Math.PI, s.ang + Math.PI + 1.3); c.stroke(); }
       }
       if (flashT > 0) { c.fillStyle = `rgba(255,255,255,${(flashT * 0.5).toFixed(3)})`; c.fillRect(0, 0, RW, RH); }
@@ -1231,6 +1808,60 @@
       for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n, rr = i % 2 ? s.r * 0.62 : s.r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
       c.closePath(); c.fill();
       c.fillStyle = NIGHT; c.beginPath(); c.arc(0, 0, s.r * 0.25, 0, TAU); c.fill();
+      c.restore();
+    }
+    // an escalator: a slanted truss under ribbed steps and a handrail above them (it all comes apart when it breaks)
+    function drawEsc(c, e) {
+      const j = () => (e.shakeT > 0 ? (Math.random() - 0.5) * e.amp * 2 : 0);
+      const bx = e.x0 - e.dir * T * 0.5, tx = e.x0 + e.dir * (e.n + 1.5) * T, dk = e.railK, fall = dk * dk * 160, al = 1 - dk;
+      const ax = e.x0 + e.dir * T * 0.5, cx = e.x0 + e.dir * (e.n + 0.5) * T;
+      if (al > 0) {
+        c.save(); c.globalAlpha = al; c.translate(j(), fall + j());
+        // the truss: a band under the steps from the bottom landing to the top one
+        c.fillStyle = STONE; c.globalAlpha = al * 0.55;
+        c.beginPath(); c.moveTo(bx, e.yb + e.rise + 2); c.lineTo(ax, e.yb + e.rise + 2); c.lineTo(cx, e.yt + e.rise + 2); c.lineTo(tx, e.yt + e.rise + 2);
+        c.lineTo(tx, e.yt + e.rise + 9); c.lineTo(cx + e.dir * 3, e.yt + e.rise + 9); c.lineTo(ax + e.dir * 3, e.yb + e.rise + 9); c.lineTo(bx, e.yb + e.rise + 9); c.closePath(); c.fill();
+        // glass + handrail
+        const hy = T * 1.15;
+        c.globalAlpha = al * 0.1; c.beginPath(); c.moveTo(bx, e.yb); c.lineTo(ax, e.yb); c.lineTo(cx, e.yt); c.lineTo(tx, e.yt); c.lineTo(tx, e.yt - hy); c.lineTo(cx, e.yt - hy); c.lineTo(ax, e.yb - hy); c.lineTo(bx, e.yb - hy); c.closePath(); c.fill();
+        c.globalAlpha = al; c.strokeStyle = STONE; c.lineWidth = 3.2; c.lineCap = 'round'; c.lineJoin = 'round';
+        c.beginPath(); c.moveTo(bx, e.yb - hy); c.lineTo(ax, e.yb - hy); c.lineTo(cx, e.yt - hy); c.lineTo(tx, e.yt - hy); c.stroke();
+        c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx, e.yb - hy); c.lineTo(bx, e.yb); c.moveTo(tx, e.yt - hy); c.lineTo(tx, e.yt); c.stroke();
+        c.restore();
+      }
+      if (e.warn > 0 && Math.floor(e.warn * 12) % 2 === 0) {            // the hatch the parts come out of
+        const hx = e.x0 + e.dir * (e.n + 2) * T;
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.8; c.drawImage(env.glowSprite(GLOW_RGB), hx - 22, e.yt - 22, 44, 44); c.restore();
+        c.fillStyle = GLOW; c.fillRect(hx - 8, e.yt - 2, 16, 3);
+      }
+      for (const st of e.steps) {
+        if (st.gone) continue;
+        const jj = st.part && st.part.dropT !== undefined ? (Math.random() - 0.5) * 2.6 : 0, x = st.x + j() + jj, y = st.y + j();
+        c.save(); c.translate(x, y + st.h / 2); if (st.rot) c.rotate(st.rot);
+        c.fillStyle = STONE; c.fillRect(-T / 2, -st.h / 2, T, st.h);
+        c.fillStyle = NIGHT; c.globalAlpha = 0.32;
+        if (st.part || st.drop) { c.beginPath(); c.arc(-T / 2 + 5, 0, 1.6, 0, TAU); c.arc(T / 2 - 5, 0, 1.6, 0, TAU); c.fill(); }     // a loose plate: two bolts
+        else if (st.u > 0.02 * T && st.u < (e.n + 1) * T - 0.02 * T) { c.fillRect(-T / 2, -st.h / 2, 1, st.h); for (let i = 1; i < 4; i++) c.fillRect(-T / 2 + i * T / 4, -st.h / 2, 1, 2.5); }   // the step seam + ribs
+        c.restore();
+      }
+    }
+    // spilled parts: a spoked wheel, a ball bearing, a gear
+    function drawPart(c, pt) {
+      c.save(); c.translate(pt.x, pt.y); c.rotate(pt.ang);
+      c.fillStyle = STONE; c.strokeStyle = STONE;
+      if (pt.kind === 'w') {
+        c.lineWidth = 3.4; c.beginPath(); c.arc(0, 0, pt.r - 1.7, 0, TAU); c.stroke();
+        c.lineWidth = 2; c.beginPath(); for (let i = 0; i < 3; i++) { const a = i * TAU / 3; c.moveTo(0, 0); c.lineTo(Math.cos(a) * pt.r, Math.sin(a) * pt.r); } c.stroke();
+        c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill();
+      } else if (pt.kind === 'b') {
+        c.beginPath(); c.arc(0, 0, pt.r, 0, TAU); c.fill();
+        c.fillStyle = NIGHT; c.globalAlpha = 0.35; c.beginPath(); c.arc(pt.r * 0.35, -pt.r * 0.35, pt.r * 0.3, 0, TAU); c.fill();
+      } else {
+        c.beginPath(); const n = 8;
+        for (let i = 0; i < n * 4; i++) { const a = (i / (n * 4)) * TAU, rr = (i % 4 < 2) ? pt.r : pt.r * 0.74; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+        c.closePath(); c.fill();
+        c.fillStyle = NIGHT; c.beginPath(); c.arc(0, 0, pt.r * 0.3, 0, TAU); c.fill();
+      }
       c.restore();
     }
     function drawSpring(c, sp) {
@@ -1296,6 +1927,7 @@
       c.save();
       // the rooms of this round as little moons: full = done, glowing ring = this one
       const n = rooms.length, r = 6, gap = 10, x0 = W / 2 - (n * r * 2 + (n - 1) * gap) / 2 + r;
+      c.fillStyle = STONE; c.beginPath(); c.roundRect(x0 - r - 9, y0 - r - 6, (n - 1) * (r * 2 + gap) + r * 2 + 18, r * 2 + 12, r + 6); c.fill();
       for (let i = 0; i < n; i++) {
         const x = x0 + i * (r * 2 + gap);
         c.beginPath(); c.arc(x, y0, r, 0, TAU);
@@ -1305,7 +1937,7 @@
       c.textBaseline = 'middle'; c.font = 'bold 14px system-ui, sans-serif';
       const tl = Math.ceil(timeLeft), mm = Math.floor(tl / 60), ss = String(tl % 60).padStart(2, '0');
       const dark = R.darkA > 0.5, INKC = dark ? '#e9e6dc' : NIGHT;
-      const tag = (s, x, al, col) => { c.textAlign = al; c.lineWidth = 3; c.strokeStyle = dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)'; c.strokeText(s, x, y0); c.fillStyle = col; c.fillText(s, x, y0); };
+      const tag = (s, x, al, col) => { const w = c.measureText(s).width, lx = al === 'left' ? x : al === 'right' ? x - w : x - w / 2; if (!dark) { c.fillStyle = STONE; c.beginPath(); c.roundRect(lx - 8, y0 - 11, w + 16, 22, 11); c.fill(); } c.textAlign = al; c.lineWidth = 3; c.strokeStyle = dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)'; c.strokeText(s, x, y0); c.fillStyle = col; c.fillText(s, x, y0); };
       tag(`✕ ${deaths}`, 18, 'left', INKC);
       tag(`${mm}:${ss}`, W - 62, 'right', timeLeft < 20 && Math.sin(t * 8) > 0 ? '#c0392b' : INKC);
       if (R.mirror) tag('◀▶ swapped', W / 2, 'center', INKC);
@@ -1318,8 +1950,10 @@
       }
       if (tauntT > 0) {
         c.globalAlpha = Math.min(1, tauntT * 2);
-        c.font = `bold ${land ? 15 : 13}px system-ui, sans-serif`; c.textAlign = 'center'; c.fillStyle = INKC;
-        c.fillText(taunt, W / 2, land ? F.y + RH * F.s - 26 : F.y + RH * F.s + 30);
+        c.font = `bold ${land ? 15 : 13}px system-ui, sans-serif`; c.textAlign = 'center';
+        const ty = land ? F.y + F.vh * F.s - 26 : F.y + F.vh * F.s + 30, tw = c.measureText(taunt).width;
+        if (!dark) { c.fillStyle = STONE; c.beginPath(); c.roundRect(W / 2 - tw / 2 - 12, ty - 13, tw + 24, 26, 13); c.fill(); }
+        c.fillStyle = INKC; c.fillText(taunt, W / 2, ty);
         c.globalAlpha = 1;
       }
       c.restore();
@@ -1330,7 +1964,7 @@
       update, render,
       destroy() { },
       debug: () => ({ level: LV, room: ri + 1, rooms: rooms.length, deaths, roomDeaths, time: +timeLeft.toFixed(1), done,
-        x: +(P.x / T).toFixed(2), y: +(P.y / T).toFixed(2), ground: P.ground, dead: P.dead, flipped: R.gdir < 0, bot: bot.i, entering: P.entering > 0 })
+        x: +(P.x / T).toFixed(2), y: +(P.y / T).toFixed(2), ground: P.ground, dead: P.dead, flipped: R.gdir < 0, bot: bot.i, entering: P.entering > 0, cause: lastCause })
     };
   }
 })();
