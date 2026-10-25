@@ -163,134 +163,228 @@
           { cause: 'saw', bot: [['jumpAt', 9.2], ['land'], ['go', 21.5], ['hopto', () => ({ x: 22.5 })], ['land'], ['wait', 3]] }   // wait on the step
         ] }
     ],
-    // ── Stage 2: it learns
+    // ── Stage 2: it learns (every answer you find opens the next trap)
     [
-      { name: 'Heavy ceiling', t: 55,
+      // crushers you time; the floor right after the first one drops (jump straight out of it), the second slams twice,
+      // a saw bursts out of the far wall, and a third crusher waits over the door
+      { name: 'Heavy ceiling', t: 70,
         map: [G, G, G,
-          ...fill(4, '###########aaaa#####bbbb########'),
+          ...fill(4, '###########aaaa#####bbbb#####eee'),
           E, E, E,
           '.S............................D.',
-          ...fill(4, G)],
+          ...fill(4, '################cc##############')],
         setup(R) {
           R.when(R.at(9.3), () => R.$('a').move(0, 4, 0.11, 'in', 'slam').call(() => R.slamFx('a')).wait(0.45, 'hold').move(0, -4, 0.9, 'io', 'rise').wait(0.5, 'top').loop());
           R.when(R.at(17.6), () => R.$('b').move(0, 4, 0.1, 'in', 'slam').call(() => R.slamFx('b')).wait(0.25, 'hold').move(0, -4, 0.45, 'io', 'rise')
             .move(0, 4, 0.1, 'in', 'slam2').call(() => R.slamFx('b')).wait(0.25, 'hold2').move(0, -4, 0.9, 'io', 'rise2').wait(0.9, 'top').loop());
+          R.when(R.at(15.2), () => R.drop('c', 0.15));
+          const saw = R.saw({ x: 32.6, y: 10.4, hidden: true });
+          R.when(R.at(22.0), () => saw.go([[-3, 10.4]], 6));
+          R.when(R.at(27.8), () => R.$('e').wait(0.15).move(0, 4, 0.1, 'in', 'slam').call(() => R.slamFx('e')).wait(0.5, 'hold').move(0, -4, 0.8, 'io', 'rise'));
         },
-        bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['go', 16.6], ['go', 17.8],
-          ['until', R => R.$('b').phase === 'rise2' && R.$('b').phaseK > 0.22], ['go', 30.5]] },
-      { name: 'The bridge you cannot see', t: 60,
+        bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['jumpAt', 15.5], ['land'], ['go', 18.9],
+          ['until', R => R.$('b').phase === 'rise2' && R.$('b').phaseK > 0.22], ['go', 24.4], ['until', R => R.sawAt(0).x - 24.4 < 1.35], ['jump'], ['land'], ['go', 27.95],
+          ['until', R => R.$('e').phase === 'rise' && R.$('e').phaseK > 0.35], ['go', 30.5]],
+        baits: [
+          { cause: 'crush|fall', bot: [['go', 20]] },                                                                         // walk
+          { cause: 'fall', bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['go', 18]] },   // time it, keep walking
+          { cause: 'crush', bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['jumpAt', 15.5], ['land'], ['go', 24]] },   // the first slam isn't the last
+          { cause: 'saw', bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['jumpAt', 15.5], ['land'], ['go', 18.9],
+            ['until', R => R.$('b').phase === 'rise2' && R.$('b').phaseK > 0.22], ['go', 24.4], ['wait', 3]] },
+          { cause: 'crush', bot: [['go', 9.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.22], ['jumpAt', 15.5], ['land'], ['go', 18.9],
+            ['until', R => R.$('b').phase === 'rise2' && R.$('b').phaseK > 0.22], ['go', 24.4], ['until', R => R.sawAt(0).x - 24.4 < 1.35], ['jump'], ['land'], ['go', 30.5]] }   // run for the door
+        ] },
+      // a bridge you can't see (with a gap in it), the spot where you'd stop to watch the door move crumbles, a pit, and
+      // a saw climbs out of the pit behind you
+      { name: 'The bridge you cannot see', t: 65,
         map: [...fill(10, E),
           '.S...................D..........',
-          '#########++.++#########...######',
-          ...fill(3, '#########.....#########...######')],
-        setup(R) { R.leaves(); R.sign(6, 10, 'TURN BACK'); R.when(R.at(18.0), () => R.$('D').hop(29, 10, 0.7)); },
-        bot: [['jumpAt', 10.6], ['land'], ['run', 18.2], ['jumpAt', 22.8], ['land'], ['run', 29.5], ['wait', 0.6]] },
-      { name: 'Déjà vu', t: 65,
-        map: [...fill(10, E),
-          '.S......................B.FF..D.',
-          ...fill(4, '##################aaaccc#####ddd')],
+          '#########++.++####ff###...######',
+          ...fill(3, '#########.....####..###...######')],
         setup(R) {
-          R.sign(3, 10, 'SAFE  →');
+          R.leaves(); R.sign(6, 10, 'TURN BACK');
+          R.when(R.at(18.0), () => R.$('D').hop(29, 10, 0.7));
+          R.fragile('f', 0.35, 0);
+          const saw = R.saw({ x: 24.5, y: 12.5, hidden: true });
+          R.when(R.at(25.85), () => saw.go([[24.5, 10.4], [34, 10.4]], 7));
+        },
+        bot: [['jumpAt', 10.6], ['land'], ['run', 18.2], ['jumpAt', 22.8], ['land'], ['run', 29.5], ['wait', 0.6]],
+        baits: [
+          { cause: 'fall', bot: [['go', 12]] },                                                                              // walk the bridge
+          { cause: 'fall', bot: [['jumpAt', 10.6], ['land'], ['go', 18.6], ['wait', 1.0]] },                                  // stop to watch the door
+          { cause: 'fall', bot: [['jumpAt', 10.6], ['land'], ['run', 18.2], ['go', 24]] },                                    // walk on
+          { cause: 'saw', bot: [['jumpAt', 10.6], ['land'], ['run', 18.2], ['jumpAt', 22.8], ['land'], ['wait', 2]] }          // catch your breath
+        ] },
+      // the first room again, except it remembers how you beat it; and when the door goes home, the way home bites
+      { name: 'Déjà vu', t: 75,
+        map: [...fill(10, E),
+          '.S.KK...................B.FF..D.',
+          ...fill(4, '########gg########aaaccc#####ddd')],
+        setup(R) {
+          R.sign(6, 10, 'SAFE  →');
           R.when(p => p.air && p.x >= 16.5 && p.x <= 21.2, () => R.drop('c'));
           R.when(R.at(21.2), () => R.$('B').pop().wait(1.0).hide(0.15));
           R.when(p => p.air && p.x >= 22.8 && p.x <= 26.5, () => R.pop('F'));
-          R.when(R.at(27.6), () => { R.drop('d', 0.2); R.$('D').ride('d'); R.after(1.3, () => { R.$('D').appear(1, 10); R.say('It went down with the floor.'); }); });
+          R.when(R.at(27.6), () => { R.drop('d', 0.2); R.$('D').ride('d'); R.flag.back = true; R.after(1.3, () => { R.$('D').appear(1, 10); R.say('It went down with the floor.'); }); });
+          R.when(p => R.flag.back && p.x <= 12.5, () => R.drop('g'));
+          R.when(p => R.flag.back && p.x <= 7.5, () => R.pop('K'));
         },
-        bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 1.5], ['wait', 1]] },
-      { name: 'Look again', t: 60,
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.S........................B..D..',
+        bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 10.6], ['jumpAt', 10.4], ['land'], ['go', 5.8], ['jumpAt', 5.6], ['land'], ['go', 1.5], ['wait', 1]],
+        baits: [
+          { cause: 'fall', bot: [['jumpAt', 17.9], ['land']] },                                                               // jump the old pit
+          { cause: 'spike', bot: [['run', 23]] },                                                                            // run
+          { cause: 'spike', bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['jumpAt', 23.5], ['land']] },                   // jump the thorn
+          { cause: 'fall', bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 30.2]] },                                    // follow the door down
+          { cause: 'fall', bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 1.5]] },        // run home
+          { cause: 'spike', bot: [['run', 20.9], ['go', 22.5], ['wait', 1.3], ['go', 27.7], ['wait', 1.6], ['go', 10.6], ['jumpAt', 10.4], ['land'], ['go', 1.5]] }
+        ] },
+      // blocks that swap when you aim at them, a slow saw behind you the whole way, a thorn, and thorns that crawl at
+      // you by the door
+      { name: 'Look again', t: 65,
+        map: [...fill(10, E),
+          '.S........................B..D.M',
           '#####..]]..[[..]]..[[..#########',
-          '#####..................#########',
-          '#####..................#########',
-          '#####..................#########'],
+          ...fill(3, '#####..................#########')],
         setup(R) {
           R.when(R.at(24.6), () => R.pop('B'));
+          const saw = R.saw({ x: -0.6, y: 10.4, hidden: true });
+          R.when(R.at(6.0), () => saw.go([[34, 10.4]], 3.2));
+          R.when(R.at(26.5), () => { R.show('M'); R.hunt('M', 2.5, 27, 31); });
         },
         bot: [['swapset', true], ['jumpAt', 4.4], ['land'], ['jumpAt', 8.4], ['land'], ['jumpAt', 12.4], ['land'], ['jumpAt', 16.4], ['land'], ['jumpAt', 20.4], ['land'],
-          ['jumpAt', 25.0], ['land'], ['go', 29.5]] },
-      { name: 'Mind the gaps', t: 60,
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.S.....................AA....D..',
-          '######.]][[]][[]][[]][[#########',
-          '######.................#########',
-          '######.................#########',
-          '######.................#########'],
-        setup(R) { R.popOnAim('A', { jumpOnly: true }); },
-        bot: [['jumpAt', 5.0], ['land'], ...[9.5, 11.5, 13.5, 15.5, 17.5, 19.5, 21.5].flatMap(x => [['hopto', () => ({ x })], ['land']]), ['go', 29.5]] }
+          ['jumpAt', 25.0], ['land'], ['go', 29.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 8]] },                                                                               // walk
+          { cause: 'saw', bot: [['swapset', true], ['jumpAt', 4.4], ['land'], ['wait', 6]] },                                 // take it slow
+          { cause: 'spike', bot: [['swapset', true], ['jumpAt', 4.4], ['land'], ['jumpAt', 8.4], ['land'], ['jumpAt', 12.4], ['land'], ['jumpAt', 16.4], ['land'], ['jumpAt', 20.4], ['land'], ['go', 28]] },
+          { cause: 'spike', bot: [['swapset', true], ['jumpAt', 4.4], ['land'], ['jumpAt', 8.4], ['land'], ['jumpAt', 12.4], ['land'], ['jumpAt', 16.4], ['land'], ['jumpAt', 20.4], ['land'],
+            ['jumpAt', 25.0], ['land'], ['wait', 2]] }                                                                       // stop short of the door
+        ] },
+      // the start crumbles under a thinker, the gaps swap, thorns spring where you land, thorns spring ahead (jump them
+      // short), and a block hanging over the door comes down
+      { name: 'Mind the gaps', t: 65,
+        map: [E, E,
+          '............................bbb.',
+          ...fill(7, E),
+          '.S.....................AACC..D..',
+          '###eee.]][[]][[]][[]][[#########',
+          ...fill(3, '###eee.................#########')],
+        setup(R) {
+          R.popOnAim('A', { jumpOnly: true });
+          R.when(p => p.ground && p.still >= 0.8 && p.x >= 2.5 && p.x <= 6.2, () => R.drop('e'));
+          R.when(R.at(22.5), () => R.pop('C'));
+          R.when(R.at(27.0), () => R.$('b').wait(0.2).move(0, 8, 0.12, 'in', 'slam').call(() => R.slamFx('b')).wait(0.6, 'hold').move(0, -8, 0.8, 'io', 'rise'));
+        },
+        bot: [['jumpAt', 5.0], ['land'], ...[9.5, 11.5, 13.5, 15.5, 17.5, 19.5, 21.5].flatMap(x => [['hopto', () => ({ x })], ['land']]),
+          ['go', 23.9], ['jumpAt', 24.1], ['land'], ['go', 27.4], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.45], ['go', 29.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 8]] },                                                                               // walk
+          { cause: 'fall', bot: [['go', 4], ['wait', 1.5]] },                                                                // think about it first
+          { cause: 'spike', bot: [['jumpAt', 5.0], ['land'], ...[9.5, 11.5, 13.5, 15.5, 17.5, 19.5, 21.5].flatMap(x => [['hopto', () => ({ x })], ['land']]), ['hopto', () => ({ x: 24 })]] },
+          { cause: 'spike', bot: [['jumpAt', 5.0], ['land'], ...[9.5, 11.5, 13.5, 15.5, 17.5, 19.5, 21.5].flatMap(x => [['hopto', () => ({ x })], ['land']]), ['go', 26]] },
+          { cause: 'crush', bot: [['jumpAt', 5.0], ['land'], ...[9.5, 11.5, 13.5, 15.5, 17.5, 19.5, 21.5].flatMap(x => [['hopto', () => ({ x })], ['land']]),
+            ['go', 23.9], ['jumpAt', 24.1], ['land'], ['go', 29.5]] }                                                         // straight to the door
+        ] }
     ],
-    // ── Stage 3: saws & shortcuts
+    // ── Stage 3: saws & shortcuts (and no time to think)
     [
-      { name: 'Roll', t: 50,
+      // a saw behind you (it drops into the pit you jump), a thorn with teeth where an early-bird jump lands... no: where
+      // a late jump lands, a saw from the front (hop it standing still, not by walking into the teeth), and a saw circling
+      // the door (go when it's climbing away from the floor)
+      { name: 'Roll', t: 60,
         map: [...fill(10, E),
-          '.S...................^.......D..',
+          '.S...................^.J.....D..',
           ...fill(4, '##############...###############')],
         setup(R) {
           const s1 = R.saw({ x: -1, y: 10.4 }), s2 = R.saw({ x: 33.5, y: 10.4 });
           R.when(R.at(4.5), () => s1.go([[13.6, 10.4], [13.6, 18]], 5.2));
           R.when(R.at(21.0), () => s2.go([[-3, 10.4]], 4.6));
+          R.popOnAim('J');
+          R.ring(29.5, 9.5, 1.6, 1, 2.0);
         },
-        bot: [['jumpAt', 13.8], ['land'], ['jumpAt', 19.9], ['land'], ['until', (R, P) => R.saws[1].x / T - P.x < 3.0], ['jump'], ['land'], ['go', 29.5]] },
-      { name: 'Gatekeeper', t: 55,
+        bot: [['jumpAt', 13.8], ['land'], ['go', 19.0], ['jumpAt', 19.2], ['land'], ['go', 22.45], ['until', R => R.sawAt(1).x - 22.45 < 1.2], ['jump'], ['land'],
+          ['go', 27.0], ['until', R => { const s = R.sawAt(2), a = (Math.atan2(s.y - 9.5, s.x - 29.5) * 180 / Math.PI + 360) % 360; return a >= 195 && a <= 235; }], ['go', 29.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 30]] },                                                                              // run
+          { cause: 'saw', bot: [['go', 5], ['wait', 4]] },                                                                   // look round
+          { cause: 'spike', bot: [['jumpAt', 13.8], ['land'], ['go', 23]] },                                                  // walk into the thorn
+          { cause: 'spike', bot: [['jumpAt', 13.8], ['land'], ['go', 19.8], ['jumpAt', 19.95], ['land']] },                     // jump it late
+          { cause: 'saw', bot: [['jumpAt', 13.8], ['land'], ['go', 19.0], ['jumpAt', 19.2], ['land'], ['go', 22.45], ['wait', 4]] }   // stand there
+        ] },
+      // thorns spring ahead (jump them), stalactites from the block overhead (wait for them), a saw drops out of that block
+      // for whoever lingers, the gate rises as you come (jump it early, it won't wait), and the floor by the door isn't there
+      { name: 'Gatekeeper', t: 65,
         map: [...fill(4, '.............#######............'),
           '...............AAA..............',
           ...fill(5, E),
-          '.S......................B.....D.',
-          ...fill(3, '########################g#######'),
-          G],
+          '.S......CC..............B.....D.',
+          ...fill(3, '########################g##~~###'),
+          '###########################..###'],
         setup(R) {
           R.show('A'); R.show('B'); R.attach('B', 'g');
-          R.when(R.at(14.3), () => R.fall('A', 0.25));
+          R.when(R.at(6.4), () => R.pop('C'));
+          R.when(R.at(14.3), () => { R.fall('A', 0.25); R.after(0.9, () => { R.flag.aGone = true; }); });
+          const saw = R.saw({ x: 19.5, y: 2.6, hidden: true });
+          R.when(p => R.flag.aGone && p.x >= 16.5, () => saw.go([[19.5, 4.6], [20.5, 10.4], [-3, 10.4]], 6));
           R.every(R.at(21.0), () => R.$('g').stop().goTo(0, -2.0, 0.9));
           R.every(R.atL(18.5), () => R.$('g').stop().goTo(0, 0, 5));
         },
-        bot: [['go', 14.4], ['go', 13.4], ['wait', 1.0], ['go', 17.0], ['jumpAt', 22.7], ['land'], ['go', 30.5]] },
+        bot: [['jumpAt', 7.0], ['land'], ['go', 14.4], ['go', 13.4], ['wait', 1.0], ['go', 17.0], ['jumpAt', 22.7], ['land'], ['go', 26.4], ['jumpAt', 26.6], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 10]] },                                                                             // walk
+          { cause: 'spike', bot: [['jumpAt', 7.0], ['land'], ['go', 17]] },                                                   // walk under the block
+          { cause: 'saw', bot: [['jumpAt', 7.0], ['land'], ['go', 14.4], ['go', 13.4], ['wait', 1.0], ['go', 17.5], ['wait', 3]] },   // stop to look at the gate
+          { cause: 'fall', bot: [['jumpAt', 7.0], ['land'], ['go', 14.4], ['go', 13.4], ['wait', 1.0], ['go', 17.0], ['jumpAt', 22.7], ['land'], ['go', 30.5]] }   // walk to the door
+        ] },
+      // floors you can't see (and some that aren't there), and from the first leap on, your own shadow follows a step
+      // behind: stop to think and it walks into you
       { name: 'Leap of faith', t: 60,
         map: [...fill(10, E),
           '.S...........++++...++.......D..',
           '########+++++....+++....##~~####',
           ...fill(3, '########................##..####')],
-        setup(R) { R.leaves(); R.sign(6, 10, 'JUMP!'); },
-        bot: [['run', 12.4], ['jump'], ['land'], ['run', 16.9], ['land'], ['jumpAt', 18.2], ['land'], ['jumpAt', 21.6], ['land'], ['jumpAt', 25.3], ['land'], ['go', 29.5]] },
-      { name: 'Run', t: 45,
-        map: [...fill(10, E),
+        setup(R) { R.leaves(); R.sign(6, 10, 'JUMP!'); R.when(R.at(8.2), () => { R.echo(1.4); R.say('Something follows you.'); }); },
+        bot: [['run', 12.4], ['jump'], ['land'], ['run', 16.9], ['land'], ['jumpAt', 18.2], ['land'], ['jumpAt', 21.6], ['land'], ['jumpAt', 25.3], ['land'], ['go', 29.5]],
+        baits: [
+          { cause: 'fall|shadow', bot: [['run', 13.5]] },                                                                    // walk on
+          { cause: 'shadow', bot: [['run', 12.4], ['jump'], ['land'], ['wait', 3]] },                                         // stop to think
+          { cause: 'fall', bot: [['run', 12.4], ['jump'], ['land'], ['run', 16.9], ['land'], ['jumpAt', 18.2], ['land'], ['jumpAt', 21.6], ['land'], ['go', 29]] }   // walk to the door
+        ] },
+      // the floor crumbles behind you the whole way: hop the stone, wait (not long) for the saw to drop back into the pit,
+      // jump onto the block that falls in your way, and a thorn at the end
+      { name: 'Run', t: 50,
+        map: [E, E,
+          '....................bb..........',
+          ...fill(7, E),
           '.S........%.................B.D.',
           ...fill(4, '%%%%%%%%%%%%%%...%%%%%%%%%%#####')],
-        setup(R) { R.when(R.at(2.2), () => { R.chase(5.0, 0); R.say('Run.'); }); R.when(R.at(26.6), () => R.pop('B')); },
-        bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 13.7], ['land'], ['jumpAt', 26.9], ['land'], ['go', 30.5]] },
-      { name: 'The long way', t: 75,
+        setup(R) {
+          R.when(R.at(2.2), () => { R.chase(5.0, 0); R.say('Run.'); });
+          const saw = R.saw({ x: 15.5, y: 13.2, hidden: true });
+          R.when(R.at(12.6), () => { saw.go([[15.5, 8.6]], 22); R.after(0.45, () => saw.go([[15.5, 13.2]], 22)); R.after(0.7, () => { R.flag.pitClear = true; }); });
+          R.when(R.at(18.0), () => R.$('b').move(0, 8, 0.22, 'in').call(() => R.slamFx('b')));
+          R.when(R.at(26.6), () => R.pop('B'));
+        },
+        bot: [['jumpAt', 8.6], ['land'], ['go', 13.4], ['until', R => R.flag.pitClear], ['jumpAt', 13.7], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 26.9], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 3], ['wait', 3]] },                                                                  // don't run
+          { cause: 'saw', bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 13.85], ['land']] },                                     // jump the pit straight away
+          { cause: 'fall', bot: [['jumpAt', 8.6], ['land'], ['go', 13.4], ['until', R => R.flag.pitClear], ['jumpAt', 13.7], ['land'], ['go', 25]] },   // the block stops you
+          { cause: 'spike', bot: [['jumpAt', 8.6], ['land'], ['go', 13.4], ['until', R => R.flag.pitClear], ['jumpAt', 13.7], ['land'], ['jumpAt', 17.6], ['land'], ['go', 30]] }
+        ] },
+      { name: 'The long way', t: 80,
         map: [
           '################################################################',
           '################################################################',
+          '.......................................................VV.......',
           '................................................................',
-          '................................................................',
-          '.........................................................B...D..',
+          '.........................................................B.PPD..',
           '....................................................H###########',
           '....................................................H###########',
           '.........###########..aa..bb..cc..######............H###########',
           '........f###########..............######............H###########',
           '.......#f###########..............######............H###########',
-          '.S....##f###########..............######............H###########',
+          '.S....##f###########..............######.........KK.H###########',
           '########f###########..............##############################',
           '########f###########..............##############################',
           '########f###########^^^^^^^^^^^^^^##############################',
@@ -300,11 +394,23 @@
           R.when(R.stand('f'), () => R.drop('f', 0.2));
           ['a', 'b', 'c'].forEach(id => R.fragile(id, 0.35, 2.5));
           const s = R.saw({ x: 53.5, y: 10.4 });
-          R.when(R.at(41.5), () => { s.go([[38.5, 10.4]], 5); R.say('Something in the wall.'); });
-          R.when(R.at(55.0), () => R.pop('B'));
+          R.when(R.at(38.0), () => { s.go([[38.5, 10.4]], 5); R.say('Something in the wall.'); });
+          R.when(R.at(47.6), () => R.pop('K'));
+          R.show('V');
+          R.when(p => p.x >= 53.6 && p.y < 5.5, () => { R.fall('V', 0.15); R.after(1.0, () => { R.flag.vGone = true; }); });
+          R.when(p => R.flag.vGone && p.x >= 54.0 && p.y < 5.5, () => R.pop('B'));
+          R.popOnAim('P');
         },
         bot: [['go', 5.0], ['dodge', 10.6], ['jumpAt', 19.6], ['land'], ['jumpAt', 23.6], ['land'], ['jumpAt', 27.6], ['land'], ['jumpAt', 31.6], ['land'],
-          ['go', 41.0], ['sawjump', 0], ['land'], ['go', 52.5], ['climb', 5], ['go', 54.6], ['jumpAt', 55.4], ['land'], ['go', 61.5]] }
+          ['go', 41.0], ['sawjump', 0], ['land'], ['go', 47.8], ['jumpAt', 48.1], ['land'], ['go', 52.5], ['climb', 5], ['go', 53.8], ['until', R => R.flag.vGone], ['go', 54.8], ['jumpAt', 55.0], ['land'], ['go', 61.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 5.0], ['dodge', 10.6], ['jumpAt', 19.6], ['land'], ['jumpAt', 23.6], ['land'], ['jumpAt', 27.6], ['land'], ['jumpAt', 31.6], ['land'],
+            ['go', 41.0], ['sawjump', 0], ['land'], ['go', 51]] },                                                            // after the saw, walk
+          { cause: 'spike', bot: [['go', 5.0], ['dodge', 10.6], ['jumpAt', 19.6], ['land'], ['jumpAt', 23.6], ['land'], ['jumpAt', 27.6], ['land'], ['jumpAt', 31.6], ['land'],
+            ['go', 41.0], ['sawjump', 0], ['land'], ['go', 47.8], ['jumpAt', 48.1], ['land'], ['go', 52.5], ['climb', 5], ['go', 57]] },          // up the ladder and on
+          { cause: 'spike', bot: [['go', 5.0], ['dodge', 10.6], ['jumpAt', 19.6], ['land'], ['jumpAt', 23.6], ['land'], ['jumpAt', 27.6], ['land'], ['jumpAt', 31.6], ['land'],
+            ['go', 41.0], ['sawjump', 0], ['land'], ['go', 47.8], ['jumpAt', 48.1], ['land'], ['go', 52.5], ['climb', 5], ['go', 53.8], ['until', R => R.flag.vGone], ['go', 56.3], ['jumpAt', 56.5], ['land']] }   // jump the thorn late
+        ] }
     ],
     // ── Stage 4: door problems
     [
