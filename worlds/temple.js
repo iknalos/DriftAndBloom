@@ -108,7 +108,7 @@
           '.............C.................E',
           '.............c.................E',
           '................L.............FE',
-          '..........#.....################',
+          '..........d.....################',
           '................################',
           '.S.....#........################',
           '#####...........################',
@@ -126,6 +126,7 @@
           R.when(p => wentOut && p.ground && p.x < 5.2, () => R.$('a').move(0, 7, 0.22, 'in').call(() => R.slamFx('a')));
           // the lip of the far ledge bites where a short jump comes down
           R.popOnAim('L');
+          R.fragile('d', 0.45, 2.0);                                // (the middle stone won't hold anyone who stops to think)
           // the pillar by the way out topples; then the way out grows a spike whenever you're near (jump it)
           const pillar = R.plank({ x: 30.5, y: 7, len: 4.4, a0: -Math.PI / 2, a1: -Math.PI, warn: 0.35, dur: 0.5, thick: 0.9, shatter: true });
           R.when(R.at(26.3), () => pillar.swing());
@@ -136,8 +137,9 @@
         bot: [...ST2_LEDGE, ['go', 26.5], ['go', 23.2], ['wait', 1.1], ['jumpAt', 27.0, 0.45], ['run', 31.5]],
         baits: [
           { cause: 'spike', bot: [...ST2_TOP, ['wait', 1.0]] },                                   // stop on the top stone to look
+          { cause: 'spike', bot: [['go', 4.3], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 10.5 })], ['wait', 1.2]] },   // catch your breath on the middle stone
           { cause: 'spike', bot: [...ST2_TOP, ['hopto', () => ({ x: 16.6 })]] },                   // a short hop onto the far lip
-          { cause: 'block', bot: [...ST2_TOP, ['hopto', () => ({ x: 10.5 })], ['wait', 4]] },      // step back to think: it comes for you
+          { cause: 'block|spike', bot: [...ST2_TOP, ['hopto', () => ({ x: 10.5 })], ['wait', 4]] },      // step back to think: it comes for you
           { cause: 'crush', bot: [['go', 4.3], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 10.5 })], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 3.5 })], ['wait', 1.5]] },   // all the way back to the start
           { cause: 'plank', bot: [...ST2_LEDGE, ['go', 28.0], ['wait', 2]] },                      // walk up to the way out
           { cause: 'spike', bot: [...ST2_LEDGE, ['go', 26.5], ['go', 23.2], ['wait', 1.1], ['go', 31.5]] }   // walk out (don't jump)
@@ -265,7 +267,8 @@
     ],
     // ── Level 3: the flooded halls
     [
-      // 7. a flooded tunnel: spears come out where you're about to be; the bright shaft up is not the way
+      // 7. a flooded tunnel: spears come out where you're about to be; the bright shaft up is not the way; the way out
+      // bites shut on whoever swims straight in (wait for it to open again)
       { name: 'Wet feet', t: 100,
         map: [G, G,
           '.........#############zz########',
@@ -280,12 +283,16 @@
           R.when(R.at(10.4), () => s12.pop()); R.when(R.at(13.4), () => s15.pop()); R.when(R.at(16.4), () => s18.pop()); R.when(R.at(19.4), () => s21.pop());
           R.lure(22, 3, 23, 3);
           R.when(p => p.x >= 21.8 && p.x <= 24.2 && p.y < 8.7, () => R.$('z').move(0, 9, 0.5, 'in').call(() => R.slamFx('z')));
+          // the way out bites: a spear from the roof and one from the floor shut the tunnel on whoever swims straight in
+          const up = R.spear(30, 12, 1, 1), dn = R.spear(30, 14, -1, 1);
+          R.when(p => p.x >= 28.0 && p.y > 11.6, () => { up.pop(); R.after(0.12, () => dn.pop()); R.after(1.3, () => { up.hide(); dn.hide(); }); });
         },
-        bot: [...ST7_SWIM, ['swimto', 27.8, 11.4], ['swimto', 28.6, 12.8], ['swimto', 31.5, 12.8]],
+        bot: [...ST7_SWIM, ['swimto', 27.8, 11.4], ['swimto', 28.3, 12.8], ['wait', 1.7], ['swimto', 31.5, 12.8]],
         baits: [
           { cause: 'spear', bot: [['go', 7.8], ['swimto', 8, 10.4], ['swimto', 27, 10.4]] },                   // straight down the middle
           { cause: 'spear', bot: [['go', 7.8], ['swimto', 8, 9.8], ['swimto', 10.6, 9.45], ['swimto', 27, 9.45]] },   // hug the ceiling all the way
-          { cause: 'crush', bot: [...ST7_SWIM, ['swimto', 22.6, 9.5], ['swimto', 22.6, 5.5], ['wait', 2]] }    // up toward the light
+          { cause: 'crush', bot: [...ST7_SWIM, ['swimto', 22.6, 9.5], ['swimto', 22.6, 5.5], ['wait', 2]] },   // up toward the light
+          { cause: 'spear', bot: [...ST7_SWIM, ['swimto', 27.8, 11.4], ['swimto', 28.6, 12.8], ['swimto', 31.5, 12.8]] }   // straight out
         ] },
       // 8. a stone frog that spits where you're going; spikes along the easy way over the top; a slot that bites shut
       { name: 'The sentry', t: 100,
