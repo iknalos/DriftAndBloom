@@ -98,7 +98,7 @@
 
   // music: one track at a time, looped by crossfading into a fresh copy before it ends
   // our own composed tracks (tools/assets/music_gen.py) are exact loops: sample-accurate looping, no crossfade
-  const EXACT = new Set(['music_moonbeat', 'music_thief', 'music_bombs', 'music_duel', 'music_liar', 'music_ink']);
+  const EXACT = new Set(['music_moonbeat', 'music_thief', 'music_bombs', 'music_duel', 'music_liar', 'music_ink', 'music_temple']);
   function startTrack(name, fadeIn) {
     if (!ctx) return;
     const b = buffers[name];

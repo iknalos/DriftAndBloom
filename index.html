@@ -244,6 +244,7 @@ if ('serviceWorker' in navigator) {
       <button onclick="tryWorld('moonbeat')">🌙 Moonbeat Run</button>
       <button onclick="tryWorld('ink')">🖌️ The Ink Door</button>
       <button onclick="tryWorld('thief')">🦝 Seed Thief</button>
+      <button onclick="tryWorld('temple')">🏛️ Trap Temple</button>
       <button onclick="tryWorld('bombs')">🌸 Bloom Bombs</button>
       <button onclick="tryWorld('duel')">🥊 Guardian Duel</button>
     </div>
@@ -276,6 +277,7 @@ if ('serviceWorker' in navigator) {
 <script src="worlds/moonbeat.js"></script>
 <script src="worlds/ink.js"></script>
 <script src="worlds/thief.js"></script>
+<script src="worlds/temple.js"></script>
 <script src="worlds/bombs.js"></script>
 <script src="worlds/duel.js"></script>
 <!-- the Adventure run (10 stages x 10 rounds) is loaded after the game script below -->
@@ -537,17 +539,20 @@ const UNLOCK_ALL = true;
 
 // ── Test Lab (developer builds): the ten games one by one, any level (1-10), any room of the room games ──
 const lab = { game: null, level: 0, auto: false };
-const LAB_BOT = { liar: '__liarBot', ink: '__inkBot' };     // the room games carry an autopilot: watch it play the solution
+const LAB_BOT = { liar: '__liarBot', ink: '__inkBot', temple: '__templeBot' };     // the room games carry an autopilot: watch it play the solution
 if (UNLOCK_ALL) document.getElementById('lab-card').style.display = '';
 function labOpen() { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); }
+// games being built show up here too (not in Adventure yet), with only the levels that exist so far
+const LAB_PREVIEW = [{ id: 'temple', name: 'Trap Temple (preview)', icon: '🏛️', rgb: '214,160,92', preview: true }];
 function labRender() {
-  const games = window.DABAdventure ? DABAdventure.ROUNDS : [];
+  const games = (window.DABAdventure ? DABAdventure.ROUNDS : []).concat(LAB_PREVIEW.filter(g => window.DABWorlds && DABWorlds.has(g.id)));
   let h = '';
   games.forEach((g, i) => {
     const on = lab.game === g.id;
     h += `<button class="lab-game${on ? ' on' : ''}" style="--c:${g.rgb}" onclick="labGame('${g.id}')"><span class="lab-n">${i + 1}</span><span class="lab-ic">${g.icon}</span>${g.name}</button>`;
     if (!on) return;
-    h += '<div class="lab-levels">' + Array.from({ length: 10 }, (_, k) => `<button class="${lab.level === k + 1 ? 'on' : ''}" onclick="labLevel(${k + 1})">${k + 1}</button>`).join('') + '</div>';
+    const nLv = g.preview && window.DABWorlds && DABWorlds.rooms(g.id) ? DABWorlds.rooms(g.id).length : 10;
+    h += '<div class="lab-levels">' + Array.from({ length: nLv }, (_, k) => `<button class="${lab.level === k + 1 ? 'on' : ''}" onclick="labLevel(${k + 1})">${k + 1}</button>`).join('') + '</div>';
     const rooms = lab.level && window.DABWorlds && DABWorlds.rooms(g.id);
     if (rooms && rooms[lab.level - 1]) h += `<div class="lab-rooms">` + (LAB_BOT[g.id] ? `<button class="lab-auto${lab.auto ? ' on' : ''}" onclick="labAuto()">🤖 Autopilot: ${lab.auto ? 'ON — watch it play' : 'off'}</button>` : '') +
       `<button class="lab-whole" onclick="labPlay(0)">▶ Whole level ${lab.level}</button>` + rooms[lab.level - 1].map((n, k) => `<button onclick="labPlay(${k + 1})">${k + 1}. ${n}</button>`).join('') + '</div>';
