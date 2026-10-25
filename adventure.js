@@ -19,7 +19,7 @@
     { id: 'moonbeat', name: 'Moonbeat Run',  icon: '🌙', rgb: '255,90,220' },
     { id: 'ink',      name: 'The Ink Door',  icon: '🖌️', rgb: '200,70,58' },
     { id: 'alien',    name: 'Alien Escape',  icon: '🛸', rgb: '140,170,255' },
-    { id: 'thief',    name: 'Seed Thief',    icon: '🦝', rgb: '230,170,90' },
+    { id: 'temple',   name: 'Trap Temple',   icon: '🏛️', rgb: '214,160,92' },
     { id: 'bombs',    name: 'Bloom Bombs',   icon: '🌸', rgb: '255,130,170' },
     { id: 'hell',     name: 'Hell',          icon: '🔥', rgb: '255,120,60' },
     { id: 'duel',     name: 'Guardian Duel', icon: '🥊', rgb: '255,215,90' },
@@ -211,10 +211,13 @@
         c.fillStyle = 'rgba(170,255,220,0.85)'; c.beginPath(); c.ellipse(x, y - r * 0.12, r * 0.42, r * 0.4, 0, Math.PI, 0); c.fill();
         c.fillStyle = '#a9b8ff'; c.beginPath(); c.ellipse(x, y + r * 0.12, r * 1.0, r * 0.32, 0, 0, TAU); c.fill();
         c.fillStyle = '#fff6a8'; for (let i = -2; i <= 2; i++) { c.beginPath(); c.arc(x + i * r * 0.36, y + r * 0.16, r * 0.07, 0, TAU); c.fill(); } break;
-      case 'thief':                                             // acorn
-        c.fillStyle = '#d99a52'; c.beginPath(); c.ellipse(x, y + r * 0.2, r * 0.52, r * 0.62, 0, 0, TAU); c.fill();
-        c.fillStyle = '#7a4a22'; c.beginPath(); c.ellipse(x, y - r * 0.28, r * 0.68, r * 0.34, 0, Math.PI, 0); c.lineTo(x + r * 0.68, y - r * 0.2); c.lineTo(x - r * 0.68, y - r * 0.2); c.fill();
-        c.strokeStyle = '#7a4a22'; c.lineWidth = Math.max(1.4, r * 0.12); c.beginPath(); c.moveTo(x, y - r * 0.6); c.lineTo(x + r * 0.15, y - r * 0.9); c.stroke(); break;
+      case 'temple':                                            // a sandstone temple front, its dark doorway, the golden seed glowing inside
+        c.fillStyle = '#d6a05c'; c.beginPath(); c.moveTo(x - r * 0.95, y - r * 0.35); c.lineTo(x, y - r * 0.95); c.lineTo(x + r * 0.95, y - r * 0.35); c.fill();
+        c.fillRect(x - r * 0.85, y - r * 0.35, r * 1.7, r * 1.2);
+        c.fillStyle = '#8a5a2e'; for (const k of [-0.6, 0.6]) c.fillRect(x + k * r - r * 0.1, y - r * 0.25, r * 0.2, r * 1.0);
+        c.fillStyle = '#1a1210'; c.fillRect(x - r * 0.32, y - r * 0.05, r * 0.64, r * 0.9);
+        c.fillStyle = '#ffd36a'; c.beginPath(); c.ellipse(x, y + r * 0.42, r * 0.14, r * 0.2, 0, 0, TAU); c.fill();
+        c.fillStyle = '#f0c27a'; c.fillRect(x - r * 0.95, y + r * 0.8, r * 1.9, r * 0.15); break;
       case 'bombs':                                             // seed pod with a lit fuse
         c.fillStyle = '#e36a9a'; c.beginPath(); c.arc(x - r * 0.08, y + r * 0.15, r * 0.66, 0, TAU); c.fill();
         c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.arc(x - r * 0.3, y - r * 0.05, r * 0.16, 0, TAU); c.fill();

@@ -243,7 +243,6 @@ if ('serviceWorker' in navigator) {
       <button onclick="tryWorld('liar')">🚪 Liar's Path</button>
       <button onclick="tryWorld('moonbeat')">🌙 Moonbeat Run</button>
       <button onclick="tryWorld('ink')">🖌️ The Ink Door</button>
-      <button onclick="tryWorld('thief')">🦝 Seed Thief</button>
       <button onclick="tryWorld('temple')">🏛️ Trap Temple</button>
       <button onclick="tryWorld('bombs')">🌸 Bloom Bombs</button>
       <button onclick="tryWorld('duel')">🥊 Guardian Duel</button>
@@ -276,7 +275,6 @@ if ('serviceWorker' in navigator) {
 <script src="worlds/liar.js"></script>
 <script src="worlds/moonbeat.js"></script>
 <script src="worlds/ink.js"></script>
-<script src="worlds/thief.js"></script>
 <script src="worlds/temple.js"></script>
 <script src="worlds/bombs.js"></script>
 <script src="worlds/duel.js"></script>
@@ -543,7 +541,7 @@ const LAB_BOT = { liar: '__liarBot', ink: '__inkBot', temple: '__templeBot' };  
 if (UNLOCK_ALL) document.getElementById('lab-card').style.display = '';
 function labOpen() { goTo('s-lab'); labRender(); if (AU) AU.music('music_pond'); }
 // games being built show up here too (not in Adventure yet), with only the levels that exist so far
-const LAB_PREVIEW = [{ id: 'temple', name: 'Trap Temple (preview)', icon: '🏛️', rgb: '214,160,92', preview: true }];
+const LAB_PREVIEW = [];
 function labRender() {
   const games = (window.DABAdventure ? DABAdventure.ROUNDS : []).concat(LAB_PREVIEW.filter(g => window.DABWorlds && DABWorlds.has(g.id)));
   let h = '';

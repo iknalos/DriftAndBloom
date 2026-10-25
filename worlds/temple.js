@@ -30,7 +30,7 @@
   const RUN = 118, ACC = 2400, DEC = 3200, AIR_ACC = 1500, AIR_DEC = 900;
   const G_UP = 740, G_DN = 740, JUMP_V = 350, CUT = 0.45, MAXF = 560, COYOTE = 0.07, BUFFER = 0.1;
   const SPRING_V = 470, SPRING_HI = 560;
-  const PW = 10, PH = 20, STEP = 1 / 120, LIVES = 5;
+  const PW = 10, PH = 20, STEP = 1 / 120, LIVES = 3;
   const E = '.'.repeat(32), G = '#'.repeat(32);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const EASE = { lin: k => k, io: k => k * k * (3 - 2 * k), in: k => k * k, out: k => 1 - (1 - k) * (1 - k), slam: k => k * k * k };
@@ -46,6 +46,9 @@
   // route pieces the bait runs share (a bait = the move a player falls for + the death it must cause; tools/trapcheck.js)
   const ST2_TOP = [['go', 4.3], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 10.5 })], ['hopto', () => ({ x: 13.5 })]];
   const ST2_LEDGE = [...ST2_TOP, ['hopto', () => ({ x: 17.6 }), 0.5]];
+  const ST28_LIP = [...ST2_TOP, ['hopto', () => ({ x: 16.3 }), 0.1]];                // (stage 28: the short hop onto the lip is the safe one now)
+  // stage 30: the boulder rolling right, at you
+  const BOULDER_R = d => (R, p) => { const b = R.boulderAt(0); return !!b && b.ground && b.vx > 0 && p.x - b.x <= d; };
   const ST3_LEDGE = [['go', 3.3], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 3.5 })], ['go', 1.2],
     ['until', R => R.flyerState('b') === 'home' && R.isSolid('a')],
     ['go', 3.3], ['hopto', () => ({ x: 7.5 })], ['hopto', () => ({ x: 10.5 })], ['hopto', () => ({ x: 15.2 })]];
@@ -64,6 +67,23 @@
           ['until', SAW_AWAY(2)], ['swimto', 18.75, 8.2],
           ['until', SAW_AWAY(6)], ['swimto', 21.25, 8.2],
           ['until', R => R.sawAt(3).y < 6.5 && R.sawAt(3).vy < 0], ['swimto', 24.2, 8.2]];
+  // stage 15: the bar's angle (degrees, 0 = right, 90 = down) from its outer orb; hop when it has just swept past your arc
+  const BAR_DEG = R => { const o = R.sawAt(3); return ((Math.atan2(o.y - 5, o.x - 16) * 180 / Math.PI) + 360) % 360; };
+  const BAR_IN = (a, b) => R => { const d = BAR_DEG(R); return d >= a && d <= b; };
+  // (the cannon's lying shot sweeps block 6, the pillar and every jump after: set off right after one, and never jump with one due)
+  const CANNON_CALM = R => { const c = R.cannonAt(0); return !(c.k === 1 && (c.state !== 'rest' || c.t < 0.45)); };
+  const ST15_WHEEL = [['until', R => { const c = R.cannonAt(0); return c.k === 0 && c.state === 'rest' && c.t > 1.4; }], ['go', 3.6], ['hopto', () => ({ x: 6.5 })], ['hopto', () => ({ x: 10.6 })],
+    ['until', R => BAR_IN(180, 220)(R) && CANNON_CALM(R)], ['hopto', () => ({ x: 14.5 })], ['until', R => BAR_IN(115, 150)(R) && CANNON_CALM(R)], ['hopto', () => ({ x: 18.5 })],
+    ['until', R => BAR_IN(60, 90)(R) && CANNON_CALM(R)], ['hopto', () => ({ x: 22.5 })], ['until', R => R.$('l').oy <= -6.9 * 26], ['go', 25.5]];
+  // stage 18: short hops (land between the spikes that popped and the ones that pop where a jump lands)
+  const ST18_HOPS = [['go', 10.3], ['hopto', () => ({ x: 13.5 }), 0.12], ['go', 18.2], ['hopto', () => ({ x: 21.4 }), 0.12]];
+  // stage 21: a crusher is about to punch (it rests 1.5 s, then flies across in 0.12 s)
+  const PUNCH_SOON = (R, id) => R.$(id).phase === 'rest' && R.$(id).phaseK > 0.88;
+  // stage 19: from notch to notch, setting off as soon as the comet that just passed is gone and the next is far
+  const CALM_ROW = (R, p) => { const c = R.cometNear(p.x); return !c || c.x - p.x >= 15.2; };
+  // stage 13: block to block, aiming at each where it is now (the one that slides away gets chased)
+  const ST13_BLOCKS = [['go', 4.6], ['hopto', R => ({ x: R.bodyX('b') })], ['hopto', R => ({ x: R.bodyX('c') })], ['hopto', R => ({ x: R.bodyX('d') })], ['hopto', R => ({ x: R.bodyX('e') })],
+    ['hopto', R => ({ x: R.bodyX('f') })], ['hopto', () => ({ x: 23.4 })]];
   // stage 7: high over the floor spears, low under the ceiling ones
   const ST7_SWIM = [['go', 7.8], ['swimto', 8, 9.8], ['swimto', 10.6, 9.45], ['swimto', 13.2, 9.45], ['swimto', 14.4, 11.55], ['swimto', 16.2, 11.55],
     ['swimto', 17.2, 9.45], ['swimto', 19.2, 9.45], ['swimto', 20.4, 11.55], ['swimto', 22.4, 11.55]];
@@ -391,6 +411,503 @@
             ['until', R => R.fishAt(0).vx < 0 && R.fishAt(0).x < 16.5], ['swimto', 18.5, 11.0], ['swimto', 26.5, 11.0], ['swimto', 26.5, 5.6],
             ['dir', 1], ['jump', 0.05], ['until', (R, p) => p.x > 27.4], ['dir', 0], ['land'], ['go', 28.3], ['go', 26.9], ['wait', 1]] }  // back off from the falling pillar, like at stage 2
         ] }
+    ],
+    // ── Level 5: the ice crypt
+    [
+      // 13. ice blocks over spikes: each slides when you land on it and melts soon after; one slides away from your
+      // jump (steer after it); on the ice shelf at the end, an icicle drops where a braking thief stops
+      { name: 'Thin ice', t: 100,
+        map: [G, G,
+          '.........................I.....E',
+          '...............................E',
+          '...............................E',
+          '...................f...........E',
+          '................e.....==========',
+          '..........c..d........##########',
+          '.S.....b..............##########',
+          '#####.................##########',
+          ...fill(3, '#####.................##########'),
+          '#####^^^^^^^^^^^^^^^^^##########',
+          G],
+        setup(R) {
+          for (const id of 'bcdef') { R.ice(id); R.fragile(id, 0.6, 2.2); R.every(R.stand(id), () => { const c = R.$(id); if (!c.phase) c.move(1, 0, 0.3, 'out'); }); }
+          R.shiftOnAim('d', 1, 0, { every: false, dur: 0.12 });
+          // the ice shelf's icicle drops just where a thief who brakes comes to a stop (slide on through)
+          R.when(R.at(24.6), () => R.fall('I', 0.45));
+        },
+        bot: [...ST13_BLOCKS, ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 4.6], ['hopto', () => ({ x: 7.6 })], ['wait', 1.2]] },                          // admire the view from the first block
+          { cause: 'spike', bot: [['go', 4.6], ['hopto', () => ({ x: 7.6 })], ['hopto', () => ({ x: 10.9 })], ['hopto', () => ({ x: 13.5 })]] },   // jump where the block was
+          { cause: 'spike', bot: [...ST13_BLOCKS, ['go', 24.8], ['stop'], ['wait', 1.5]] }       // brake on the shelf
+        ] },
+      // 14. an ice corridor: icicles drop where you're about to be (you can't stop quick on ice); the floor at the end
+      // falls away, and that hole is the way out, unless you stand and stare at it
+      { name: 'Crack', t: 100,
+        map: [...fill(7, G),
+          '.......A....B....C....J.......##',
+          ...fill(3, '..............................##'),
+          '.S............................##',
+          '==========================gggg##',
+          '##########################KKKK##',
+          '##########################EEEE##'],
+        setup(R) {
+          R.ice('g');
+          for (const [id, x] of [['A', 7], ['B', 12], ['C', 17], ['J', 22]]) R.when(R.at(x - 1.2), () => R.fall(id));
+          R.when(R.at(24.6), () => { R.drop('g'); R.flag.open = true; });
+          R.spikeDir('K', 'up');
+          R.every(p => R.flag.open && p.ground && p.x >= 23 && p.x < 26 && p.still >= 0.5, () => { const c = R.$('K'); if (c.phase) return; c.pop(); c.wait(1.6); c.hide(); });
+        },
+        bot: [['go', 5.2], ['stop'], ['wait', 0.5], ['go', 10.2], ['stop'], ['wait', 0.5], ['go', 15.2], ['stop'], ['wait', 0.5], ['go', 20.2], ['stop'], ['wait', 0.5], ['go', 29]],
+        baits: [
+          { cause: 'spike', bot: [['go', 29]] },                                                                         // run for it
+          { cause: 'spike', bot: [['go', 5.2], ['stop'], ['wait', 0.5], ['go', 10.2], ['stop'], ['wait', 0.5], ['go', 15.2], ['stop'], ['wait', 0.5], ['go', 20.2], ['stop'], ['wait', 0.5],
+            ['go', 24.9], ['stop'], ['wait', 1.0], ['go', 29]] }                                                           // the floor fell: stop and stare
+        ] },
+      // 15. a frost bar spins over the spikes; the cannon's arrow tells you where it'll shoot (the second time it lies);
+      // the two blocks over the spikes at the end are a lift
+      { name: 'Frost wheel', t: 110,
+        map: [G,
+          ...fill(3, '...............................E'),
+          '........................########',
+          ...fill(4, '................................'),
+          '.S....#...##....................',
+          '####......##..#...#.............',
+          '####......##..........ll........',
+          '####......##....................',
+          '####^^^^^^^^^^^^^^^^^^^^^^^^^^##',
+          G],
+        setup(R) {
+          for (let k = 1; k <= 4; k++) R.ring(16, 5, k, 1, 2.2, { r: 0.42 });   // a bar of four frost orbs round (16, 5)
+          R.cannon({ x: 3, y: 9, pattern: [{ show: -Math.PI / 2, fire: -Math.PI / 2 }, { show: -Math.PI / 2, fire: -0.2 }], rest: 1.6, warn: 0.7, fire: 0.9, first: 0.8 });
+          R.when(R.stand('l'), () => R.$('l').move(0, -7, 2.6, 'io'));
+        },
+        bot: [...ST15_WHEEL, ['wait', 0.1], ['go', 31.5]],
+        baits: [
+          { cause: 'saw', bot: [['go', 3.6], ['hopto', () => ({ x: 6.5 })], ['hopto', () => ({ x: 10.6 })], ['until', BAR_IN(100, 130)], ['hopto', () => ({ x: 14.5 })], ['wait', 1]] },   // jump into the bar
+          { cause: 'frost', bot: [['go', 3.6], ['hopto', () => ({ x: 6.5 })], ['hopto', () => ({ x: 10.6 })], ['wait', 8]] }                                                      // wait on the pillar: the arrow lies
+        ] }
+    ],
+    // ── Level 6: the ice crypt, deeper
+    [
+      // 16. a corridor one tile high under spikes: one pit is a lie (walk it), one is real (jump it only where the spikes stop)
+      { name: 'Don\u2019t jump', t: 90,
+        map: [...fill(4, G),
+          ...fill(3, '##################......########'),
+          'vvvvvvvvvvvvvvvvvv......vvvvvvvv',
+          '.S.............................E',
+          '#########+++########...#########',
+          ...fill(2, '#########...########...#########'),
+          '#########^^^########^^^#########',
+          G, G],
+        setup(R) { },
+        bot: [['go', 18.9], ['jumpAt', 19.1, 0.5], ['land'], ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 7.6], ['jumpAt', 7.7, 0.4], ['land'], ['wait', 1]] },          // jump the first pit
+          { cause: 'spike', bot: [['go', 22], ['wait', 1.5]] },                                           // walk on in
+          { cause: 'spike', bot: [['go', 16.8], ['jumpAt', 17.0, 0.5], ['land'], ['wait', 1]] }          // jump the real pit, early
+        ] },
+      // 17. the organ: a pit floored with keys; the wrong notes sink and drop you. The lift by the door rises into teeth.
+      { name: 'The organ', t: 100,
+        map: [G, G,
+          '..........................vvvv##',
+          '..............................##',
+          '...............................E',
+          '...............................E',
+          '.............................###',
+          '.S...........................###',
+          '######...................##ll###',
+          ...fill(4, '######...................#######'),
+          '######^^^^^^^^^^^^^^^^^^^#######',
+          G],
+        setup(R) {
+          R.keys({ x0: 6, y: 11, n: 19, bad: [2, 5, 6, 10, 13, 14, 17] });
+          R.when(R.stand('l'), () => R.$('l').move(0, -5, 3.2, 'lin'));
+        },
+        bot: [['go', 5.9], ['land'], ['hopto', () => ({ x: 9.5 })], ['hopto', () => ({ x: 13.5 })], ['hopto', () => ({ x: 17.5 })], ['hopto', () => ({ x: 21.5 })],
+          ['hopto', () => ({ x: 24.5 })], ['jumpAt', 24.55, 0.5], ['land'], ['go', 27.9], ['until', R => R.$('l').oy <= -2.0 * 26], ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 5.9], ['land'], ['go', 24]] },                                                         // play every note
+          { cause: 'spike', bot: [['go', 5.9], ['land'], ['hopto', () => ({ x: 9.5 })], ['hopto', () => ({ x: 13.5 })], ['hopto', () => ({ x: 17.5 })], ['hopto', () => ({ x: 21.5 })],
+            ['hopto', () => ({ x: 24.5 })], ['jumpAt', 24.55, 0.5], ['land'], ['go', 27.9], ['wait', 5]] }                    // ride the lift to the top
+        ] },
+      // 18. an ice run: spikes pop up ahead (you can't stop: hop them short, the long hop lands on more); at the door an icicle wall topples
+      { name: 'Frozen gate', t: 100,
+        map: [...fill(7, G),
+          '...............................#',
+          ...fill(3, '...............................E'),
+          '.S.........AA.BB...CC.MM.......E',
+          '==============================##',
+          G, G],
+        setup(R) {
+          R.when(R.at(9.4), () => R.pop('A'));
+          R.popOnAim('B');
+          R.when(R.at(16.4), () => R.pop('C'));
+          R.popOnAim('M');
+          const wall = R.plank({ x: 29.5, y: 12, len: 4.4, a0: -Math.PI / 2, a1: -Math.PI, warn: 0.3, dur: 0.5, thick: 0.9, shatter: true });
+          R.when(R.at(25.1), () => wall.swing());
+        },
+        bot: [...ST18_HOPS, ['go', 23.6], ['stop'], ['nudge', 1, 0.2], ['until', (R, p) => p.x >= 25.15 || Math.abs(p.vx) < 3], ['stop'], ['go', 23.2], ['stop'], ['wait', 1.0], ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 13]] },                                                                                  // run
+          { cause: 'spike', bot: [['go', 9.6], ['hopto', () => ({ x: 14.6 }), 0.5]] },                                                // a proper jump over the first spikes
+          { cause: 'plank', bot: [...ST18_HOPS, ['go', 31.5]] }   // slide on to the door
+        ] }
+    ],
+    // ── Level 7: the lava depths
+    [
+      // 19. the lift goes down first (toward the spikes), then up to a corridor where fire comets fly at head height:
+      // duck into the notches in the floor to let them pass (and hop out of each one, before the next comes)
+      { name: 'Wrong way up', t: 100,
+        map: [G, G,
+          '##.............................E',
+          '##.............................E',
+          '##..##.#####.#####.#####.#######',
+          ...fill(3, '##..############################'),
+          ...fill(2, '##......########################'),
+          '##...S..########################',
+          '##ee############################',
+          '##..############################',
+          '##^^############################',
+          G],
+        setup(R) {
+          R.every(R.stand('e'), () => { const c = R.$('e'); if (c.phase) return; c.move(0, 1.5, 0.35, 'in', 'drop').wait(0.7).move(0, -8.5, 2.4, 'io', 'up').wait(1.6, 'top').move(0, 7, 2.0, 'io', 'back'); });
+          R.comets({ row: 3, from: 'right', every: 3.0, speed: 6, first: 1.0, x0: 2, x1: 30 });
+        },
+        bot: [['go', 4.3], ['until', R => { const c = R.cometNear(2); return !!c && c.x >= 19.5 && c.x <= 21; }], ['go', 3.0], ['until', R => R.$('e').oy <= -6.95 * 26],
+          ['go', 6.5], ['land'], ['until', CALM_ROW], ['dir', 1], ['jump', 0.2], ['go', 12.5], ['land'], ['until', CALM_ROW], ['dir', 1], ['jump', 0.2], ['go', 18.5], ['land'], ['until', CALM_ROW],
+          ['dir', 1], ['jump', 0.2], ['go', 24.5], ['land'], ['until', CALM_ROW], ['dir', 1], ['jump', 0.2], ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 3.0], ['wait', 0.3], ['go', 5.5], ['go', 2.5], ['wait', 3]] },                        // the lift drops: jump off it (into the pit)
+          { cause: 'fire', bot: [['go', 4.3], ['until', R => { const c = R.cometNear(2); return !!c && c.x >= 19.5 && c.x <= 21; }], ['go', 3.0], ['until', R => R.$('e').oy <= -6.95 * 26], ['go', 6.5], ['land'],
+            ['until', R => { const c = R.cometNear(6.5); return !!c && c.x - 6.5 > 6 && c.x - 6.5 < 9; }], ['dir', 1], ['jump', 0.2], ['go', 12.5]] }   // run for the next notch with a comet coming
+        ] },
+      // 20. pillars over lava: jump at a pit and its lava column bursts up through you. Hop on the spot to set it off,
+      // then cross while it's sunk and cooling
+      { name: 'Lava pillars', t: 110,
+        map: [G, G,
+          ...fill(4, '................................'),
+          ...fill(2, '...............................E'),
+          '..S............................E',
+          ...fill(3, '#####..##..##..##..##..##..#####'),
+          ...fill(2, '#####;;##;;##;;##;;##;;##;;#####'),
+          G],
+        setup(R) {
+          [5, 9, 13, 17, 21, 25].forEach((x, i) => {
+            const col = R.column({ x0: x, x1: x + 1, y: 12, height: 7.5 });
+            R.every(p => p.tookOff && p.x > x - 1.7 && p.x < x + 0.2, () => col.burst());
+          });
+          R.spurt({ x: 13.5, y: 12, height: 5.5, every: 2.3, first: 1.4 });
+          R.spurt({ x: 21.5, y: 12, height: 5.5, every: 2.3, first: 0.3 });
+        },
+        bot: [...[8, 12, 16, 20, 24, 28].flatMap((x, i) => [['go', x - 4 + (i === 0 ? 0.3 : 0)], ['jump', 0.12], ['land'], ['until', R => { const c = R.columnAt(i); return c.state === 'down' && c.cool > 0.22; }], ['hopto', () => ({ x })]]),
+          ['go', 31.5]],
+        baits: [
+          { cause: 'lava', bot: [['go', 4.3], ['hopto', () => ({ x: 8 })], ['wait', 1]] },                                       // just jump the first pit
+          { cause: 'lava', bot: [['go', 4.3], ['jump', 0.12], ['land'], ['until', R => R.columnAt(0).state === 'up'], ['hopto', () => ({ x: 8 })], ['wait', 1]] }   // jump while it's up
+        ] },
+      // 21. ride a slow platform down a shaft while crushers punch across it; it stops dead at each crusher: jump the punch
+      { name: 'Crusher shaft', t: 100,
+        map: [G,
+          '############......##############',
+          '############S.....##############',
+          '#############pppp.##############',
+          '############......##############',
+          '#########aaa......##############',
+          '#########aaa......##############',
+          '############......##############',
+          '############......bbb###########',
+          '############......bbb###########',
+          '############......##############',
+          '############......##############',
+          '############......E#############',
+          '############......E#############',
+          G],
+        setup(R) {
+          R.noCarry('a'); R.noCarry('b');
+          R.$('a').wait(0.6).wait(1.5, 'rest').move(6, 0, 0.12, 'in', 'punch').call(() => R.slamFx('a')).wait(0.3, 'hold').move(-6, 0, 0.4, 'io', 'back').loop();
+          R.$('b').wait(1.4).wait(1.5, 'rest').move(-6, 0, 0.12, 'in', 'punch').call(() => R.slamFx('b')).wait(0.3, 'hold').move(6, 0, 0.4, 'io', 'back').loop();
+          R.when(R.stand('p'), () => R.$('p').move(0, 3.5, 2.9, 'lin', 'down').wait(1.6, 'stall').move(0, 3.5, 2.9, 'lin', 'down').wait(1.6, 'stall').move(0, 3, 2.5, 'lin', 'down'));
+        },
+        bot: [['until', R => R.$('a').phase === 'back'], ['go', 14.5],
+          ['jumpwhen', (R, p) => PUNCH_SOON(R, 'a') && p.y > 4.6 && p.y < 7.9, (R, p) => p.ground && p.y >= 7.9],
+          ['jumpwhen', (R, p) => PUNCH_SOON(R, 'b') && p.y > 7.6 && p.y < 10.9, (R, p) => p.ground && R.$('p').oy >= 9.95 * 26], ['go', 19]],
+        baits: [
+          { cause: 'crush', bot: [['go', 14.5], ['wait', 12]] }                                                                       // stand and ride
+        ] }
+    ],
+    // ── Level 8: the lava depths, deeper
+    [
+      // 22. a magic carpet over the lava, under a spiked ceiling: fireballs leap up through its path (jump them, and
+      // steer back onto it); at the end it climbs into the spikes, so get off onto the ledge in time
+      { name: 'Magic carpet', t: 100,
+        map: [G, G,
+          '....vvvvvvvvvvvvvvvvvvvvvvv.....',
+          '................................',
+          ...fill(3, '...............................E'),
+          '...........................#####',
+          '.S.........................#####',
+          '####ccc....................#####',
+          ...fill(2, '####.......................#####'),
+          ...fill(2, '####;;;;;;;;;;;;;;;;;;;;;;;#####'),
+          G],
+        setup(R) {
+          R.carpet('c');
+          R.when(R.stand('c'), () => R.$('c').move(5, 0, 2.2, 'lin', 'go').move(4, 1.5, 1.6, 'lin', 'dip').move(4, -1.5, 1.6, 'lin', 'go').move(4, 0, 1.8, 'lin', 'go').move(2, -2, 1.2, 'io', 'rise').wait(0.6, 'pause').move(1, -5, 1.1, 'in', 'climb'));
+          R.spurt({ x: 12, y: 12, height: 4.6, every: 2.4, first: 0.9 });
+          R.spurt({ x: 18, y: 12, height: 4.6, every: 2.4, first: 2.1 });
+        },
+        bot: [['go', 5.0], ['ride', 'c', (R, p) => R.spurtNear(p.x, p.y, 2.0), (R, p) => R.$('c').phase === 'pause'], ['hopto', () => ({ x: 28.0 })], ['go', 31.5]],
+        baits: [
+          { cause: 'fire', bot: [['go', 5.0], ['wait', 12]] },                                                                 // sit tight on the carpet
+          { cause: 'spike', bot: [['go', 5.0], ['ride', 'c', (R, p) => R.spurtNear(p.x, p.y, 2.0), (R, p) => R.$('c').phase === 'climb'], ['wait', 3]] }   // ride it to the end
+        ] },
+      // 23. a rocket on its pad. Step out and the fuse lights: the spark races to the rocket, lava rises, bricks fall
+      // where a running thief would be. Board before the spark gets there (or stand under it when it goes)
+      { name: 'The rocket', t: 100,
+        map: [G, G,
+          ...fill(8, '##............................##'),
+          '##..................##......S.##',
+          '##############...###############',
+          '##############;;;###############',
+          '##############;;;###############',
+          G],
+        setup(R) {
+          const rk = R.rocket({ x: 3, y: 11, door: 1 });
+          R.flood(15, { lava: true });
+          R.when(R.atL(26.2), () => {
+            rk.open();
+            R.fuse([[29, 11], [3.6, 11]], 3.0);
+            R.floodTo(10.6, 0.5);
+            R.rain([[22, 0.25], [18, 1.15], [12, 2.5], [8, 3.4], [6, 4.1]], { y: 2 });
+          });
+        },
+        bot: [['go', 25.2], ['wait', 0.6], ['go', 22.7], ['jumpAt', 22.5, 0.3], ['land'], ['go', 17.7], ['jumpAt', 17.5, 0.5], ['land'], ['go', 13], ['wait', 0.3], ['go', 9.4], ['wait', 0.35], ['go', 3.8]],
+        baits: [
+          { cause: 'drop', bot: [['go', 22.7], ['jumpAt', 22.5, 0.3], ['land'], ['go', 17.7], ['jumpAt', 17.5, 0.5], ['land'], ['go', 4.4]] },   // run for it
+          { cause: 'lava', bot: [['go', 25.0], ['wait', 12]] }                                                                                   // wait for the bricks to stop
+        ] },
+      // 24. THANK YOU FOR PLAYING. The rocket flies up through the credits: rocks fall, and so do the credits' letters.
+      { name: 'Thank you for playing', t: 60,
+        map: [...fill(11, E), '................S...............', ...fill(3, E)],
+        setup(R) {
+          R.flight({ dur: 21, credits: [{ t: 0.5, text: 'THANK YOU FOR PLAYING!', big: true }, { t: 2.5, text: 'TRAP TEMPLE' }, { t: 3.6, text: 'a raccoon, a temple, a golden seed' },
+            { t: 5.5, text: 'TRAPS ........ all of them' }, { t: 6.6, text: 'LIVES ........ a few' }, { t: 9, text: 'THE END', big: true }, { t: 14, text: '. . .' }, { t: 16.5, text: '(not really)' }],
+            plan: [{ t: 1.0, x: 14, speed: 6 }, { t: 1.6, x: 19, speed: 6 }, { t: 2.4, x: 8, text: 'THANK YOU', speed: 5 }, { t: 3.6, x: 22, speed: 7 },
+              { t: 4.4, x: 4, text: 'FOR PLAYING', speed: 5.5 }, { t: 5.6, x: 12, speed: 7 }, { t: 6.0, x: 25, speed: 7 }, { t: 6.6, x: 17, speed: 8, size: 1.4 },
+              { t: 7.6, x: 9, speed: 7 }, { t: 8.2, x: 20, speed: 7 }, { t: 9.0, x: 10, text: 'THE  END', speed: 6 }, { t: 10.4, x: 6, speed: 8 }, { t: 10.8, x: 24, speed: 8 },
+              { t: 11.6, x: 15, speed: 8, size: 1.4 }, { t: 12.4, x: 3, text: 'THE END', speed: 6.5 }, { t: 12.6, x: 20, text: 'THE END', speed: 6.5 },
+              { t: 14.0, x: 11, speed: 9 }, { t: 14.4, x: 18, speed: 9 }, { t: 15.0, x: 6, text: 'REALLY THE END', speed: 6 }, { t: 16.4, x: 25, speed: 9 },
+              { t: 16.8, x: 14, speed: 9, size: 1.5 }, { t: 17.6, x: 8, speed: 9 }, { t: 18.2, x: 21, speed: 9 }, { t: 18.8, x: 2, text: 'NOT THE END', speed: 7 }] });
+        },
+        bot: [['fly']],
+        baits: [{ cause: 'debris', bot: [['wait', 20]] }]                                                                         // just keep flying straight
+      }
+    ],
+    // ── Level 9: the vault
+    [
+      // 25. the rocket crashed: fly its lander through a spiky cave (hold jump = thrust). The sign says the goal is
+      // right, and there it glows; it's a spike trap. The way on is the shaft in the floor, with a mine sleeping in it:
+      // come near and it pops up into the shaft's mouth, then rolls aside. Let it, then drop in.
+      { name: 'Asteroid cave', t: 100,
+        map: [G, G,
+          '##vvvvvvvvvvvv###vvvvvvvvvvvvvv#',
+          '##............###.............A#',
+          '##............###.............A.',
+          '##............###.............A.',
+          '##............###.........CCCCA.',
+          '##....^^^.....###.........######',
+          '##....###.....###.........######',
+          '##....###.....vvv.........######',
+          '##....###.................######',
+          '##.S..###.................######',
+          '###################..###########',
+          '###################..###########',
+          '###################EE###########'],
+        setup(R) {
+          R.pod();
+          R.sign(5, 11, 'GOAL →');
+          R.after(0.3, () => R.say('Hold JUMP to fly. Land softly.'));
+          R.lure(31, 4, 31, 6);
+          R.spikeDir('A', 'left');
+          R.when(R.zone(27.4, 32, 0, 7.4), () => { R.pop('A'); R.pop('C'); });
+          const mine = R.saw({ x: 20, y: 13.4, mine: true });
+          R.when(R.zone(17.3, 26, 7.5, 13), () => { mine.go([[20, 10]], 12); R.after(1.4, () => mine.go([[22.6, 11.4]], 4)); });
+        },
+        bot: [['pilot', 4, 5.5], ['pilot', 10.5, 5.2], ['pilot', 12, 11.2], ['pilot', 17.0, 11.3], ['pilot', 17.6, 11.3],
+          ['until', R => { const m = R.sawAt(0); return m && m.x > 22.5; }], ['pilot', 20, 10.6], ['pilot', 20, 16]],
+        baits: [
+          { cause: 'spike', bot: [['pilot', 4, 5.5], ['pilot', 10.5, 5.2], ['pilot', 12, 11.2], ['pilot', 17.0, 11.3], ['pilot', 18, 5.5], ['pilot', 25.5, 5.0], ['pilot', 30.6, 5.2]] },                                   // fly to the GOAL
+          { cause: 'mine', bot: [['pilot', 4, 5.5], ['pilot', 10.5, 5.2], ['pilot', 12, 11.2], ['pilot', 17.0, 11.3], ['pilot', 20, 11.0], ['pilot', 20, 16]] },   // dive into the shaft
+          { cause: 'crash', bot: [['pilot', 4, 5.5], ['cut', 3]] }                                                                   // let go of the thrust
+        ] },
+      // 26. NOTHING HERE: a pit, a row of spikes, a crusher. None of it does anything. The pit has a floor you can't see,
+      // the spikes are painted on, the crusher never falls. What kills you is jumping: the ceiling grows teeth.
+      { name: 'Nothing here', t: 100,
+        map: [...fill(8, G),
+          '##..JJJJJJJJJJJJJJJJ###JJJJJJJJ#',
+          '##..................###........E',
+          '##..................vvv........E',
+          '##.S..........KKK..............E',
+          '#########++#####################',
+          '#########..#####################',
+          '#########..#####################'],
+        setup(R) {
+          R.sign(4, 11, 'NOTHING HERE');
+          R.show('K'); R.harmless('K');
+          R.when(p => p.tookOff && p.x > 4, () => R.pop('J'));
+        },
+        bot: [['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 7.9], ['jumpAt', 8.1, 0.5]] },                                                            // jump the pit
+          { cause: 'spike', bot: [['go', 12.4], ['jumpAt', 12.6, 0.5]] },                                                          // jump the spikes
+          { cause: 'spike', bot: [['go', 19.0], ['jumpAt', 19.2, 0.32]] }                                                          // hop under the crusher
+        ] },
+      // 27. GOAL →: the floor is a trench with one hole in it, and the hole hunts your feet (it waits right where you'd
+      // step, and follows you while you're on the ground: jump it, then keep running). At the goal a spiked wall drops out
+      // of the ceiling; back off (not into the trench) until it lifts again.
+      { name: 'GOAL →', t: 100,
+        map: [G, G,
+          '##########################aa####',
+          '##########################aa####',
+          '#########################Laa####',
+          '#########################Laa####',
+          '##.............................#',
+          '##.............................#',
+          '##.............................#',
+          '##.............................#',
+          '##.............................E',
+          '##.S...........................E',
+          '#####.................##########',
+          '#####.................##########',
+          '#####.................##########'],
+        setup(R) {
+          R.sign(3, 11, 'GOAL →');
+          R.hole({ x0: 5, x1: 21, y: 12, w: 2, speed: 3.4, mode: 'hunt', at: 6 });
+          R.attach('L', 'a'); R.spikeDir('L', 'left');
+          R.when(R.at(24.4), () => { R.show('L'); R.$('a').move(0, 6, 0.28, 'in', 'slam').call(() => R.slamFx('a')).wait(1.1, 'hold').move(0, -6, 0.8, 'io', 'lift'); });
+        },
+        bot: [['go', 4.3], ['jumpAt', 4.5, 0.5], ['land'], ['go', 24.6], ['go', 23.4], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['go', 31.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 10]] },                                                                                     // walk
+          { cause: 'fall', bot: [['go', 4.3], ['jumpAt', 4.5, 0.5], ['land'], ['wait', 3]] },                                           // stop on the trench
+          { cause: 'spike|crush', bot: [['go', 4.3], ['jumpAt', 4.5, 0.5], ['land'], ['go', 31.5]] },                                   // run for the goal
+          { cause: 'fall', bot: [['go', 4.3], ['jumpAt', 4.5, 0.5], ['land'], ['go', 24.6], ['go', 21.0]] }                              // back off too far
+        ] }
+    ],
+    // ── Level 10: the vault, deeper
+    [
+      // 28. EVERYTHING: the stepping stones again, and every answer you learned there is the trap now. The long jump to
+      // the ledge lands on teeth (the short hop is safe), the spot where you waited for the pillar grows spikes if you wait
+      // there, and the way out bites anyone who jumps at it (walk in).
+      { name: 'Everything', t: 90,
+        map: [G,
+          'aaaaa..........................#',
+          'aaaaa..........................#',
+          '..............................ME',
+          '.............C................ME',
+          '.............c................ME',
+          '.................LLL.NNN......FE',
+          '..........#.....################',
+          '................################',
+          '.S.....#........################',
+          '#####...........################',
+          '#####...........################',
+          '#####...........################',
+          '#####^^^^^^^^^^^################',
+          G],
+        setup(R) {
+          const b3 = R.flyer('c', { spikes: 'C' });
+          R.when(R.stand('c'), () => R.pop('C', 0.22));
+          R.when(p => R.spikeUp('C') && p.ground && p.x < 12, () => b3.hunt(2.4, 2.2, 3.0));
+          let wentOut = false;
+          R.when(p => p.ground && p.x >= 9.6, () => { wentOut = true; });
+          R.when(p => wentOut && p.ground && p.x < 5.2, () => R.$('a').move(0, 7, 0.22, 'in').call(() => R.slamFx('a')));
+          R.popOnAim('L');
+          const pillar = R.plank({ x: 30.5, y: 7, len: 4.4, a0: -Math.PI / 2, a1: -Math.PI, warn: 0.35, dur: 0.5, thick: 0.9, shatter: true });
+          R.when(R.at(26.3), () => pillar.swing());
+          R.every(p => p.ground && p.still >= 0.3 && p.x >= 20.8 && p.x <= 24.2, () => R.pop('N'));
+          R.spikeDir('F', 'left'); R.spikeDir('M', 'left');
+          R.every(p => p.air && p.x >= 26.0, () => { R.pop('F'); R.pop('M'); });
+          R.every(p => p.ground && p.x < 27.5, () => { R.hide('F'); R.hide('M'); });
+        },
+        bot: [...ST28_LIP, ['go', 26.5], ['go', 25.0], ['wait', 1.1], ['go', 31.5]],
+        baits: [
+          { cause: 'spike', bot: [...ST2_TOP, ['wait', 1.0]] },                                                   // stop on the top stone (still a no)
+          { cause: 'spike', bot: ST2_LEDGE },                                                                    // the long jump that worked last time
+          { cause: 'spike', bot: [...ST28_LIP, ['go', 26.5], ['go', 23.2], ['wait', 1.1]] },                            // wait where you waited last time
+          { cause: 'spike', bot: [...ST28_LIP, ['go', 26.5], ['go', 25.0], ['wait', 1.1], ['jumpAt', 27.0, 0.45], ['run', 31.5]] },   // jump out, like last time
+          { cause: 'plank', bot: [...ST28_LIP, ['go', 28.0], ['wait', 2]] }                                            // walk up to the way out
+        ] },
+      // 29. WELCOME BACK: the very first corridor. This time the block falls on you, the floor gives way, the ceiling
+      // comes down with its teeth out (no jumping under it), and the way out runs off to the start: go back for it, past
+      // the block again.
+      { name: 'Welcome back', t: 60,
+        map: [...fill(6, G),
+          '##############a#######bbbbbbbbb#',
+          '......................VVVVVVVVV.',
+          ...fill(3, E),
+          '..S.............................',
+          ...fill(3, '##################fff###########')],
+        setup(R) {
+          R.sign(5, 11, 'KEEP OUT');
+          R.after(0.3, () => R.say('Welcome back.'));
+          R.lure(31, 7, 31, 11);
+          const slam = () => R.$('a').move(0, 5, 0.32, 'in').call(() => R.slamFx('a')).wait(0.5).move(0, -5, 0.7, 'io');
+          R.when(R.at(12.6), slam);
+          R.when(R.at(17.0), () => R.drop('f', 0.12));
+          R.attach('V', 'b'); R.spikeDir('V', 'down');
+          R.when(R.at(21.5), () => { R.show('V'); R.$('b').move(0, 2, 2.0, 'lin', 'lower'); });
+          let ran = false;
+          R.when(R.at(27.5), () => { ran = true; R.unlure(); R.spawnDoor(30, 11); R.$('D').wait(0.25).move(-25.5, 0, 1.5, 'io', 'run'); R.say('Catch me!'); });
+          R.when(p => ran && p.x <= 16.0, slam);
+        },
+        bot: [['go', 12.9], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['jumpAt', 17.4, 0.5], ['land'], ['go', 27.7], ['go', 21.6], ['jumpAt', 21.4, 0.5], ['land'],
+          ['go', 15.8], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['go', 5.0]],
+        baits: [
+          { cause: 'crush', bot: [['go', 31.5]] },                                                                                  // walk through, like the first time
+          { cause: 'fall', bot: [['go', 12.9], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['go', 24]] },              // then keep walking
+          { cause: 'spike', bot: [['go', 12.9], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['jumpAt', 17.4, 0.5], ['land'], ['go', 25], ['jump', 0.5]] },   // hop under the ceiling
+          { cause: 'crush', bot: [['go', 12.9], ['until', R => R.$('a').phase === null && R.$('a').oy < 1], ['jumpAt', 17.4, 0.5], ['land'], ['go', 27.7], ['go', 21.6],
+            ['jumpAt', 21.4, 0.5], ['land'], ['go', 5.0]] }                                                                          // run straight back to the door
+        ] },
+      // 30. THE SEED: take the Golden Seed and the credits roll. Then the vault comes down: bricks where you stand, a
+      // boulder rolling at you (jump it), spikes ahead (a short hop: a long one lands on more), and at the door one last
+      // THE END, falling letter by letter. Let it land.
+      { name: 'The seed', t: 120,
+        map: [G, G,
+          ...fill(6, '##............................##'),
+          ...fill(3, 'Eg............................##'),
+          'Eg.S.....BB.AA.............&..##',
+          G, G, G],
+        setup(R) {
+          R.grate('g');
+          let down = false;
+          R.onIdol(() => {
+            R.credits([{ t: 0, text: 'THE END', big: true }, { t: 0.6, text: 'TRAP TEMPLE' }, { t: 1.2, text: 'you found the Golden Seed' }, { t: 1.8, text: 'thank you for playing' }, { t: 2.6, text: '. . .' }], 4.2);
+            R.after(4.0, () => {
+              down = true; R.quake(0.6); R.say('The vault is coming down!');
+              R.gate('g', true);
+              R.boulder({ x: 7, y: 2.6, r: 1.4, vx: 3.6, hop: 2.3 });
+              R.rain([[27, 0.6], [25, 0.9], [28, 1.1], [23, 1.4], [26, 1.7], [29, 2.0], [24, 2.3]], { y: 2 });
+            });
+          });
+          R.when(p => down && p.x <= 16.0, () => R.pop('A'));
+          R.popOnAim('B');
+          R.when(p => down && p.x <= 8.5, () => { R.credits([{ t: 0, text: 'THE END', big: true, still: true }], 2.2); R.rain([[5, 0], [4, 0.2], [3, 0.4], [2, 0.6], [1, 0.8]], { y: 2, letters: 'THEND' }); });
+        },
+        bot: [['go', 27.5], ['go', 21.5], ['until', BOULDER_R(6.2)], ['dir', -1], ['until', BOULDER_R(3.8)], ['jump', 0.5], ['land'],
+          ['go', 14.7], ['hopto', () => ({ x: 11.6 }), 0.2], ['go', 6.5], ['wait', 1.8], ['go', 0.3]],
+        baits: [
+          { cause: 'drop', bot: [['go', 27.5], ['wait', 7]] },                                                                             // stay for the credits
+          { cause: 'boulder', bot: [['go', 27.5], ['go', 21.5], ['wait', 8]] },                                                             // wait for it
+          { cause: 'spike', bot: [['go', 27.5], ['go', 21.5], ['until', BOULDER_R(6.2)], ['dir', -1], ['until', BOULDER_R(3.8)], ['jump', 0.5], ['land'],
+            ['go', 14.7], ['hopto', () => ({ x: 10.2 }), 0.5]] },                                                                         // a big jump over the spikes
+          { cause: 'drop', bot: [['go', 27.5], ['go', 21.5], ['until', BOULDER_R(6.2)], ['dir', -1], ['until', BOULDER_R(3.8)], ['jump', 0.5], ['land'],
+            ['go', 14.7], ['hopto', () => ({ x: 11.6 }), 0.2], ['go', 0.3]] },                                                                 // run out under THE END
+          { cause: 'boulder', bot: [['go', 27.5], ['go', 21.5], ['until', BOULDER_R(6.2)], ['dir', -1], ['until', BOULDER_R(3.8)], ['jump', 0.5], ['land'],
+            ['go', 14.7], ['hopto', () => ({ x: 11.6 }), 0.2], ['go', 6.5], ['wait', 12]] }                                                     // wait too long: it comes back
+        ] }
     ]
   ];
 
@@ -407,6 +924,12 @@
     shot: ['It saw where you were going.', 'Seed-bombed.', 'The frog leads its target.'],
     urchin: ['Prickly.', 'They wake up grumpy.', 'Never pet an urchin.'],
     fish: ['Big fish.', 'It rams. You don’t.', 'Swim faster.'],
+    crash: ['Rocks are hard.', 'Gently does it.', 'That was the wall.', 'Soft landings only.'],
+    mine: ['It was a mine.', 'Mines pop up. It’s their job.', 'Boom.'],
+    debris: ['The credits hit back.', 'It wasn’t the end.', 'THE END fell on you.'],
+    lava: ['Toasted.', 'The floor is lava. Literally.', 'Hot hot hot.'],
+    fire: ['Singed.', 'It came down the corridor.', 'Duck next time.'],
+    frost: ['Frozen solid.', 'The arrow lied.', 'Cold, isn’t it?'],
     spear: ['Skewered.', 'High, then low. Or low, then high.', 'It came up where you were going.'],
     any: ['Again.', 'The temple remembers. Do you?', 'One more time.', 'Same trap. Same you.']
   };
@@ -419,7 +942,7 @@
     sounds: ['tt_jump', 'tt_land', 'tt_die', 'tt_pop', 'tt_crumble', 'tt_slam', 'tt_door', 'tt_saw', 'tt_exit', 'tt_flip', 'tt_thunder', 'tt_spring', 'tt_clank', 'tt_bounce', 'tt_grind', 'tt_whoosh', 'tt_over'],
     subtitle: () => 'A little raccoon thief, a sandstone temple, and the Golden Seed at the bottom of it. Every stage lies, in layers.',
     hint: 'Reach the way out. The trap you just learned is not the last one.',
-    howto: ['◀ ▶ run  ·  jump (hold = higher, steer in the air)', '5 lives a run. Out of lives = back to the run’s first stage.'],
+    howto: ['◀ ▶ run  ·  jump (hold = higher, steer in the air)', '3 lives a run. Out of lives = back to the run’s first stage.'],
     rooms: () => STAGES.slice(1).map(st => st.map(r => r.name)),   // Test Lab: stage names per level
     controls: { dirs: 'lr', buttons: [{ id: 'jump', icon: 'jump' }], layout: 'platform' },
     create
@@ -494,7 +1017,7 @@
     const rooms = STAGES[Math.max(1, Math.min(STAGES.length - 1, LV))];
     const q = new URLSearchParams(location.search);
     let ri = Math.max(0, Math.min(rooms.length - 1, (env.startRoom || +q.get('room') || 1) - 1));
-    // 5 lives a run; out of lives = GAME OVER, back to the run's first stage (the Test Lab's single-stage mode stays put)
+    // 3 lives a run; out of lives = GAME OVER, back to the run's first stage (the Test Lab's single-stage mode stays put)
     const firstRoom = ri, base = STAGES.slice(1, Math.max(1, Math.min(STAGES.length - 1, LV))).reduce((n, st) => n + st.length, 0);
     const totalTime = Math.round(rooms.reduce((s, r) => s + (r.t || 60), 0) * 2.2) + 10;
     let timeLeft = totalTime, deaths = 0, roomDeaths = 0, t = 0, done = false, lives = LIVES, best = ri, overT = 0;
@@ -513,7 +1036,7 @@
         rules: [], timers: [], echo: null, chaseT: -1, chase: null, start: { x: 1.5 * T, y: 11 * T, flip: false },
         ladders: new Set(), ladderTops: [], swaps: [], swapOn: true, swapAim: -1, holes: [], blinks: [], escs: [], parts: [], fragiles: [], aims: [],
         exits: [], flyers: [], planks: [], boulders: [], drops: [], balls: [], idol: null, barSet: null,
-        waterSet: null, flood: null, shooters: [], shots: [], urchins: [], fish: [], spears: [], lures: []
+        waterSet: null, flood: null, shooters: [], shots: [], urchins: [], fish: [], spears: [], lures: [], cannons: [], keys: [], emitters: [], comets: [], spurts: [], columns: [], rocket: null, flight: null, pod: null, credits: null
       };
       const at = (x, y) => (y < 0 || y >= ROWS || x < 0 || x >= COLS ? '.' : g[y][x]);
       const ground = [], groups = {}, spk = {}, fake = [], ghost = [], crumble = {}, bars = [];
@@ -696,7 +1219,9 @@
         pop(id, delay) { const c = $(id); if (!c) return; if (delay) c.wait(delay); c.pop(); },
         show(id) { const o = handle(id); if (o) o.ext = 1; },
         attach(sid, bid) { r.spikes[sid].attach = r.bodies[bid]; },
-        saw(o) { const s = makeSaw(o.x * T, o.y * T, 's' + r.saws.length); if (o.r) s.r = o.r * T; r.saws.push(s); return chain(s); },
+        saw(o) { const s = makeSaw(o.x * T, o.y * T, 's' + r.saws.length); if (o.r) s.r = o.r * T; if (o.mine) s.mine = true; r.saws.push(s); return chain(s); },
+        // the pod: this room is flown in the rocket's little lander (hold jump = thrust, ◀ ▶ = drift; rock = crash)
+        pod() { r.pod = { thr: false, t: 0, puff: 0 }; },
         spawnDoor(x, y, o) { o = o || {}; const d = mover({ id: o.fake ? 'Q' : 'D', x: (x + 0.5) * T, y: o.hang ? y * T : (y + 1) * T, hang: !!o.hang, fake: !!o.fake, alive: true, alpha: 0, ride: null, vx: 0 }); r.doors.push(d); if (!o.quiet) { sfx('tt_door', { vol: 0.6 }); burst(d.x, d.y - 18, 12); } return d; },
         doorX(id) { const d = r.doors.find(q => q.id === (id || 'D') && q.alive); return d ? (d.x + d.ox) / T : null; },
         harmless(id) { if (r.spikes[id]) r.spikes[id].harmless = true; },
@@ -781,7 +1306,11 @@
         boulder(o) { const bd = makeBoulder(r, o); return { get x() { return bd.x / T; }, get y() { return bd.y / T; }, get vx() { return bd.vx / T; }, get alive() { return bd.alive; }, stop() { bd.vx = 0; }, go(vx) { bd.vx = vx * T; } }; },
         boulderAt(i) { const bd = r.boulders[i || 0]; return bd && bd.alive ? { x: bd.x / T, y: bd.y / T, vx: bd.vx / T, ground: bd.ground } : null; },
         // spiked bricks from the ceiling: list of [x (tile column), delay (s)], all from row o.y (default 1)
-        rain(list, o) { const y = (o && o.y) || 1; for (const [x, d] of list) makeDrop(r, x, y, d); },
+        rain(list, o) { const y = (o && o.y) || 1, ls = (o && o.letters) || ''; list.forEach(([x, d], i) => { makeDrop(r, x, y, d); if (ls[i]) r.drops[r.drops.length - 1].ch = ls[i]; }); },
+        // credits over the screen (a fake ending): [{ t, text, big, still }] for dur seconds
+        credits(lines, dur) { r.credits = { t: 0, dur, lines }; },
+        quake(sec) { env.shake(sec || 0.5); sfx('tt_thunder', { vol: 0.8 }); },
+        unlure() { r.lures.length = 0; },
         // the stone game's ball: { x, y (tiles), vx, vy (tiles/s), delay }
         ball(o) { const bl = makeBall(r, o); return { get x() { return bl.x / T; }, get y() { return bl.y / T; }, get alive() { return bl.alive; } }; },
         ballAt(i) { const bl = r.balls[i || 0]; return bl && bl.alive ? { x: bl.x / T, y: bl.y / T, vx: bl.vx / T, vy: bl.vy / T } : null; },
@@ -791,7 +1320,7 @@
         get idolTaken() { return !!(r.idol && r.idol.taken); },
         flag: {},
         // water that rises and falls: flood(row) puts its surface at that row; floodTo(row, speed, hold); floodCycle([[row, speed, hold], ...])
-        flood(row) { r.flood = { y: row * T, target: null, speed: 0, hold: 0, cycle: null, ci: 0, nextHold: 0 }; },
+        flood(row, o) { r.flood = { y: row * T, target: null, speed: 0, hold: 0, cycle: null, ci: 0, nextHold: 0, lava: !!(o && o.lava) }; },
         floodTo(row, speed, hold) { const f = r.flood; if (f) { f.target = row * T; f.speed = (speed || 1) * T; f.nextHold = hold || 0; f.hold = 0; } },
         floodCycle(list) { if (r.flood) { r.flood.cycle = list; r.flood.ci = 0; } },
         get floodRow() { return r.flood ? r.flood.y / T : null; },
@@ -806,6 +1335,34 @@
         pull(x, speed) { r.pull = { x: x * T, v: speed || 50 }; },
         // '$' walls drawn as cracked brickwork (not the stone game's bars)
         cracked() { r.crackedBars = true; },
+        // stone that moves but doesn't carry whoever stands on it (crushers: they slide out from under you)
+        noCarry(id) { const b = r.bodies[id]; if (b) b.carry = false; },
+        // a ground group that is ice (drawn as ice, slippery to stand on)
+        ice(id) { const b = r.bodies[id]; if (b) { b.ice = true; b.live = true; } },
+        // a frost cannon: { x, y (tile), pattern: [{ show, fire } angles], rest, warn, fire, first }
+        cannon(o) { const cn = makeCannon(r, o); return { get state() { return cn.state; }, get k() { return cn.k; }, on() { cn.on = true; }, off() { cn.on = false; } }; },
+        cannonAt(i) { const cn = r.cannons[i || 0]; return cn ? { state: cn.state, k: cn.k, t: cn.t } : null; },
+        // organ keys: { x0, y (row of their tops), n, bad: [indices] }
+        keys(o) { makeKeys(r, o); },
+        // fire comets along a row: { row, from: 'left'|'right', every, speed, first, x0, x1 (tile span) }
+        comets(o) { makeComets(r, o); },
+        // the nearest comet coming at x (tiles) along any row: its x, or null
+        cometNear(x) { let best = null; for (const cm of r.comets) if (cm.alive && (cm.vx < 0 ? cm.x > x * T - T : cm.x < x * T + T)) { const d = Math.abs(cm.x - x * T); if (!best || d < best.d) best = { d, x: cm.x / T, vx: cm.vx / T }; } return best; },
+        spurt(o) { makeSpurt(r, o); },
+        // a fireball near (x, y) tiles that's in the air or about to leap, within d tiles sideways
+        spurtNear(x, y, d) { return r.spurts.some(sp => Math.abs(sp.x - x * T) < d * T && (sp.up ? sp.y > (y - 3) * T : sp.t < 0.3)); },
+        // a ground group drawn as a magic carpet (red, a gold border, tassels)
+        carpet(id) { const b = r.bodies[id]; if (b) { b.carpetLook = true; b.live = true; } },
+        // the rocket on its pad: { x, y (tile, its base), door: 1 (right) / -1 (left) }; fuse(path, speed) lights a fuse to it
+        rocket(o) { const rk = makeRocket(r, o); return { open() { if (!rk.open) { rk.open = true; sfx('tt_door', { vol: 0.7 }); } }, get aboard() { return rk.aboard; }, get launched() { return rk.launch > 0; } }; },
+        fuse(path, speed) { const rk = r.rocket; if (!rk || rk.fuse) return; const pts = path.map(([x, y]) => ({ x: (x + 0.5) * T, y: y * T })); rk.fuse = { x: pts[0].x, y: pts[0].y, path: pts, seg: 1, speed: (speed || 4) * T }; sfx('tt_saw', { vol: 0.5, rate: 1.6 }); },
+        fuseAt() { const f = r.rocket && r.rocket.fuse; return f ? { x: f.x / T, y: f.y / T, done: f.seg >= f.path.length } : null; },
+        // flight mode: { dur, plan: [{ t, x, speed, size } rocks / { t, x, speed, text } falling words], credits: [{ t, text, big }] }
+        flight(o) { makeFlight(r, o); },
+        flightAt() { const fl = r.flight; return fl ? { x: fl.x / T, t: fl.t, dur: fl.dur } : null; },
+        columnAt(i) { const cl = r.columns[i || 0]; return cl ? { state: cl.state, cool: cl.cool || 0, ext: cl.ext } : null; },
+        column(o) { const cl = makeColumn(r, o); return { burst() { if (cl.state === 'down' && !(cl.cool > 0)) { cl.state = 'up'; cl.t = 0; sfx('tt_slam', { vol: 0.6, rate: 0.6 }); } return this; }, get state() { return cl.state; } }; },
+        keyState(i) { const k = r.keys[i]; return k ? k.state : null; },
         // a ground group drawn as an iron grate; gate(id, open) opens / shuts it
         grate(id) { const b = r.bodies[id]; if (b) { b.grate = true; b.live = true; } },
         gate(id, open) { const b = r.bodies[id]; if (!b || b.hidden === !!open) return; b.hidden = !!open; r.rebake = true; sfx(open ? 'tt_door' : 'tt_slam', { vol: 0.6, rate: open ? 1.2 : 1.5 }); },
@@ -813,6 +1370,8 @@
         lure(x0, y0, x1, y1) { r.lures.push({ x0: x0 * T, y0: y0 * T, x1: (x1 + 1) * T, y1: (y1 + 1) * T }); },
         // spear(col, row, dir, len): dir -1 = out of the floor whose top is at that row, up; 1 = out of the ceiling whose bottom is at that row, down
         spear(x, y, dir, len) { const sp = makeSpear(r, { x, y, dir, len }); return { pop() { if (sp.to < 1) { sp.to = 1; sfx('tt_pop', { vol: 0.6, rate: 0.8 }); } return this; }, hide() { sp.to = 0; return this; }, get out() { return sp.ext > 0.5; } }; },                                                // a room's own notes (setup writes, bots read)
+        // where a ground group's middle is now (tiles), after its moves
+        bodyX(id) { const b = r.bodies[id]; return b ? (b.bounds.x0 + b.bounds.x1) / 2 / T + b.ox / T : null; },
         flyerState(id) { const f = r.flyers.find(q => q.id === id); return f ? f.state : null; },
         isSolid(id) { const b = r.bodies[id]; return !!b && b.alive && !b.hidden; },
         spikeX(id) { const sp = r.spikes[id]; return sp ? Math.min(...sp.tiles.map(t => t.x)) + sp.ox / T : null; },
@@ -1170,6 +1729,187 @@
       if (bWall(Math.floor(front / T), Math.floor(f.y / T)) || bSolidBody(front, f.y)) f.vx = -f.vx; else f.x = nx;
     }
 
+    // ── ice: '=' tiles (and groups marked R.ice) are ice. On ice you speed up and slow down slowly: you slide.
+    const ICE_ACC = 420, ICE_DEC = 110;
+    function onIce() {
+      if (!P.ground) return false;
+      const b = R.bodies[P.on]; if (b && b.ice) return true;
+      const ty = Math.floor((P.y + 2) / T);
+      for (const x of [P.x - PW / 2 + 1, P.x + PW / 2 - 1]) { const tx = Math.floor(x / T); if (ty >= 0 && ty < ROWS && tx >= 0 && tx < COLS && R.g[ty][tx] === '=') return true; }
+      return false;
+    }
+    // one tile of ice: pale blue, a lit top, a crack and a glint
+    function iceTile(g, X, Y, top, bottom, tx, ty) {
+      g.fillStyle = '#7fc4e0'; g.fillRect(X, Y, T, T);
+      g.fillStyle = '#a9dcef'; g.fillRect(X + 2, Y + 2, T - 4, T - 6);
+      g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(X + 4 + Math.floor(hr(tx, ty, 61) * 8), Y + 5, 6, 2);
+      g.fillStyle = '#5aa0c0'; g.fillRect(X + 14, Y + 9, 2, 8); g.fillRect(X + 10, Y + 15, 6, 2);
+      if (top) { g.fillStyle = '#e9f8ff'; g.fillRect(X, Y, T, 3); }
+      if (bottom) { g.fillStyle = 'rgba(0,30,60,0.25)'; g.fillRect(X, Y + T - 3, T, 3); }
+    }
+
+    // ── cannons: a squat frost cannon at (x, y) tiles. It rests, warns (an arrow flashes the way it says it'll shoot),
+    // then fires a beam that runs until it hits stone. pattern: [{ show: angle, fire: angle }, ...] taken in turn, so
+    // the arrow can lie (show one way, fire another). Angles in radians (0 = right, -PI/2 = up).
+    function makeCannon(r, o) {
+      const cn = { x: (o.x + 0.5) * T, y: (o.y + 0.5) * T, pattern: o.pattern, k: 0, state: 'rest', t: o.first === undefined ? 1 : o.first,
+        rest: o.rest || 1.2, warn: o.warn || 0.7, fire: o.fire || 0.9, len: 0, on: o.on !== false };
+      r.cannons.push(cn); return cn;
+    }
+    function stepCannon(cn, dt) {
+      if (!cn.on) return;
+      cn.t -= dt;
+      if (cn.t > 0) return;
+      if (cn.state === 'rest') { cn.state = 'warn'; cn.t = cn.warn; sfx('tt_grind', { vol: 0.35, rate: 1.6 }); }
+      else if (cn.state === 'warn') { cn.state = 'fire'; cn.t = cn.fire; cn.len = beamLen(cn); sfx('tt_whoosh', { vol: 0.7, rate: 0.6 }); }
+      else { cn.state = 'rest'; cn.t = cn.rest; cn.k = (cn.k + 1) % cn.pattern.length; }
+    }
+    function beamLen(cn) {
+      const a = cn.pattern[cn.k].fire, ca = Math.cos(a), sa = Math.sin(a);
+      for (let d = T * 0.6; d < 40 * T; d += 4) if (bWall(Math.floor((cn.x + ca * d) / T), Math.floor((cn.y + sa * d) / T))) return d;
+      return 40 * T;
+    }
+    function cannonHits(cn, sb) {
+      if (cn.state !== 'fire') return false;
+      const a = cn.pattern[cn.k].fire, ca = Math.cos(a), sa = Math.sin(a);
+      for (let d = T * 0.6; d <= cn.len; d += 5) { const x = cn.x + ca * d, y = cn.y + sa * d; if (Math.hypot(clamp(x, sb.x0, sb.x1) - x, clamp(y, sb.y0, sb.y1) - y) < 7) return true; }
+      return false;
+    }
+
+    // ── organ keys: a row of n keys from tile (x0, y) (their tops at row y). Each plays its note when you land on
+    // it; the bad ones sink and drop away a moment later. Back for the next attempt.
+    const KEY_NOTES = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33];
+    function makeKeys(r, o) {
+      for (let i = 0; i < o.n; i++) r.keys.push({ id: 'key' + i, i, x: (o.x0 + i) * T, y: o.y * T, bad: (o.bad || []).includes(i), state: 'up', t: 0, dip: 0, vy: 0, oy: 0 });
+    }
+    function stepKeys(dt) {
+      for (const k of R.keys) {
+        k.dip = Math.max(0, k.dip - dt * 10);
+        if (k.state === 'sink') { k.t -= dt; k.oy = 3; if (k.t <= 0) { k.state = 'fall'; sfx('tt_crumble', { vol: 0.5, rate: 0.8 }); } }
+        else if (k.state === 'fall') { k.vy += 1500 * dt; k.oy += k.vy * dt; if (k.oy > RH) k.state = 'gone'; }
+      }
+    }
+    function pressKey(k) {
+      if (k.pressed) return;
+      k.pressed = true; k.dip = 1;
+      sfx('tt_door', { vol: 0.45, rate: Math.pow(2, KEY_NOTES[k.i % KEY_NOTES.length] / 12) * 0.5 });
+      if (k.bad && k.state === 'up') { k.state = 'sink'; k.t = 0.14; }
+    }
+    const keyRect = k => ({ x0: k.x, y0: k.y + k.oy, x1: k.x + T, y1: k.y + T + k.oy, b: { id: k.id, kind: 'key', key: k } });
+
+    // ── lava: ';' tiles are lava (it doesn't hold you up, it burns). A flood can be lava too (R.flood(row, { lava: true })).
+    function lavaHit(sb) {
+      for (let ty = Math.floor(sb.y0 / T); ty <= Math.floor((sb.y1 - 0.01) / T); ty++) for (let tx = Math.floor(sb.x0 / T); tx <= Math.floor((sb.x1 - 0.01) / T); tx++) {
+        if (ty < 0 || ty >= ROWS || tx < 0 || tx >= COLS || R.g[ty][tx] !== ';') continue;
+        if (sb.y1 > ty * T + 6) return true;                       // (the top few px are the glow, not the lava)
+      }
+      return !!(R.flood && R.flood.lava && sb.y1 > R.flood.y + 4);
+    }
+    // ── comets: fireballs that fly along a row (from 'left' or 'right') every s seconds at speed tiles/s; they burn
+    function makeComets(r, o) { r.emitters.push({ y: (o.row + 0.5) * T, dir: o.from === 'left' ? 1 : -1, every: o.every || 2, speed: (o.speed || 6) * T, t: o.first === undefined ? 0.5 : o.first, on: o.on !== false, x0: o.x0, x1: o.x1 }); }
+    function stepEmitter(em, dt) {
+      if (!em.on) return;
+      em.t -= dt;
+      if (em.t <= 0) {
+        em.t += em.every;
+        const x = em.dir > 0 ? (em.x0 !== undefined ? em.x0 * T : -T) : (em.x1 !== undefined ? (em.x1 + 1) * T : RW + T);
+        R.comets.push({ x, y: em.y, vx: em.dir * em.speed, alive: true, end: em.dir > 0 ? (em.x1 !== undefined ? (em.x1 + 1) * T : RW + T) : (em.x0 !== undefined ? em.x0 * T : -T) });
+        sfx('tt_whoosh', { vol: 0.35, rate: 1.4 });
+      }
+    }
+    function stepComet(cm, dt) { if (!cm.alive) return; cm.x += cm.vx * dt; if ((cm.vx > 0 && cm.x > cm.end) || (cm.vx < 0 && cm.x < cm.end)) cm.alive = false; }
+    // ── spurts: a fireball that leaps up out of the lava at (x, row) to height tiles, every s seconds, and falls back
+    function makeSpurt(r, o) { r.spurts.push({ x: (o.x + 0.5) * T, y0: o.y * T, v0: Math.sqrt(2 * 1500 * (o.height || 5) * T), every: o.every || 2.2, t: o.first === undefined ? 1 : o.first, y: o.y * T, vy: 0, up: false, on: o.on !== false }); }
+    function stepSpurt(sp, dt) {
+      if (!sp.up) { if (!sp.on) return; sp.t -= dt; if (sp.t <= 0) { sp.up = true; sp.vy = -sp.v0; sp.y = sp.y0; sfx('tt_pop', { vol: 0.4, rate: 0.5 }); } return; }
+      sp.vy += 1500 * dt; sp.y += sp.vy * dt;
+      if (sp.vy > 0 && sp.y >= sp.y0) { sp.up = false; sp.t = sp.every; }
+    }
+    // ── lava columns: a column of lava over tiles x0..x1 that bursts up from row y (its base) to height tiles when told,
+    // holds a moment, and sinks back. burst() fires it (once at a time).
+    function makeColumn(r, o) { const cl = { x0: o.x0 * T, x1: (o.x1 + 1) * T, y: o.y * T, h: (o.height || 5) * T, ext: 0, state: 'down', t: 0, hold: o.hold || 0.7 }; r.columns.push(cl); return cl; }
+    function stepColumn(cl, dt) {
+      if (cl.state === 'up') { cl.ext = Math.min(1, cl.ext + dt / 0.12); if (cl.ext >= 1) { cl.t += dt; if (cl.t >= cl.hold) cl.state = 'sink'; } }
+      else if (cl.state === 'sink') { cl.ext = Math.max(0, cl.ext - dt / 0.5); if (cl.ext <= 0) { cl.state = 'down'; cl.cool = 0.4; } }
+      else if (cl.cool > 0) cl.cool -= dt;
+    }
+    const columnBox = cl => ({ x0: cl.x0 + 3, y0: cl.y - cl.h * cl.ext, x1: cl.x1 - 3, y1: cl.y });
+
+    // ── the rocket: stands on its pad at (x, y) tiles (its base), door on one side. While the door is open, touching it
+    // = you're aboard (the stage ends as it lifts off). A fuse spark runs along tile points to it; when the spark gets
+    // there the rocket goes, with or without you (and its exhaust burns whoever's under it).
+    function makeRocket(r, o) { r.rocket = { x: (o.x + 0.5) * T, y: o.y * T, door: o.door || 1, open: false, aboard: false, launch: 0, oy: 0, fuse: null }; return r.rocket; }
+    function stepRocket(rk, dt) {
+      if (rk.fuse) {
+        const f = rk.fuse; let left = f.speed * dt;
+        while (left > 0 && f.seg < f.path.length) {
+          const tg = f.path[f.seg], dx = tg.x - f.x, dy = tg.y - f.y, d = Math.hypot(dx, dy);
+          if (d <= left) { f.x = tg.x; f.y = tg.y; left -= d; f.seg++; } else { f.x += dx / d * left; f.y += dy / d * left; left = 0; }
+        }
+        if (Math.random() < 0.7) fx.spawn({ x: f.x, y: f.y, vx: (Math.random() - 0.5) * 80, vy: -40 - Math.random() * 60, g: 600, kind: 'glow', rgb: '255,200,90', size: 1.6, life: 0.35 });
+        if (f.seg >= f.path.length && !rk.launch) { rk.launch = 0.0001; sfx('tt_thunder', { vol: 0.8 }); env.shake(0.5); }
+      }
+      if (rk.launch > 0) {
+        rk.launch += dt; rk.oy -= (40 + rk.launch * 520) * dt;
+        for (let i = 0; i < 3; i++) fx.spawn({ x: rk.x + (Math.random() - 0.5) * 12, y: rk.y + rk.oy, vx: (Math.random() - 0.5) * 60, vy: 120 + Math.random() * 120, kind: 'glow', rgb: '255,160,60', size: 2.2, life: 0.5 });
+        if (rk.aboard && rk.launch > 1.4 && !P.entering) { P.entering = 0.0001; sfx('tt_exit', { vol: 0.8 }); }
+      }
+    }
+    const rocketDoor = rk => ({ x0: rk.x + rk.door * 6 - 7, y0: rk.y - 30, x1: rk.x + rk.door * 6 + 7, y1: rk.y });
+    const rocketFlame = rk => ({ x0: rk.x - 12, y0: rk.y + rk.oy, x1: rk.x + 12, y1: rk.y + rk.oy + 3 * T });
+
+    // ── flight: the thief is the rocket now, low on the screen, steering left and right, climbing through the sky
+    // while things fall: rocks, and the credits' own letters. Survive dur seconds: "THE END" ... "STAGE CLEAR!"
+    function makeFlight(r, o) {
+      r.flight = { t: 0, dur: o.dur || 20, x: 16 * T, y: 11.5 * T, vx: 0, drops: [], plan: o.plan || [], k: 0, credits: o.credits || [], stars: [] };
+      for (let i = 0; i < 60; i++) r.flight.stars.push({ x: hr(i, 1, 91) * RW, y: hr(i, 2, 91) * RH, s: 0.5 + hr(i, 3, 91) * 2 });
+      return r.flight;
+    }
+    function stepFlight(fl, dt, dir) {
+      fl.t += dt;
+      fl.vx += clamp(dir * 170 - fl.vx, -1400 * dt, 1400 * dt);
+      fl.x = clamp(fl.x + fl.vx * dt, 2.5 * T, RW - 2.5 * T);
+      P.x = fl.x; P.y = fl.y; P.vx = fl.vx; P.vy = 0; P.ground = true;
+      while (fl.k < fl.plan.length && fl.plan[fl.k].t <= fl.t) {
+        const it = fl.plan[fl.k++];
+        if (it.text) [...it.text].forEach((ch, i) => { if (ch !== ' ') fl.drops.push({ x: (it.x + i * 1.1) * T, y: -T, vy: it.speed * T, ch, w: 0.9 * T, h: T }); });
+        else fl.drops.push({ x: (it.x + 0.5) * T, y: -T, vy: it.speed * T, ch: null, w: (it.size || 1) * T, h: (it.size || 1) * T, ang: 0 });
+      }
+      for (const d of fl.drops) { d.y += d.vy * dt; if (!d.ch) d.ang = (d.ang || 0) + dt * 3; }
+      fl.drops = fl.drops.filter(d => d.y < RH + 2 * T);
+      for (const s2 of fl.stars) { s2.y += s2.s * 60 * dt; if (s2.y > RH) s2.y -= RH; }
+      if (fl.t >= fl.dur && !P.entering) { P.entering = 0.0001; sfx('tt_exit', { vol: 0.8 }); }
+    }
+    const flightBox = fl => ({ x0: fl.x - 6, y0: fl.y - 26, x1: fl.x + 6, y1: fl.y + 4 });
+
+    // ── the pod (Asteroid cave): the thief flies the rocket's little lander. Hold jump = thrust up, ◀ ▶ = drift.
+    // Touching rock anywhere is a crash, except coming down softly on top of something.
+    const POD_G = 300, POD_THRUST = 720, POD_ACC = 330, POD_DEC = 150, POD_MAXX = 140, POD_UP = 190, POD_DN = 260, POD_SOFT = 120;
+    function stepPod(dt, dir, jh) {
+      const pd = R.pod; pd.thr = jh; pd.t += dt;
+      const tx = dir * POD_MAXX, a = dir ? POD_ACC : P.ground && !jh ? 900 : POD_DEC;      // (parked, it stops; in the air it drifts on)
+      if (P.vx < tx) P.vx = Math.min(tx, P.vx + a * dt); else if (P.vx > tx) P.vx = Math.max(tx, P.vx - a * dt);
+      if (dir) P.face = dir;
+      P.vy = clamp(P.vy + (POD_G - (jh ? POD_THRUST : 0)) * dt, -POD_UP, POD_DN);
+      if (jh) {
+        pd.puff -= dt; if (pd.puff <= 0) { pd.puff = 0.22; sfx('tt_whoosh', { vol: 0.12, rate: 0.55 }); }
+        if (Math.random() < 0.6) fx.spawn({ x: P.x + (Math.random() - 0.5) * 4, y: P.y + 2, vx: (Math.random() - 0.5) * 40, vy: 90 + Math.random() * 80, kind: 'glow', rgb: '255,170,70', size: 1.8, life: 0.3 });
+      } else pd.puff = 0;
+      const n = Math.max(1, Math.ceil(Math.max(Math.abs(P.vx), Math.abs(P.vy)) * dt / 6)), S = solids();
+      P.ground = false; P.on = null;
+      for (let k = 0; k < n; k++) {
+        P.x = clamp(P.x + P.vx * dt / n, PW / 2, RW - PW / 2);
+        let b = box();
+        for (const q of S) if (b.x0 < q.x1 && b.x1 > q.x0 && b.y0 < q.y1 - 0.05 && b.y1 > q.y0 + 0.05) { die('crash'); return; }
+        const pre = box();
+        P.y += P.vy * dt / n; b = box();
+        for (const q of S) if (b.x0 < q.x1 - 0.05 && b.x1 > q.x0 + 0.05 && b.y0 < q.y1 && b.y1 > q.y0) {
+          if (P.vy > 0 && pre.y1 <= q.y0 + 0.5 && P.vy < POD_SOFT) { P.y = q.y0; P.vy = 0; P.ground = true; P.on = q.b.id; b = box(); }
+          else { die('crash'); return; }
+        }
+      }
+    }
+
     // ── the player ────────────────────────────────────────────────────────
     function spawn() {
       P = { x: R.start.x, y: R.start.y, vx: 0, vy: 0, ground: false, on: null, face: 1, coy: 0, buf: 0, cut: false, dead: false, air: 0,
@@ -1198,6 +1938,7 @@
       for (const h of R.holes) for (const q of holeRects(h)) out.push(q);
       for (const w of R.swaps) if (swapSolid(w)) out.push({ x0: w.x, y0: w.y, x1: w.x + T, y1: w.y + T, b: SWAP_B });
       for (const pk of R.planks) { const q = plankRect(pk); if (q) out.push(q); }
+      for (const k of R.keys) if (k.state === 'up' || k.state === 'sink') out.push(keyRect(k));
       for (const e of R.escs) for (const st of e.steps) if (!st.gone && !(st.drop && st.drop.t > 0.12)) out.push(stepRect(st));
       if (R.ladderTops.length && P && R.gdir > 0 && !P.climb) for (const q of R.ladderTops) if (P.y <= q.y0 + 0.5) out.push(q);
       return out;
@@ -1275,16 +2016,24 @@
     // ── per-frame simulation ───────────────────────────────────────────────
     // the test autopilot: steps per room (see the header). Directions are meant on screen; the bot
     // presses the mirrored button itself when controls are swapped.
+    // the pod autopilot: steer toward (x, y) tiles (feet); true once it has settled there
+    function podSteer(tx, ty, tol) {
+      const ex = tx - P.x / T, ey = ty - P.y / T, wvx = clamp(ex * 2.2, -4.4, 4.4) * T, wvy = clamp(ey * 2.4, -5, 5.5) * T;
+      bot.dir = P.vx < wvx - 8 ? 1 : P.vx > wvx + 8 ? -1 : 0;
+      bot.thr = P.vy > wvy;
+      tol = tol || 0.3;
+      return Math.abs(ex) < tol && Math.abs(ey) < tol && Math.abs(P.vx) < 30 && Math.abs(P.vy) < 40;
+    }
     function botInput(dt) {
       // (trap checks: window.__templeBait = i plays the stage's bait route i instead, the one a player falls for)
       const bi = window.__templeBait, steps = bi !== undefined && bi !== null && rooms[ri].baits && rooms[ri].baits[bi] ? rooms[ri].baits[bi].bot : (rooms[ri].bot || []);
       const s = steps[bot.i];
       const px = P.x / T;
-      bot.press = false;
+      bot.press = false; bot.thr = false;
       if (s) {
         const [k, a, b] = s;
         if (!bot.init) {
-          bot.init = true; bot.t = 0; bot.air = false; bot.past = false;
+          bot.init = true; bot.t = 0; bot.air = false; bot.past = false; bot.lastJ = -9;
           if (k === 'run' || k === 'go' || k === 'jumpAt') {
             const want = Math.sign(a - px) || bot.dir || 1;
             // already just past the mark while moving that way: count it as reached (don't turn back)
@@ -1364,6 +2113,40 @@
           }
         }
         else if (k === 'wait') { if (bot.t >= a) next = true; }
+        else if (k === 'jumpwhen') {                              // jump whenever a(R, p) holds (on the ground); done when b(R, p) holds
+          bot.dir = 0;
+          if (b(R.api, pview())) next = true;
+          else if (P.ground && bot.t - (bot.lastJ || -9) > 0.2 && a(R.api, pview())) { bot.press = true; bot.hold = 0.5; bot.lastJ = bot.t; }
+        }
+        else if (k === 'ride') {                                 // ride moving stone a: jump when b(R, p) (fireballs!), steer back onto it in the air; done when s[3](R, p)
+          if (s[3](R.api, pview())) next = true;
+          else if (P.ground) { bot.dir = 0; if (bot.t - bot.lastJ > 0.3 && b(R.api, pview())) { bot.press = true; bot.hold = 0.3; bot.lastJ = bot.t; } }
+          else { const bx2 = R.api.bodyX(a) + (R.bodies[a] ? R.bodies[a].dx / dt * 0.12 / T : 0), d2 = bx2 - px; bot.dir = Math.abs(d2) > 0.15 ? Math.sign(d2) : 0; }
+        }
+        else if (k === 'fly') {                                  // flight mode: steer to wherever nothing will hit in the next second
+          const fl = R.flight;
+          if (!fl || P.entering) next = true;
+          else {
+            let best = fl.x, bestT = -1;
+            for (let dx = -5; dx <= 5; dx += 0.5) {
+              const cx = clamp(fl.x + dx * T, 2.5 * T, RW - 2.5 * T), reach = Math.abs(cx - fl.x) / 170;
+              let tHit = 9;
+              for (const d of fl.drops) {
+                if (Math.abs(d.x - cx) > d.w / 2 + 9) continue;
+                const tt = (fl.y - 26 - (d.y + d.h / 2)) / d.vy;                   // when it reaches the rocket's nose
+                if (tt > -0.4 && tt < tHit) tHit = Math.max(0, tt);
+              }
+              const score = Math.min(tHit, 1.4) - reach * 0.5 - Math.abs(dx) * 0.01;
+              if (score > bestT) { bestT = score; best = cx; }
+            }
+            bot.dir = Math.abs(best - fl.x) > 4 ? Math.sign(best - fl.x) : 0;
+          }
+        }
+        else if (k === 'nudge') { bot.dir = bot.t < b ? a : 0; if (bot.t >= b) next = true; }   // (a short push, for creeping on ice)
+        else if (k === 'stop') {                                 // brake (on ice: lean the other way) until standing still
+          bot.dir = onIce() && Math.abs(P.vx) > 20 ? -Math.sign(P.vx) : 0;        // (on ice lean back; on stone just let go)
+          if (Math.abs(P.vx) <= 8 && bot.t > 0.03) { bot.dir = 0; next = true; }
+        }
         else if (k === 'swimto') {                               // swim to (a, b) tiles: steer, stroke while below it
           const dx = a - px, dy = (P.y - PH / 2) / T - b;
           bot.dir = Math.abs(dx) > 0.15 ? Math.sign(dx) : 0;
@@ -1376,18 +2159,21 @@
           bot.dir = bot.pdir;
           if (typeof s[3] === 'function' ? s[3](R.api, pview()) : bot.t >= s[3]) { bot.pdir = 0; next = true; }
         }
+        else if (k === 'pilot') { bot.podT = { x: a, y: b }; if (podSteer(a, b, s[3])) next = true; }
+        else if (k === 'cut') { bot.dir = 0; bot.podT = null; if (bot.t >= a) next = true; }
         else if (k === 'land') { if (!P.ground) bot.air = true; if ((P.ground && (bot.air || bot.t > 0.15)) || bot.t > 2.5) next = true; }
         else if (k === 'until') { if (a(R.api, pview())) next = true; }
         if (next) { bot.i++; bot.init = false; }
       }
+      if (R.pod && bot.podT && !(s && s[0] === 'pilot')) podSteer(bot.podT.x, bot.podT.y);     // (between moves the pod holds station)
       // (in the water between swims, tread water at the last swim's height)
       if (P.swim && s && s[0] !== 'swimto' && bot.hoverY !== undefined && !bot.press && (P.y - PH / 2) / T > bot.hoverY + 0.08 && P.vy > -20 && bot.t - (bot.lastTread || -9) > 0.12) { bot.press = true; bot.hold = 0.05; bot.lastTread = bot.t; }
       if (!P.swim) bot.hoverY = undefined;
       if (bot.hold > 0) bot.hold -= dt;
       const d = bot.pause ? 0 : R.mirror ? -bot.dir : bot.dir;
-      return { left: d < 0, right: d > 0, jumpP: bot.press, jumpH: bot.press || bot.hold > 0 };
+      return { left: d < 0, right: d > 0, jumpP: bot.press, jumpH: bot.press || bot.hold > 0 || bot.thr };
     }
-    const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on, still: P.still || 0 });
+    const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on, still: P.still || 0, tookOff: P.tookOff > 0 });
 
     // physics in fixed 1/120 s ticks whatever the frame rate (the jump press is held over to the next tick)
     let acc = 0, jpLatch = false;
@@ -1437,10 +2223,18 @@
       if (bot.on) { const b = botInput(dt); L = b.left; Rt = b.right; jp = b.jumpP; jh = b.jumpH; }
       let dir = (Rt ? 1 : 0) - (L ? 1 : 0);
       if (R.mirror) dir = -dir;
+      if (R.flight) {                                            // flight mode: the rocket dodges what falls
+        R.t += dt; stepWorld(dt); stepFlight(R.flight, dt, dir);
+        const fb = flightBox(R.flight);
+        for (const d of R.flight.drops) if (hit(fb, { x0: d.x - d.w / 2 + 3, y0: d.y - d.h / 2 + 3, x1: d.x + d.w / 2 - 3, y1: d.y + d.h / 2 - 3 })) { die('debris'); break; }
+        hudSet(); return;
+      }
+      if (R.rocket && R.rocket.aboard) { R.t += dt; stepWorld(dt); hudSet(); return; }      // (inside, riding up)
       R.t += dt;
       for (let i = R.timers.length - 1; i >= 0; i--) { const tm = R.timers[i]; tm.t -= dt; if (tm.t <= 0) { R.timers.splice(i, 1); tm.fn(); } }
       stepWorld(dt);
       if (P.dead) { hudSet(); return; }
+      if (R.pod) { stepPod(dt, dir, jh); if (!P.dead) hazards(); if (!P.dead) doorsCheck(); if (!P.dead) rules(); hudSet(); return; }
       // movers carried the player / pushed into the player
       for (const b of R.blist) {
         if (!b.alive || (!b.dx && !b.dy)) continue;
@@ -1476,9 +2270,11 @@
       // run
       const onGround = P.ground;
       const inW = waterAt(P.x, P.y - PH * 0.5); P.swim = inW;
+      if (inW && Math.random() < dt * 3) fx.spawn({ x: P.x + P.face * 9, y: P.y - PH * 0.6, vx: (Math.random() - 0.5) * 10, vy: -35 - Math.random() * 20, kind: 'glow', rgb: '210,235,255', size: 1.4, life: 0.9 });   // (bubbles)
       const drag = inW && R.pull && R.flood && R.flood.target !== null && R.flood.target > R.flood.y ? Math.sign(R.pull.x - P.x) * R.pull.v : 0;
       const target = inW ? dir * SWIM_RUN + drag : dir * RUN + (onGround ? (dir ? R.wind * 0.5 : 0) : R.wind);
-      const a = inW ? (dir ? 900 : 700) : onGround ? (dir ? ACC : DEC) : (dir ? AIR_ACC : AIR_DEC);
+      const ice = !inW && onGround && onIce();
+      const a = inW ? (dir ? 900 : 700) : ice ? (dir ? ICE_ACC : ICE_DEC) : onGround ? (dir ? ACC : DEC) : (dir ? AIR_ACC : AIR_DEC);
       if (P.vx < target) P.vx = Math.min(target, P.vx + a * dt); else if (P.vx > target) P.vx = Math.max(target, P.vx - a * dt);
       if (dir) P.face = dir;
       // jump (buffered, with coyote time); in a flip-jump room the button turns gravity over instead
@@ -1491,7 +2287,7 @@
       } else if (P.buf > 0 && (onGround || P.coy > 0) && !ladder) {
         P.buf = 0; P.coy = 0;
         if (R.flipJumps) { flipGravity(R); }
-        else { P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; P.launched = false; sfx('tt_jump', { vol: 0.45 }); }
+        else { P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; P.launched = false; P.tookOff = 2; sfx('tt_jump', { vol: 0.45 }); }
       }
       const rising = P.vy * R.gdir < 0;
       if (rising && !jh && !P.cut && !P.launched) { P.vy *= CUT; P.cut = true; }
@@ -1545,11 +2341,18 @@
       }
       // the run cycle + idle blink
       P.still = P.ground && Math.abs(P.vx) < 4 ? (P.still || 0) + dt : 0;
+      if (P.tookOff > 0) P.tookOff--;                              // (true for the tick a jump starts: rules see it)
       P.run += Math.abs(P.vx) * dt / 15; P.land = Math.max(0, P.land - dt * 7); P.born += dt;
       P.blink -= dt; if (P.blink < -0.12) P.blink = 2 + Math.random() * 3;
       if (P.ground) for (const b of R.fragiles) if (P.on === b.id && b.vanT < 0 && !b.hidden) b.vanT = b.fragile.delay;
       hazards();
       if (!P.dead) doorsCheck();
+      if (!P.dead && R.rocket) {
+        const rk = R.rocket;
+        if (rk.open && !rk.aboard && !rk.launch && hit(box(), rocketDoor(rk))) { rk.aboard = true; rk.launch = 0.0001; P.vx = 0; sfx('tt_door', { vol: 0.8, rate: 0.8 }); sfx('tt_thunder', { vol: 0.7 }); }
+        else if (rk.launch > 0 && !rk.aboard && hit(box(), rocketFlame(rk))) die('fire');
+      }
+      for (const k of R.keys) { if (P.ground && P.on === k.id) pressKey(k); else k.pressed = false; }
       if (!P.dead && R.idol && !R.idol.taken && Math.abs(P.x - R.idol.x) < 13 && P.y > R.idol.y - 30 && P.y < R.idol.y + 4) {
         R.idol.taken = true; sfx('tt_spring', { vol: 0.7, rate: 1.4 }); burst(R.idol.x, R.idol.y - 14, 16); taunt = '+1 GOLDEN SEED!'; tauntT = 1.6;
         if (R.idol.fn) R.idol.fn();
@@ -1574,6 +2377,7 @@
       }
     }
     function stepWorld(dt) {
+      if (R.credits) { R.credits.t += dt; if (R.credits.t >= R.credits.dur) R.credits = null; }
       for (const b of R.blist) {
         stepMover(b, dt);
         if (!b.live && !b.static && (b.dx || b.dy || b.shk || !b.alive || (b.cur && b.cur.k !== 'wait'))) { b.live = true; R.rebake = true; }
@@ -1626,6 +2430,13 @@
       for (const s2 of R.shots) stepShot(s2, dt);
       for (const u of R.urchins) stepUrchin(u, dt);
       for (const f2 of R.fish) stepFish(f2, dt);
+      for (const cn of R.cannons) stepCannon(cn, dt);
+      for (const em of R.emitters) stepEmitter(em, dt);
+      for (const cm of R.comets) stepComet(cm, dt);
+      for (const sp2 of R.spurts) stepSpurt(sp2, dt);
+      for (const cl of R.columns) stepColumn(cl, dt);
+      if (R.rocket) stepRocket(R.rocket, dt);
+      if (R.keys.length) stepKeys(dt);
       if (R.idol) R.idol.t += dt;
       for (const pk of R.planks) stepPlank(pk, dt);
       for (const h of R.holes) {
@@ -1742,7 +2553,7 @@
       for (const s of R.saws) {
         if (!s.alive) continue;
         const cx = clamp(s.x, sb.x0, sb.x1), cy = clamp(s.y, sb.y0, sb.y1);
-        if (Math.hypot(cx - s.x, cy - s.y) < s.r * 0.8) { die('saw'); return; }
+        if (Math.hypot(cx - s.x, cy - s.y) < s.r * 0.8) { die(s.mine ? 'mine' : 'saw'); return; }
       }
       for (const s of R.parts) {
         const cx = clamp(s.x, sb.x0, sb.x1), cy = clamp(s.y, sb.y0, sb.y1);
@@ -1754,6 +2565,11 @@
       for (const d of R.drops) if (d.alive && d.wait <= 0 && hit(sb, { x0: d.x - T / 2 + 3, y0: d.y - T / 2 + 2, x1: d.x + T / 2 - 3, y1: d.y + T / 2 + 6 })) { die('drop'); return; }
       for (const bl of R.balls) if (bl.alive && bl.wait <= 0 && Math.hypot(clamp(bl.x, sb.x0, sb.x1) - bl.x, clamp(bl.y, sb.y0, sb.y1) - bl.y) < bl.r) { die('ball'); return; }
       for (const sp of R.spears) if (sp.ext > 0.3 && hit(sb, spearBox(sp))) { die('spear'); return; }
+      for (const cn of R.cannons) if (cannonHits(cn, sb)) { die('frost'); return; }
+      if (lavaHit(sb)) { die('lava'); return; }
+      for (const cm of R.comets) if (cm.alive && Math.hypot(clamp(cm.x, sb.x0, sb.x1) - cm.x, clamp(cm.y, sb.y0, sb.y1) - cm.y) < 8) { die('fire'); return; }
+      for (const sp2 of R.spurts) if (sp2.up && Math.hypot(clamp(sp2.x, sb.x0, sb.x1) - sp2.x, clamp(sp2.y, sb.y0, sb.y1) - sp2.y) < 9) { die('fire'); return; }
+      for (const cl of R.columns) if (cl.ext > 0.2 && hit(sb, columnBox(cl))) { die('lava'); return; }
       for (const s2 of R.shots) if (s2.alive && Math.hypot(clamp(s2.x, sb.x0, sb.x1) - s2.x, clamp(s2.y, sb.y0, sb.y1) - s2.y) < 5) { die('shot'); return; }
       for (const u of R.urchins) if (u.state !== 'gone' && Math.hypot(clamp(u.x, sb.x0, sb.x1) - u.x, clamp(u.y, sb.y0, sb.y1) - u.y) < u.r) { die('urchin'); return; }
       for (const f2 of R.fish) if (f2.alive && hit(sb, { x0: f2.x - f2.w / 2 + 3, y0: f2.y - f2.h / 2 + 2, x1: f2.x + f2.w / 2 - 3, y1: f2.y + f2.h / 2 - 2 })) { die('fish'); return; }
@@ -1774,7 +2590,7 @@
       for (const d of R.doors) {
         if (!d.alive || d.alpha < 0.6) continue;
         const dx = d.x + d.ox, dy = d.y + d.oy;
-        const moving = d.cur && d.cur.k === 'hop';
+        const moving = d.cur && (d.cur.k === 'hop' || d.cur.name === 'run');
         if (d.fake) {
           const r = d.hang ? { x0: dx - 9, y0: dy, x1: dx + 9, y1: dy + 29 } : { x0: dx - 9, y0: dy - 29, x1: dx + 9, y1: dy };
           if (hit(box(), r)) { d.bit = 0.4; die('door'); return; }
@@ -1844,8 +2660,10 @@
       const G0 = R.g, still = new Set();
       for (const b of R.blist) if (!b.static && b.kind !== 'ghost' && !b.live && b.alive && !b.hidden) for (const [x, y] of b.tiles) still.add(x + ',' + y);
       const solidAt = (x, y) => (y < 0 ? false : x < 0 || x >= COLS || y >= ROWS ? true : G0[y][x] === '#' || G0[y][x] === '=' || still.has(x + ',' + y));
-      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (solidAt(x, y))
-        brick(g, x * T, y * T, !solidAt(x, y - 1), !solidAt(x, y + 1), !solidAt(x - 1, y), !solidAt(x + 1, y), x, y);
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (solidAt(x, y)) {
+        if (G0[y][x] === '=') iceTile(g, x * T, y * T, !solidAt(x, y - 1), !solidAt(x, y + 1), x, y);
+        else brick(g, x * T, y * T, !solidAt(x, y - 1), !solidAt(x, y + 1), !solidAt(x - 1, y), !solidAt(x + 1, y), x, y);
+      }
       for (const s of R.signs) drawSign(g, s);
       bake.room = cv;
     }
@@ -1878,6 +2696,7 @@
       c.beginPath(); c.rect(0, 0, F.vw, F.vh); c.clip();
       c.translate(-Math.round(cam.x * F.s) / F.s, -Math.round(cam.y * F.s) / F.s);
       if (bake.room) c.drawImage(bake.room, 0, 0, RW, RH);
+      if (R.flight) { c.fillStyle = '#0b0c22'; c.fillRect(0, 0, RW, RH); for (const s2 of R.flight.stars) { c.fillStyle = `rgba(255,255,255,${(0.3 + s2.s * 0.25).toFixed(2)})`; c.fillRect(s2.x, s2.y, 2, 2 + s2.s * 2); } }
       for (const e of R.exits) drawExit(c, e);
       for (const e of R.lures) drawExit(c, e);
       // stone that moves (or shakes, or is about to go): drawn live, tile by tile
@@ -1888,6 +2707,8 @@
         const jx = b.shk ? (Math.random() - 0.5) * b.shk * 2 : 0;
         if (b.breath) { for (const q of b.rects) { c.fillStyle = STONE; c.fillRect(q.x + b.ox + jx, q.y + b.oy, q.w, q.h); c.fillStyle = STONE_HI; c.fillRect(q.x + b.ox + jx, q.y + b.oy, q.w, 4); } continue; }
         const own = b.ownSet || (b.ownSet = new Set(b.tiles.map(([x, y]) => x + ',' + y)));
+        if (b.carpetLook) { const q = b.rects[0], X = q.x + b.ox, Y = q.y + b.oy + Math.round(Math.sin(t * 5) * 1.2); c.fillStyle = '#b8322a'; c.fillRect(X, Y + 4, q.w, 10); c.fillStyle = '#e8b84a'; c.fillRect(X, Y + 4, q.w, 2); c.fillRect(X, Y + 12, q.w, 2); for (let xx = 4; xx < q.w; xx += 8) c.fillRect(X + xx, Y + 7, 3, 3); c.fillStyle = '#e8b84a'; for (let k2 = 0; k2 < 3; k2++) { c.fillRect(X - 3, Y + 5 + k2 * 3, 3, 1); c.fillRect(X + q.w, Y + 5 + k2 * 3, 3, 1); } continue; }
+        if (b.ice) { for (const [x, y] of b.tiles) iceTile(c, x * T + b.ox + jx, y * T + b.oy, !own.has(x + ',' + (y - 1)), !own.has(x + ',' + (y + 1)), x, y); continue; }
         for (const [x, y] of b.tiles) brick(c, x * T + b.ox + jx, y * T + b.oy, !own.has(x + ',' + (y - 1)), !own.has(x + ',' + (y + 1)), !own.has((x - 1) + ',' + y), !own.has((x + 1) + ',' + y), x, y);
       }
       const gb = R.bodies['+'];
@@ -1913,12 +2734,22 @@
       for (const bl of R.balls) if (bl.alive && bl.wait <= 0) drawBall(c, bl);
       for (const d of R.doors) if (d.alive) drawDoor(c, d);
       for (const sp of R.spears) if (sp.ext > 0.01) drawSpear(c, sp);
+      for (const k of R.keys) if (k.state !== 'gone') drawKey(c, k);
+      drawLava(c);
+      for (const cl of R.columns) if (cl.ext > 0.01) drawColumn(c, cl);
+      for (const cm of R.comets) if (cm.alive) drawFireball(c, cm.x, cm.y, cm.vx);
+      for (const sp2 of R.spurts) if (sp2.up) drawFireball(c, sp2.x, sp2.y, 0);
+      for (const cn of R.cannons) drawCannon(c, cn);
       for (const sh of R.shooters) drawShooter(c, sh);
       for (const s2 of R.shots) if (s2.alive) drawShot(c, s2);
       for (const u of R.urchins) if (u.state !== 'gone') drawUrchin(c, u);
       for (const f2 of R.fish) if (f2.alive) drawFish(c, f2);
-      if (!P.dead) drawThief(c, P.x, P.y, P.face);
+      if (R.rocket) drawRocket(c, R.rocket);
+      if (R.flight) drawFlight(c, R.flight);
+      else if (!P.dead && R.pod) drawPod(c, P.x, P.y);
+      else if (!P.dead && !(R.rocket && R.rocket.aboard)) drawThief(c, P.x, P.y, P.face);
       drawWater(c);
+      if (R.credits) drawCredits(c, R.credits);
       fx.draw(c);
       if (R.darkA > 0) {
         const a = R.darkA * (1 - Math.min(1, (R.light || 0) * 7));
@@ -1955,6 +2786,15 @@
       }
     }
     function drawSaw(c, s) {
+      if (s.mine) {                                              // a mine: a dark iron ball, eight stubby spikes, a blinking red eye
+        c.save(); c.translate(Math.round(s.x), Math.round(s.y));
+        c.fillStyle = '#2c2624';
+        for (let i = 0; i < 8; i++) { c.save(); c.rotate(i * TAU / 8); c.fillRect(-2, -s.r, 4, s.r * 0.5); c.restore(); }
+        c.beginPath(); c.arc(0, 0, s.r * 0.7, 0, TAU); c.fill();
+        c.fillStyle = '#4a403b'; c.fillRect(-s.r * 0.45, -s.r * 0.45, s.r * 0.4, s.r * 0.25);
+        c.fillStyle = Math.floor(t * 3) % 2 ? '#ff4a3a' : '#6a1a14'; c.fillRect(-2, -2, 4, 4);
+        c.restore(); return;
+      }
       c.save(); c.translate(s.x, s.y); c.rotate(s.ang);
       c.fillStyle = BONE; c.beginPath();
       const n = 8;
@@ -2015,8 +2855,24 @@
       c.restore();
     }
     // a dropping brick with spikes underneath
+    // credits rolling up (dimming the room), or a line that just sits there (no dimming: you still need to see)
+    function drawCredits(c, cr) {
+      const a = Math.max(0, Math.min(1, cr.t / 0.3, (cr.dur - cr.t) / 0.4));
+      c.save(); c.globalAlpha *= a;
+      if (!cr.lines.every(l => l.still)) { c.fillStyle = 'rgba(0,0,0,0.4)'; c.fillRect(0, 0, RW, RH); }
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (const ln of cr.lines) {
+        if (cr.t < ln.t) continue;
+        const yy = ln.still ? RH * 0.3 : RH * 0.9 - (cr.t - ln.t) * 46;
+        if (yy < -20) continue;
+        c.font = `bold ${ln.big ? 28 : 13}px 'Courier New', monospace`; c.fillStyle = ln.big ? GLOW : 'rgba(243,234,214,0.92)';
+        c.fillText(ln.text, RW / 2, yy);
+      }
+      c.restore();
+    }
     function drawDrop(c, d) {
       brick(c, d.x - T / 2, d.y - T / 2, true, true, true, true, 3, 5);
+      if (d.ch) { c.font = "bold 18px 'Courier New', monospace"; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = GLOW; c.fillText(d.ch, d.x, d.y + 1); }
       for (const cx of [-6.5, 6.5]) for (let k = 0; k < 10; k += 2) { const w = Math.max(2, Math.round((1 - k / 10) * 6) * 2 - 2); c.fillStyle = BONE; c.fillRect(Math.round(d.x + cx - w / 2), d.y + T / 2 + k, w, 2); }
     }
     function drawBall(c, bl) {
@@ -2058,6 +2914,82 @@
       c.fillStyle = STONE; c.fillRect(-10, -14, 7, 7); c.fillRect(3, -14, 7, 7);
       c.fillStyle = '#e0412f'; c.fillRect(-8, -12, 3, 3); c.fillRect(5, -12, 3, 3);
       c.fillStyle = '#1a1210'; c.fillRect(2, -1 - sh.mouth * 3, 10, 2 + sh.mouth * 6);
+      c.restore();
+    }
+    // the rocket: white, a red nose and fins, a round window, a door outline on its door side; flames when it goes
+    function drawRocket(c, rk) {
+      const x = Math.round(rk.x), y = Math.round(rk.y + rk.oy);
+      if (rk.launch > 0) { c.fillStyle = '#ff9a2a'; c.beginPath(); c.moveTo(x - 7, y); c.lineTo(x, y + 16 + Math.random() * 10); c.lineTo(x + 7, y); c.fill(); c.fillStyle = '#ffe36a'; c.beginPath(); c.moveTo(x - 4, y); c.lineTo(x, y + 9 + Math.random() * 6); c.lineTo(x + 4, y); c.fill(); }
+      c.fillStyle = '#c83a2e'; c.fillRect(x - 13, y - 14, 6, 14); c.fillRect(x + 7, y - 14, 6, 14);
+      c.fillStyle = '#eef0f4'; c.fillRect(x - 8, y - 44, 16, 44); c.fillStyle = '#c9ccd6'; c.fillRect(x + 4, y - 44, 4, 44);
+      c.fillStyle = '#c83a2e'; c.beginPath(); c.moveTo(x - 8, y - 44); c.lineTo(x, y - 58); c.lineTo(x + 8, y - 44); c.fill();
+      c.fillStyle = '#3a6ea8'; c.beginPath(); c.arc(x, y - 33, 4, 0, TAU); c.fill(); c.fillStyle = '#9fd0ff'; c.fillRect(x - 2, y - 35, 2, 2);
+      c.strokeStyle = rk.open ? '#ffd27a' : '#8a8f9c'; c.lineWidth = 2; c.strokeRect(x + rk.door * 4 - 3, y - 22, 6, 18);
+      if (rk.open && !rk.aboard && Math.floor(t * 4) % 2) { c.fillStyle = 'rgba(255,210,122,0.4)'; c.fillRect(x + rk.door * 4 - 3, y - 22, 6, 18); }
+    }
+    // flight: the falling rocks and letters, the rocket, and the credits rolling up the sky
+    function drawFlight(c, fl) {
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (const cr of fl.credits) { const yy = RH + 20 - (fl.t - cr.t) * 38; if (yy < -20 || yy > RH + 30) continue; c.font = `bold ${cr.big ? 22 : 13}px 'Courier New', monospace`; c.fillStyle = cr.big ? GLOW : 'rgba(243,234,214,0.8)'; c.fillText(cr.text, RW / 2, yy); }
+      for (const d of fl.drops) {
+        if (d.ch) { c.font = "bold 24px 'Courier New', monospace"; c.fillStyle = '#f3ead6'; c.fillText(d.ch, d.x, d.y + 1); c.strokeStyle = '#e0412f'; c.lineWidth = 1; c.strokeText(d.ch, d.x, d.y + 1); }
+        else { c.save(); c.translate(d.x, d.y); c.rotate(d.ang); c.fillStyle = '#6a5a4a'; c.fillRect(-d.w / 2, -d.h / 2, d.w, d.h); c.fillStyle = '#8a7a66'; c.fillRect(-d.w / 2, -d.h / 2, d.w, 4); c.restore(); }
+      }
+      const x = Math.round(fl.x), y = Math.round(fl.y);
+      c.fillStyle = '#ff9a2a'; c.beginPath(); c.moveTo(x - 6, y + 4); c.lineTo(x, y + 18 + Math.random() * 8); c.lineTo(x + 6, y + 4); c.fill();
+      c.fillStyle = '#c83a2e'; c.fillRect(x - 11, y - 6, 5, 10); c.fillRect(x + 6, y - 6, 5, 10);
+      c.fillStyle = '#eef0f4'; c.fillRect(x - 6, y - 26, 12, 30);
+      c.fillStyle = '#c83a2e'; c.beginPath(); c.moveTo(x - 6, y - 26); c.lineTo(x, y - 36); c.lineTo(x + 6, y - 26); c.fill();
+      c.fillStyle = '#3a6ea8'; c.beginPath(); c.arc(x, y - 16, 3, 0, TAU); c.fill();
+      if (fl.t > fl.dur - 1.8) { c.font = "bold 30px 'Courier New', monospace"; c.fillStyle = GLOW; c.fillText('STAGE CLEAR!', RW / 2, RH * 0.4); }
+    }
+    // lava: glowing tiles with a bubbling top; a lava flood fills the room from its line down
+    function drawLava(c) {
+      const top = (x, y) => { c.fillStyle = '#ffd34a'; for (let k = 0; k < T; k += 4) c.fillRect(x * T + k, y + 2 + Math.round(Math.sin(t * 4 + x * 1.3 + k * 0.4) * 1.5), 4, 3); };
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (R.g[y][x] === ';') {
+        c.fillStyle = '#e8501f'; c.fillRect(x * T, y * T + 4, T, T - 4); c.fillStyle = '#ff8a2a'; c.fillRect(x * T, y * T + 4, T, 6);
+        if (y === 0 || R.g[y - 1][x] !== ';') top(x, y * T); else { c.fillStyle = '#e8501f'; c.fillRect(x * T, y * T, T, 4); }
+      }
+      if (R.flood && R.flood.lava && R.flood.y < RH) {
+        const fy = R.flood.y;
+        for (let y = Math.floor(fy / T); y < ROWS; y++) for (let x = 0; x < COLS; x++) { const ch = R.g[y][x]; if (ch === '#') continue; const tp = Math.max(fy, y * T); c.fillStyle = '#e8501f'; c.fillRect(x * T, tp, T, (y + 1) * T - tp); }
+        for (let x = 0; x < COLS; x++) top(x, fy - 2);
+      }
+    }
+    function drawColumn(c, cl) {
+      const q = columnBox(cl);
+      c.fillStyle = '#e8501f'; c.fillRect(q.x0, q.y0, q.x1 - q.x0, q.y1 - q.y0);
+      c.fillStyle = '#ff9a2a'; c.fillRect(q.x0 + 4, q.y0, q.x1 - q.x0 - 8, q.y1 - q.y0);
+      c.fillStyle = '#ffd34a'; for (let x = q.x0; x < q.x1; x += 6) c.fillRect(x, q.y0 - 3 - Math.round(Math.abs(Math.sin(t * 9 + x)) * 5), 4, 6);
+    }
+    function drawFireball(c, x, y, vx) {
+      if (vx) { c.fillStyle = 'rgba(255,140,40,0.5)'; c.fillRect(Math.round(x - Math.sign(vx) * 22), Math.round(y - 3), 22 * Math.sign(vx), 6); }
+      c.fillStyle = '#ff6a1f'; c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill();
+      c.fillStyle = '#ffd34a'; c.beginPath(); c.arc(x, y, 4, 0, TAU); c.fill();
+    }
+    // an organ key: ivory with a dark edge; it dips when played
+    function drawKey(c, k) {
+      const y = k.y + k.oy + k.dip * 2;
+      c.fillStyle = '#3a3546'; c.fillRect(k.x, y, T, T);
+      c.fillStyle = '#efe9da'; c.fillRect(k.x + 1, y, T - 2, T - 3);
+      c.fillStyle = '#fffaf0'; c.fillRect(k.x + 2, y, T - 6, 3);
+      c.fillStyle = '#1d1a26'; c.fillRect(k.x + T - 7, y, 5, 13);
+    }
+    // the frost cannon: a squat barrel that turns to where its arrow says; the arrow flashes, the beam is white-blue
+    function drawCannon(c, cn) {
+      const pat = cn.pattern[cn.k], aim = cn.state === 'fire' ? pat.fire : pat.show;
+      if (cn.state === 'warn' && Math.floor(t * 10) % 2 === 0) {
+        c.save(); c.translate(cn.x, cn.y); c.rotate(pat.show); c.fillStyle = '#ffd34a';
+        c.beginPath(); c.moveTo(30, 0); c.lineTo(20, -7); c.lineTo(20, 7); c.closePath(); c.fill(); c.fillRect(12, -2, 10, 4); c.restore();
+      }
+      if (cn.state === 'fire') {
+        c.save(); c.translate(cn.x, cn.y); c.rotate(pat.fire);
+        c.fillStyle = 'rgba(190,235,255,0.55)'; c.fillRect(T * 0.5, -7, cn.len - T * 0.5, 14);
+        c.fillStyle = '#f2fbff'; c.fillRect(T * 0.5, -3, cn.len - T * 0.5, 6); c.restore();
+      }
+      c.save(); c.translate(Math.round(cn.x), Math.round(cn.y));
+      c.fillStyle = MORTAR; c.fillRect(-11, 2, 22, 11); c.fillStyle = STONE; c.fillRect(-10, 2, 20, 9);
+      c.rotate(aim); c.fillStyle = '#5a6a7a'; c.fillRect(-4, -5, 18, 10); c.fillStyle = '#9fdcf0'; c.fillRect(12, -4, 3, 8);
       c.restore();
     }
     function drawSpear(c, sp) {
@@ -2121,27 +3053,56 @@
       c.fillStyle = `rgba(${GLOW_RGB},0.35)`; c.fillRect(-10, -36, 20, 36);
       c.restore();
     }
-    // the hero: a raccoon thief in 2 px pixels. F fur, D dark fur, K black (mask, nose, eyes' frame), W white,
-    // R red scarf, L legs. Facing right; the ringed tail sticks out behind.
+    // the hero: a raccoon thief in 2 px pixels, outlined so it reads on sandstone and in the dark. K outline + bandit
+    // mask, F fur, W white (brows, muzzle, belly, ear tips), R red scarf, L legs; the ringed tail sticks out behind.
+    // Facing right. swim1/swim2: lying flat, paddling.
     const POSES = {
-      stand: ['.D.........', 'DFD..K...K.', 'DFD.KFK.KFK', '.D..FFFFFFF', 'DF.KKWKKWKK', 'FD.WWFFFFWK', '.DF.WWWWW..', '..DFRRRRR..', '...FFWWFF..', '...FFWWFF..', '....L..L...'],
-      step: ['.D.........', 'DFD..K...K.', 'DFD.KFK.KFK', '.D..FFFFFFF', 'DF.KKWKKWKK', 'FD.WWFFFFWK', '.DF.WWWWW..', '..DFRRRRR..', '...FFWWFF..', '...FFWWFF..', '...L....L..'],
-      step2: ['.D.........', 'DFD..K...K.', 'DFD.KFK.KFK', '.D..FFFFFFF', 'DF.KKWKKWKK', 'FD.WWFFFFWK', '.DF.WWWWW..', '..DFRRRRR..', '...FFWWFF..', '...FFWWFF..', '.....LL....'],
-      air: ['...........', 'D....K...K.', 'FD..KFK.KFK', 'DF..FFFFFFF', '.DFKKWKKWKK', '..DWWFFFFWK', '...FWWWWW..', '..FFRRRRRF.', '...FFWWFF..', '..L.FWWF.L.', '...........']
+      stand: ['.......K......K..', '......KWK....KWK.', '......KFFFFFFFFK.', '......KWWWFFWWWK.', '......KKWKFFKWKK.', '..DD..KKKKWWKKKK.', '.KFFK..KWWKKWWK..', '.KDDDK..KWWWWK...', '.KFFFFKKRRRRRRK..', '..KDDDDKFFWWFFK..', '...KFFFKFFWWFFK..', '....KDDKFFFFFFK..', '.......KLK..KLK..', '.......KK...KK...'],
+      step: ['.......K......K..', '......KWK....KWK.', '......KFFFFFFFFK.', '......KWWWFFWWWK.', '......KKWKFFKWKK.', '..DD..KKKKWWKKKK.', '.KFFK..KWWKKWWK..', '.KDDDK..KWWWWK...', '.KFFFFKKRRRRRRK..', '..KDDDDKFFWWFFK..', '...KFFFKFFWWFFK..', '....KDDKFFFFFFK..', '.......KLK...KLK.', '.......KK.....KK.'],
+      step2: ['.......K......K..', '......KWK....KWK.', '......KFFFFFFFFK.', '......KWWWFFWWWK.', '......KKWKFFKWKK.', '..DD..KKKKWWKKKK.', '.KFFK..KWWKKWWK..', '.KDDDK..KWWWWK...', '.KFFFFKKRRRRRRK..', '..KDDDDKFFWWFFK..', '...KFFFKFFWWFFK..', '....KDDKFFFFFFK..', '........KLLK.....', '........KKKK.....'],
+      air: ['.......K......K..', '......KWK....KWK.', '......KFFFFFFFFK.', '......KWWWFFWWWK.', '......KKWKFFKWKK.', '..DD..KKKKWWKKKK.', '.KFFK..KWWKKWWK..', '.KDDDK..KWWWWK...', '.KFFFFKKRRRRRRK..', '..KDDDDKFFWWFFK..', '...KFFFKFFWWFFK..', '....KDDKFFFFFFK..', '.......KLLLLK....', '.................'],
+      swim1: ['.........K......K..', '........KWK....KWK.', '........KFFFFFFFFK.', '........KWWWFFWWWK.', '.DD.....KKWKFFKWKK.', 'KFFKKKKKKKKKWWKKKK.', 'KDDKFFFFRRKWWKKWWK.', '.KFFFFFFFRRKWWWWK..', '..KKFWWWWFFKKKKK...', '...KFFFKKKKK.KFFFK.', '...KKK.......KKK...'],
+      swim2: ['.........K......K..', '........KWK....KWK.', '........KFFFFFFFFK.', '........KWWWFFWWWK.', '.DD.....KKWKFFKWKK.', 'KFFKKKKKKKKKWWKKKK.', 'KDDKFFFFRRKWWKKWWK.', '.KFFFFFFFRRKWWWWK..', '..KKFWWWWFFKKKKK...', '..KFFKKKKKKFFK.....', '..KKK......KKK.....'],
     };
     const PCOL = { F: '#a2a8b2', D: '#575d69', K: '#17191e', W: '#f4f1ea', R: '#d2463a', L: '#3b4049' };
+    // the pod: a little white lander with a red nose and legs, the thief's masked face in its window, a flame while thrusting
+    function drawPod(c, x, y) {
+      x = Math.round(x); y = Math.round(y);
+      c.save();
+      if (P.entering > 0) c.globalAlpha *= Math.max(0, 1 - P.entering * 2.2);
+      if (R.pod.thr) {
+        c.fillStyle = '#ff9a2a'; c.beginPath(); c.moveTo(x - 4, y - 2); c.lineTo(x, y + 7 + Math.random() * 6); c.lineTo(x + 4, y - 2); c.fill();
+        c.fillStyle = '#ffe36a'; c.fillRect(x - 1, y - 2, 2, 4 + Math.round(Math.random() * 3));
+      }
+      c.fillStyle = '#c83a2e'; c.fillRect(x - 8, y - 7, 3, 7); c.fillRect(x + 5, y - 7, 3, 7);
+      c.fillStyle = '#eef0f4'; c.fillRect(x - 5, y - 20, 10, 17); c.fillStyle = '#c9ccd6'; c.fillRect(x + 3, y - 20, 2, 17);
+      c.fillStyle = '#8a8f9c'; c.fillRect(x - 5, y - 4, 10, 2);
+      c.fillStyle = '#c83a2e'; c.beginPath(); c.moveTo(x - 5, y - 20); c.lineTo(x, y - 27); c.lineTo(x + 5, y - 20); c.fill();
+      c.fillStyle = '#9fd0ff'; c.fillRect(x - 4, y - 17, 8, 7);
+      c.fillStyle = PCOL.F; c.fillRect(x - 3, y - 16, 6, 5);
+      c.fillStyle = PCOL.K; c.fillRect(x - 3, y - 15, 6, 2);
+      c.fillStyle = PCOL.W; c.fillRect(x - 2 + (P.face < 0 ? -1 : 0), y - 15, 1, 1); c.fillRect(x + 1 + (P.face < 0 ? -1 : 0), y - 15, 1, 1);
+      c.restore();
+    }
     function drawThief(c, x, y, face) {
+      const px = 2;
+      c.save();
+      if (P.entering > 0) c.globalAlpha *= Math.max(0, 1 - P.entering * 2.2);
+      if (P.swim) {                                              // swimming: flat out, paddling (faster while moving), bobbing
+        const pose = POSES[Math.floor(t * (Math.abs(P.vx) > 20 || P.vy < -20 ? 7 : 3.5)) % 2 ? 'swim1' : 'swim2'], w = pose[0].length, h = pose.length;
+        c.translate(Math.round(x), Math.round(y - PH / 2 + Math.sin(t * 5) * 1.2)); c.scale(face, 1);
+        for (let r = 0; r < h; r++) for (let k = 0; k < w; k++) { const ch = pose[r][k]; if (ch !== '.') { c.fillStyle = PCOL[ch]; c.fillRect((k - 10) * px, (r - 6) * px, px, px); } }
+        c.restore(); return;
+      }
       const air = !P.ground, moving = Math.abs(P.vx) > 20;
       const ph = Math.floor(P.run * 1.2) % 4;
       const pose = POSES[air ? 'air' : moving ? (ph === 1 ? 'step' : ph === 3 ? 'step2' : 'stand') : 'stand'];
-      const px = 2, w = pose[0].length, h = pose.length;
-      c.save();
+      const w = pose[0].length, h = pose.length;
       c.translate(Math.round(x), Math.round(y)); if (R.gdir < 0) c.scale(1, -1);
-      if (P.entering > 0) c.globalAlpha *= Math.max(0, 1 - P.entering * 2.2);
       c.scale(face, 1);
       for (let r = 0; r < h; r++) {
         const row = pose[r];
-        for (let k = 0; k < w; k++) { const ch = row[k]; if (ch === '.') continue; c.fillStyle = PCOL[ch]; c.fillRect((k - 7) * px, (r - h) * px, px, px); }   // (the body sits on the hitbox, the tail hangs out behind)
+        for (let k = 0; k < w; k++) { const ch = row[k]; if (ch === '.') continue; c.fillStyle = PCOL[ch]; c.fillRect((k - 11) * px, (r - h) * px, px, px); }   // (the body sits on the hitbox, the tail sticks out behind)
       }
       c.restore();
     }
@@ -2192,7 +3153,7 @@
 
     // (probe for the design tools: boulders, balls)
     window.__templeProbe = () => (R.boulders.map(b => `B(${(b.x / T).toFixed(2)},${(b.y / T).toFixed(2)} vx${(b.vx / T).toFixed(1)}${b.ground ? ' g' : ''})`).join(' ') + ' ' + R.balls.map(b => `o(${(b.x / T).toFixed(1)},${(b.y / T).toFixed(1)})`).join(' ')
-      + (R.bodies.w ? ` w(${(R.bodies.w.ox / T).toFixed(2)})` : '') + ' ' + R.urchins.filter(u => u.state === 'awake').map(u => `u(${(u.x / T).toFixed(1)},${(u.y / T).toFixed(1)})`).join(' ') + (R.bodies.g && R.bodies.g.grate ? (R.bodies.g.hidden ? ' GRATE-OPEN' : ' grate-shut') : '')).trim();
+      + R.blist.filter(b => !b.static && (b.ox || b.oy || b.hidden)).map(b => ` ${b.id}(${(b.ox / T).toFixed(2)},${(b.oy / T).toFixed(2)}${b.hidden ? ' hid' : ''})`).join('') + ' ' + R.urchins.filter(u => u.state === 'awake').map(u => `u(${(u.x / T).toFixed(1)},${(u.y / T).toFixed(1)})`).join(' ') + (R.bodies.g && R.bodies.g.grate ? (R.bodies.g.hidden ? ' GRATE-OPEN' : ' grate-shut') : '') + R.comets.filter(cm => cm.alive).map(cm => ` c${(cm.x / T).toFixed(1)}`).join('')).trim();
     window.__templeGrid = () => { let o = ''; for (let y = 6; y <= 9; y++) { let row = ''; for (let x = 2; x <= 29; x++) row += R.barSet && R.barSet.has(x + ',' + y) ? '$' : '.'; o += '      ' + row + String.fromCharCode(10); } return o; };
     loadRoom(ri, false);
     return {
