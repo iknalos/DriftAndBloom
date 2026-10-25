@@ -499,7 +499,7 @@
           { const slam = (id, w) => R.$(id).wait(w, 'w0').call(() => R.$(id).move(0, 5, 0.12, 'in', 'slam').call(() => R.slamFx(id)).wait(0.4, 'hold').move(0, -5, 0.8, 'io', 'rise').wait(0.9, 'top').loop());
           slam('b', 0.2); slam('c', 1.1); }
           { const e = R.escalator({ from: [5, 30+9], to: [23, 30+3], speed: 1.5 });
-          R.when(p => p.ground && p.y > 30+3 && p.y < 30+9.5 && p.x >= 8.5, () => { e.shake(0.6); R.after(0.6, () => { e.stop(); e.spill({ every: 1.6, kinds: 'wbg', first: 0.4 }); R.say('Out of order.'); }); });
+          R.when(p => p.ground && p.y > 30+3 && p.y < 30+9.5 && p.x >= 8.5, () => { e.shake(0.3); R.after(0.3, () => { e.stop(); e.spill({ every: 1.25, kinds: 'wbg', first: 0.1 }); R.say('Out of order.'); }); });
           R.when(R.zone(19.5, 31, 30+1, 30+9), () => e.stopSpill()); }
           { R.when(p => p.y < 20+9.5 && p.y > 20+1 && p.x <= 26.5, () => { R.dark(true); R.say('Remember.'); }); }
           { R.when(p => p.y < 10+9.5 && p.y > 10+1 && p.x >= 3.5, () => { R.dark(false); R.wind(-30); R.say('Against the wind.'); });
@@ -839,7 +839,7 @@
           { R.when(R.zone(3.6, 31, 51+5, 51+9.5), () => { R.chase(5.0, 0); R.say('The last climb.'); });
           R.when(p => p.y < 51+-0.5, () => { R.show('Z'); R.$('Z').move(0, -57, 125, 'lin', 'rise'); R.say('The floor is coming.'); }); }
           { const e = R.escalator({ from: [26, 41+9], to: [8, 41+3], speed: 1.5 });
-          R.when(p => p.ground && p.y > 41+3 && p.y < 41+9.5 && p.x <= 23.2, () => { e.shake(0.5); R.after(0.5, () => { e.stop(); e.spill({ every: 1.5, kinds: 'wgbw', first: 0.3 }); R.say('Out of order.'); }); });
+          R.when(p => p.ground && p.y > 41+3 && p.y < 41+9.5 && p.x <= 23.2, () => { e.shake(0.3); R.after(0.3, () => { e.stop(); e.spill({ every: 0.95, kinds: 'wgbw', first: 0.1 }); R.say('Out of order.'); }); });
           R.when(R.zone(0, 12.5, 41+1, 41+9.5), () => e.stopSpill()); }
           { R.ring(16.5, 21+4, 3.5, 2, 7); }
           { R.when(R.zone(16.8, 31, 11+1, 11+9.5), () => R.breathe('q', { period: 1.8, min: 0.15, ripple: 0.9 })); }
@@ -1068,7 +1068,7 @@
           return this;
         },
         // spare parts pop out of the top and bounce down the steps: kinds 'w' wheel, 'b' bearing, 'g' gear (cycled)
-        spill(o) { o = o || {}; e.spill = { every: o.every || 1.3, kinds: o.kinds || 'wbg', t: o.first === undefined ? 0 : -o.first, count: o.count || 1e9, n: 0 }; return this; },
+        spill(o) { o = o || {}; const every = o.every || 1.3; e.spill = { every, kinds: o.kinds || 'wbg', t: o.first === undefined ? 0 : every - o.first, count: o.count || 1e9, n: 0 }; return this; },
         stopSpill() { e.spill = null; return this; },
         // a step's top (tiles) by its position from the bottom (0 = the flat bottom step)
         partAt(k) { const st = e.steps.find(q => q.part && q.part.order === k); return st ? { x: st.x / T, y: st.y / T } : null; },
@@ -1077,7 +1077,7 @@
     }
     // the bounce path of a spilled part: out of the top, down every step (big wheels take two at a time), then along the floor
     function spillPart(e, kind) {
-      const R0 = { w: 0.32 * T, b: 0.18 * T, g: 0.3 * T }[kind], hopT = { w: 0.31, b: 0.25, g: 0.38 }[kind], H = { w: 0.12 * T, b: 0.2 * T, g: 0.15 * T }[kind];   // (they roll down the step edges, bumping)
+      const R0 = { w: 0.32 * T, b: 0.18 * T, g: 0.3 * T }[kind], hopT = { w: 0.24, b: 0.2, g: 0.3 }[kind], H = { w: 0.12 * T, b: 0.2 * T, g: 0.15 * T }[kind];   // (they roll down the step edges, bumping)
       const steps = e.steps.filter(st => !st.gone && !st.drop).sort((a, b) => b.u - a.u);
       const pts = [{ x: e.x0 + e.dir * (e.n + 2) * T, y: e.yt }];
       const skip = 1;
@@ -1861,8 +1861,40 @@
       const vw = Math.min(RW, W / s), vh = Math.min(RH, v.h / s);
       return { s, vw, vh, x: (W - vw * s) / 2, y: v.top + (v.h - vh * s) / 2 };
     }
+    // a tall room is floors stacked up with a solid row (or a run of them) between each: the camera shows one floor at
+    // a time and the rest stays rock. On a ladder the view slides with the climb, so the next floor comes into sight
+    // rung by rung and is all there once you're up.
+    function floorRuns() {
+      const runs = [];
+      for (let y = 0; y < ROWS; y++) {
+        let n = 0;
+        for (let x = 0; x < COLS; x++) { const ch = R.g[y][x]; if ('#%=~+H'.includes(ch) || (ch >= 'a' && ch <= 'z' && ch !== 'v')) n++; }
+        if (n >= COLS * 0.8) { const last = runs[runs.length - 1]; if (last && last.y1 === y - 1) last.y1 = y; else runs.push({ y0: y, y1: y }); }
+      }
+      return runs.length >= 3 && ROWS > VIEW_R ? runs : null;                       // (only rooms taller than one screen)
+    }
+    // which floor to show (fractional mid-climb): floor k lies between runs[k] (its ceiling) and runs[k + 1] (its floor)
+    function floorFocus(snap) {
+      const rs = R.runs, fy = P.y / T;
+      let k = 0; while (k < rs.length - 2 && rs[k + 1].y0 < fy - 0.05) k++;          // (the floor at or below the feet)
+      if (snap || cam.floor === undefined || cam.floor > rs.length - 2) cam.floor = k;
+      if (onLadder() || P.climb) { const lo = rs[k + 1].y0, hi = rs[k].y0; return k - clamp((lo - fy) / Math.max(1, lo - hi), 0, 1); }
+      if (P.ground) { cam.floor = k; return k; }
+      return fy > rs[cam.floor + 1].y0 + 0.05 ? k : cam.floor;                       // dropping to a floor below: follow; a jump: stay
+    }
     function camera(dt, snap) {
-      const F = fit(), tx = clamp(P.x - F.vw * 0.42, 0, RW - F.vw), ty = clamp(P.y - F.vh * 0.6, 0, RH - F.vh);
+      const F = fit(), tx = clamp(P.x - F.vw * 0.42, 0, RW - F.vw);
+      if (R.runs === undefined) R.runs = floorRuns();
+      let ty = clamp(P.y - F.vh * 0.6, 0, RH - F.vh);
+      cam.band = null;
+      if (R.runs) {
+        const fk = floorFocus(snap), rs = R.runs;
+        cam.fk = snap || cam.fk === undefined ? fk : cam.fk + (fk - cam.fk) * Math.min(1, dt * 9);
+        const k = clamp(Math.floor(cam.fk), 0, rs.length - 2), u = clamp(cam.fk - k, 0, 1), k2 = Math.min(k + 1, rs.length - 2);
+        const top = (rs[k].y1 + (rs[k2].y1 - rs[k].y1) * u) * T, bot = (rs[k + 1].y0 + (rs[k2 + 1].y0 - rs[k + 1].y0) * u + 1) * T;
+        cam.band = { top, bot };
+        ty = bot - top > F.vh ? clamp(P.y - F.vh * 0.6, top, bot - F.vh) : clamp((top + bot) / 2 - F.vh / 2, 0, RH - F.vh);
+      }
       const k = snap ? 1 : Math.min(1, dt * 7);
       cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
     }
@@ -1900,6 +1932,7 @@
       if (R.echo && R.echo.on) drawSpirit(c, R.echo.x, R.echo.y, 1, true);
       if (!P.dead) drawSpirit(c, P.x, P.y, P.face, false);
       fx.draw(c);
+      if (cam.band) { c.fillStyle = STONE; c.fillRect(-T, -T, RW + 2 * T, cam.band.top + T + 1); c.fillRect(-T, cam.band.bot - 1, RW + 2 * T, RH - cam.band.bot + T + 1); }   // (the other floors: rock till you climb)
       // lights out: you see as far as your own glow (and the door's); lightning shows the rest for a blink
       if (R.darkA > 0) {
         const a = R.darkA * (1 - Math.min(1, (R.light || 0) * 7));
