@@ -45,78 +45,123 @@
   // ── the rooms, stage by stage ───────────────────────────────────────────
   const fill = (n, s) => Array(n).fill(s);
   const STAGES = [null,
-    // ── Stage 1: the lie begins
+    // ── Stage 1: the lie begins (every step has an answer waiting)
     [
-      { name: 'Trust the path', t: 50,
-        map: [...fill(10, E),
-          '.S......................B...D...',
-          ...fill(4, '##################aaa###########')],
-        setup(R) { R.sign(3, 10, 'SAFE  →'); R.when(R.at(15.6), () => R.drop('a')); R.when(R.at(21.2), () => R.pop('B')); },
-        bot: [['jumpAt', 17.8], ['land'], ['jumpAt', 22.6], ['land'], ['go', 28.5]] },
-      { name: 'Mind your head', t: 55,
+      // the floor splits ahead (jump), spikes spring where a late jump lands, a block hanging in the sky drops on whoever
+      // runs under it (stop, let it fall, hop onto it), a pit opens, a thorn springs up, and the floor at the door is a lie
+      { name: 'Trust the path', t: 60,
+        map: [...fill(2, E),
+          '.............bb.................',
+          ...fill(7, E),
+          '.S........AA............B.....D.',
+          '#######aa#########ccc######~~###',
+          ...fill(3, '#######aa#########ccc######..###')],
+        setup(R) {
+          R.sign(3, 10, 'SAFE  →');
+          R.when(R.at(4.6), () => R.drop('a'));
+          R.popOnAim('A');
+          R.when(R.at(12.2), () => R.$('b').move(0, 8, 0.22, 'in').call(() => R.slamFx('b')));
+          R.when(R.at(15.6), () => R.drop('c'));
+          R.when(R.at(21.2), () => R.pop('B'));
+        },
+        bot: [['jumpAt', 6.0], ['land'], ['go', 12.4], ['go', 11.5], ['wait', 0.3], ['jumpAt', 11.6], ['land'], ['go', 17.6], ['jumpAt', 17.9], ['land'],
+          ['go', 22.4], ['jumpAt', 22.6], ['land'], ['go', 26.4], ['jumpAt', 26.6], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 9]] },                                                                              // just walk
+          { cause: 'spike', bot: [['jumpAt', 6.75], ['land'], ['go', 9]] },                                                  // jump at the very edge
+          { cause: 'crush', bot: [['jumpAt', 6.0], ['land'], ['go', 16]] },                                                  // run under the block
+          { cause: 'fall', bot: [['jumpAt', 6.0], ['land'], ['go', 12.4], ['go', 11.5], ['wait', 0.3], ['jumpAt', 11.6], ['land'], ['go', 22]] },   // walk on
+          { cause: 'spike', bot: [['jumpAt', 6.0], ['land'], ['go', 12.4], ['go', 11.5], ['wait', 0.3], ['jumpAt', 11.6], ['land'], ['go', 17.6], ['jumpAt', 17.9], ['land'], ['go', 28]] },
+          { cause: 'fall', bot: [['jumpAt', 6.0], ['land'], ['go', 12.4], ['go', 11.5], ['wait', 0.3], ['jumpAt', 11.6], ['land'], ['go', 17.6], ['jumpAt', 17.9], ['land'],
+            ['go', 22.4], ['jumpAt', 22.6], ['land'], ['go', 30.5]] }                                                        // walk up to the door
+        ] },
+      // stalactites (wait for them, but not on the cracked floor: it gives way under a thief who stands still), more
+      // stalactites, a saw out of the wall for whoever backs off, and the door runs home: a pit opens on the way back
+      { name: 'Mind your head', t: 70,
         map: [G, G,
           '#######AAA#######BBBBBB#########',
           ...fill(7, E),
           '.S............................D.',
-          ...fill(4, G)],
+          ...fill(4, '#####ee#####ff##################')],
         setup(R) {
           R.show('A'); R.show('B');
           R.when(R.at(6.0), () => R.fall('A'));
-          R.when(R.at(17.3), () => R.fall('B', 0.3));
-          R.when(R.at(27.5), () => { R.$('D').hop(3, 10, 0.9); R.say('The door is shy.'); });
+          R.when(p => p.ground && p.still >= 0.6 && p.x >= 4.7 && p.x <= 7.2, () => R.drop('e'));
+          R.when(R.at(17.3), () => { R.fall('B', 0.3); R.flag.b = true; });
+          const saw = R.saw({ x: -0.6, y: 10.4, hidden: true });
+          R.when(p => R.flag.b && p.x <= 16.2, () => R.after(0.3, () => saw.go([[34, 10.4]], 5.2)));
+          R.when(R.at(27.5), () => { R.$('D').hop(3, 10, 0.9); R.say('The door is shy.'); R.flag.d = true; });
+          R.when(p => R.flag.d && p.x <= 15.2, () => R.drop('f'));
         },
-        bot: [['go', 6.1], ['wait', 1.0], ['go', 17.5], ['go', 16.0], ['wait', 1.4], ['run', 28], ['wait', 1.1], ['go', 3.5], ['wait', 1]] },
-      { name: "Don't believe your eyes", t: 55,
+        bot: [['go', 6.2], ['go', 4.4], ['wait', 0.5], ['go', 17.5], ['go', 16.0], ['until', R => !R.spikeUp('B')], ['go', 28], ['wait', 1.0],
+          ['dir', -1], ['sawjump', 0], ['land'], ['go', 14.6], ['jumpAt', 14.35], ['land'], ['go', 3.5], ['wait', 1]],
+        baits: [
+          { cause: 'spike', bot: [['go', 10]] },                                                                             // walk on
+          { cause: 'fall', bot: [['go', 6.2], ['wait', 1.2]] },                                                              // wait for the stalactites where you stopped
+          { cause: 'spike', bot: [['go', 6.2], ['go', 4.4], ['wait', 0.5], ['go', 23]] },                                     // walk under the long row
+          { cause: 'saw', bot: [['go', 6.2], ['go', 4.4], ['wait', 0.5], ['go', 17.5], ['go', 16.0], ['wait', 8]] },          // wait it out
+          { cause: 'fall', bot: [['go', 6.2], ['go', 4.4], ['wait', 0.5], ['go', 17.5], ['go', 16.0], ['until', R => !R.spikeUp('B')], ['go', 28], ['wait', 1.0],
+            ['dir', -1], ['sawjump', 0], ['land'], ['go', 3.5]] }                                                             // run straight back to the door
+        ] },
+      // ground that drops under your feet, thorns where a jump at the edge lands, thorns that answer any jump in the
+      // middle, a floor that isn't, and two doors: the near one bites (jump it)
+      { name: "Don't believe your eyes", t: 60,
         map: [...fill(10, E),
-          '.S..............CC.........D....',
-          '######aa#####bbb######~~~#######',
-          ...fill(3, '######aa#####bbb######...#######')],
+          '.S.......JJ.....CC.........Q..D.',
+          '######aa#####bbb#######~~#######',
+          ...fill(3, '######aa#####bbb#######..#######')],
         setup(R) {
           R.when(p => p.ground && p.x >= 6 && p.x < 8, () => R.drop('a', 0.05));
+          R.popOnAim('J');
           R.when(p => p.air && p.x >= 12.5 && p.x < 16, () => R.pop('C'));
         },
-        bot: [['jumpAt', 5.4], ['land'], ['run', 21.8], ['jump'], ['land'], ['go', 27.5]] },
-      { name: 'It moves', t: 55,
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.S..........................D...',
-          '#####.....................######',
-          '#####.....................######',
-          '#####.....................######',
-          '#####.....................######'],
+        bot: [['jumpAt', 5.2], ['land'], ['run', 22.3], ['jump'], ['land'], ['go', 25.6], ['jumpAt', 25.8], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 9]] },                                                                               // walk
+          { cause: 'spike', bot: [['jumpAt', 5.75], ['land'], ['go', 12]] },                                                 // jump at the edge
+          { cause: 'spike', bot: [['jumpAt', 5.2], ['land'], ['jumpAt', 13.5], ['land']] },                                   // jump in the middle
+          { cause: 'fall', bot: [['jumpAt', 5.2], ['land'], ['go', 25]] },                                                    // walk on
+          { cause: 'door', bot: [['jumpAt', 5.2], ['land'], ['run', 22.3], ['jump'], ['land'], ['go', 28]] }                   // the first door
+        ] },
+      // a hole patrols the floor, then hunts you; a saw rolls in to meet you; a thorn guards the door
+      { name: 'It moves', t: 60,
+        map: [...fill(10, E),
+          '.S.........................KD...',
+          ...fill(4, '#####.....................######')],
         setup(R) {
           const h = R.hole({ x0: 5, x1: 25, y: 11, w: 2, speed: 3, mode: 'patrol', at: 15 });
           R.when(R.at(14.5), () => { h.set('hunt', 4.2); R.say('It follows you.'); });
+          const saw = R.saw({ x: 33.5, y: 10.4 });
+          R.when(R.at(17.0), () => saw.go([[-3, 10.4]], 6));
+          R.when(R.at(25.6), () => R.pop('K'));
         },
-        bot: [['go', 3.8], ['until', R => R.holeAt(0).dir < 0 && R.holeAt(0).x <= 15.5 && R.holeAt(0).x >= 12], ['dir', 1], ['holejump', 0], ['land'], ['go', 28.5]] },
-      { name: "Don't jump", t: 50,
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.S....................#.....D...',
-          '########################aaa#####',
-          '########################aaa#####',
-          '########################aaa#####',
-          '########################aaa#####'],
-        setup(R) { R.sign(19, 10, 'JUMP!'); R.dropOnAim('a', { jumpOnly: true }); },
-        bot: [['go', 21.5], ['hopto', () => ({ x: 22.5 })], ['land'], ['go', 28.5]] }
+        bot: [['go', 3.8], ['until', R => R.holeAt(0).dir < 0 && R.holeAt(0).x <= 15.5 && R.holeAt(0).x >= 12], ['dir', 1], ['holejump', 0], ['land'],
+          ['dir', 1], ['sawjump', 0], ['land'], ['go', 26.1], ['jumpAt', 26.3], ['land'], ['go', 28.5]],
+        baits: [
+          { cause: 'fall|saw', bot: [['go', 20]] },                                                                          // walk
+          { cause: 'saw', bot: [['go', 3.8], ['until', R => R.holeAt(0).dir < 0 && R.holeAt(0).x <= 15.5 && R.holeAt(0).x >= 12], ['dir', 1], ['holejump', 0], ['land'], ['go', 30]] },
+          { cause: 'spike', bot: [['go', 3.8], ['until', R => R.holeAt(0).dir < 0 && R.holeAt(0).x <= 15.5 && R.holeAt(0).x >= 12], ['dir', 1], ['holejump', 0], ['land'],
+            ['dir', 1], ['sawjump', 0], ['land'], ['go', 28.5]] }
+        ] },
+      // the sign says jump. Thorns spring up (jump those), the step needs a hop, but jump at the ground past it and it
+      // drops away; a saw comes for whoever stands on the step
+      { name: "Don't jump", t: 55,
+        map: [...fill(10, E),
+          '.S........KK..........#.....D...',
+          ...fill(4, '########################aaa#####')],
+        setup(R) {
+          R.sign(19, 10, 'JUMP!');
+          R.dropOnAim('a', { jumpOnly: true });
+          R.when(R.at(8.4), () => R.pop('K'));
+          const saw = R.saw({ x: 33.5, y: 10.4 });
+          R.when(p => p.ground && p.x >= 22.0 && p.y < 10.5, () => saw.go([[-3, 10.4]], 7));      // (once you're up on the step)
+        },
+        bot: [['jumpAt', 9.2], ['land'], ['go', 21.5], ['hopto', () => ({ x: 22.5 })], ['land'], ['dir', 1], ['sawjump', 0], ['land'], ['go', 28.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 12]] },                                                                             // walk
+          { cause: 'fall', bot: [['jumpAt', 9.2], ['land'], ['go', 21.5], ['hopto', () => ({ x: 22.5 })], ['land'], ['hopto', () => ({ x: 25.5 })]] },   // hop on, like the sign says
+          { cause: 'saw', bot: [['jumpAt', 9.2], ['land'], ['go', 21.5], ['hopto', () => ({ x: 22.5 })], ['land'], ['wait', 3]] }   // wait on the step
+        ] }
     ],
     // ── Stage 2: it learns
     [
@@ -866,6 +911,7 @@
     any: ['Again.', 'The path remembers. Do you?', 'One more time.']
   };
 
+  window.__liarBaits = () => STAGES.slice(1).map(st => st.map(r => (r.baits || []).map(b => b.cause)));   // (tools/trapcheck.js)
   DABWorlds.register('liar', {
     title: 'Liar’s Path', color: '255,210,122', opaque: true, hud: 'none',
     landscape: { top: 0, h: RH },
@@ -1117,7 +1163,7 @@
           appear(x, y) { o.ride = null; o.x = (x + 0.5) * T; o.y = (y + 1) * T; o.ox = o.oy = o.qx = o.qy = 0; o.alive = true; o.alpha = 0; o.q = []; o.cur = null; sfx('lp_door', { vol: 0.6 }); burst(o.x, o.y - 18, 10); return C; },
           charge(vx) { o.vx = vx * T; o.charging = true; sfx('lp_door', { vol: 0.8 }); return C; },
           // saws
-          go(path, speed, loop) { o.path = path.map(([x, y]) => ({ x: x * T, y: y * T })); o.seg = 0; o.speed = speed * T; o.moving = true; o.loop = !!loop; sfx('lp_saw', { vol: 0.6 }); return C; },
+          go(path, speed, loop) { if (o.hidden) { o.hidden = false; burst(o.x, o.y, 10); } o.path = path.map(([x, y]) => ({ x: x * T, y: y * T })); o.seg = 0; o.speed = speed * T; o.moving = true; o.loop = !!loop; sfx('lp_saw', { vol: 0.6 }); return C; },
           fallAway() { return push({ k: 'fall', dir: 1 }); }
         };
         return C;
@@ -1140,7 +1186,7 @@
         pop(id, delay) { const c = $(id); if (!c) return; if (delay) c.wait(delay); c.pop(); },
         show(id) { const o = handle(id); if (o) o.ext = 1; },
         attach(sid, bid) { r.spikes[sid].attach = r.bodies[bid]; },
-        saw(o) { const s = makeSaw(o.x * T, o.y * T, 's' + r.saws.length); if (o.r) s.r = o.r * T; r.saws.push(s); return chain(s); },
+        saw(o) { const s = makeSaw(o.x * T, o.y * T, 's' + r.saws.length); if (o.r) s.r = o.r * T; if (o.hidden) s.hidden = true; r.saws.push(s); return chain(s); },
         spawnDoor(x, y, o) { o = o || {}; const d = mover({ id: o.fake ? 'Q' : 'D', x: (x + 0.5) * T, y: o.hang ? y * T : (y + 1) * T, hang: !!o.hang, fake: !!o.fake, alive: true, alpha: 0, ride: null, vx: 0 }); r.doors.push(d); if (!o.quiet) { sfx('lp_door', { vol: 0.6 }); burst(d.x, d.y - 18, 12); } return d; },
         doorX(id) { const d = r.doors.find(q => q.id === (id || 'D') && q.alive); return d ? (d.x + d.ox) / T : null; },
         harmless(id) { if (r.spikes[id]) r.spikes[id].harmless = true; },
@@ -1214,6 +1260,13 @@
         // width (tiles) of a breathing group's column at tile x right now (bots read it)
         breathW(id, x) { const b = r.bodies[id]; if (!b || !b.breath) return 1; const q = b.rects.find(rr => Math.abs(rr.x + rr.w / 2 - (x + 0.5) * T) < 2); return q ? q.w / T : 0; },
         echoOff() { r.echo = null; },
+        still: sec => p => p.ground && p.still >= sec,
+        jumped: (x0, x1) => p => p.tookOff && p.x >= x0 && p.x <= x1,
+        spikeUp(id) { const sp = r.spikes[id]; return !!sp && sp.alive && sp.ext > 0.4; },
+        spikeDir(id, dir) { const sp = r.spikes[id]; if (sp) for (const tl of sp.tiles) tl.dir = dir; },
+        isSolid(id) { const b = r.bodies[id]; return !!b && b.alive && !b.hidden; },
+        flag: {},
+        sawAt(i) { const s2 = r.saws[i || 0]; return s2 ? { x: s2.x / T, y: s2.y / T, vx: (s2.vx || 0) / T, vy: (s2.vy || 0) / T, hidden: !!s2.hidden } : null; },
         spikeX(id) { const sp = r.spikes[id]; return sp ? Math.min(...sp.tiles.map(t => t.x)) + sp.ox / T : null; },
         holeAt(i) { const h = r.holes[i || 0]; return h ? { x: h.hx / T, dir: h.dir, w: h.w / T, mode: h.mode } : null; },
         esc(i) { return r.escs[i || 0] ? escApi(r, r.escs[i || 0]) : null; },
@@ -1344,7 +1397,7 @@
     // the test autopilot: steps per room (see the header). Directions are meant on screen; the bot
     // presses the mirrored button itself when controls are swapped.
     function botInput(dt) {
-      const steps = rooms[ri].bot || [];
+      const bi = window.__liarBait, steps = bi !== undefined && bi !== null && rooms[ri].baits && rooms[ri].baits[bi] ? rooms[ri].baits[bi].bot : (rooms[ri].bot || []);
       const s = steps[bot.i];
       const px = P.x / T;
       bot.press = false;
@@ -1439,7 +1492,7 @@
       const d = bot.pause ? 0 : R.mirror ? -bot.dir : bot.dir;
       return { left: d < 0, right: d > 0, jumpP: bot.press, jumpH: bot.press || bot.hold > 0 };
     }
-    const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on });
+    const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on, still: P.still || 0, tookOff: P.tookOff > 0 });
 
     function update(dt, I) {
       if (R && R.rebake) { R.rebake = false; bakeRoom(); }
@@ -1525,7 +1578,7 @@
       if (P.buf > 0 && (onGround || P.coy > 0) && !ladder) {
         P.buf = 0; P.coy = 0;
         if (R.flipJumps) { flipGravity(R); }
-        else { P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; P.launched = false; sfx('lp_jump', { vol: 0.45 }); }
+        else { P.vy = -JUMP_V * R.gdir; P.ground = false; P.cut = false; P.launched = false; P.tookOff = 2; sfx('lp_jump', { vol: 0.45 }); }
       }
       const rising = P.vy * R.gdir < 0;
       if (rising && !jh && !P.cut && !P.launched) { P.vy *= CUT; P.cut = true; }
@@ -1577,6 +1630,8 @@
         else if (!touching && !P.ground) ru.arm = true;
       }
       // the run cycle + idle blink
+      P.still = P.ground && Math.abs(P.vx) < 4 ? (P.still || 0) + dt : 0;
+      if (P.tookOff > 0) P.tookOff--;                              // (true for the tick a jump starts: rules see it)
       P.run += Math.abs(P.vx) * dt / 15; P.land = Math.max(0, P.land - dt * 7); P.born += dt;
       P.blink -= dt; if (P.blink < -0.12) P.blink = 2 + Math.random() * 3;
       if (P.ground) for (const b of R.fragiles) if (P.on === b.id && b.vanT < 0 && !b.hidden) b.vanT = b.fragile.delay;
@@ -1755,7 +1810,7 @@
         for (const tl of s.tiles) if (hit(sb, spikeBox(s, tl))) { die('spike'); return; }
       }
       for (const s of R.saws) {
-        if (!s.alive) continue;
+        if (!s.alive || s.hidden) continue;
         const cx = clamp(s.x, sb.x0, sb.x1), cy = clamp(s.y, sb.y0, sb.y1);
         if (Math.hypot(cx - s.x, cy - s.y) < s.r * 0.8) { die('saw'); return; }
       }
@@ -1927,7 +1982,7 @@
       for (const sp of R.springs) drawSpring(c, sp);
       for (const ru of R.runes) drawRune(c, ru);
       for (const s of R.slist) if (s.alive && s.ext > 0.01) drawThorns(c, s);
-      for (const s of R.saws) if (s.alive) drawSaw(c, s);
+      for (const s of R.saws) if (s.alive && !s.hidden) drawSaw(c, s);
       for (const d of R.doors) if (d.alive) drawDoor(c, d);
       if (R.echo && R.echo.on) drawSpirit(c, R.echo.x, R.echo.y, 1, true);
       if (!P.dead) drawSpirit(c, P.x, P.y, P.face, false);
