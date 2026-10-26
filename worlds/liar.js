@@ -44,6 +44,38 @@
 
   // ── the rooms, stage by stage ───────────────────────────────────────────
   const fill = (n, s) => Array(n).fill(s);
+  // level 10 ("The Devil's climb"), floor by floor
+  const L10_F1 = [['jumpAt', 6.9], ['land'], ['jumpAt', 13.9], ['land'], ['go', 29.5], ['climb', 50]];
+  const L10_F2 = [...L10_F1, ['go', 26.6], ['until', (R, P) => P.x <= 23.3], ['until', R => R.esc(0).speed === 0], ['dodge', 7.4], ['go', 6.6], ['jumpAt', 6.4], ['land'], ['go', 2.5], ['climb', 38]];
+  const L10_F3 = [...L10_F2, ['land'], ['go', 3.6], ['hopto', () => ({ x: 6.0 })], ['land'], ['hopto', () => ({ x: 9.0 })], ['land'], ['hopto', () => ({ x: 12.0 })], ['land'], ['hopto', () => ({ x: 15.0 })], ['land'],
+    ['hopto', () => ({ x: 18.0 })], ['land'], ['hopto', () => ({ x: 21.0 })], ['land'], ['hopto', () => ({ x: 24.0 })], ['land'], ['hopto', () => ({ x: 27.0 })], ['land'], ['go', 29.5], ['climb', 30]];
+  const L10_F4 = [...L10_F3, ['go', 16.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (21+4), q.x / 26 - (16.5)); if (a < 0) a += 2 * Math.PI; return a > 1.66 && a < 2.27; })], ['climb', 20]];
+  const L10_F5 = [...L10_F4, ['go', 16.6], ['until', R => R.breathW('q', 18) > 0.85], ['hopto', () => ({ x: 18.5 })], ['land'], ['until', R => R.breathW('q', 20) > 0.85], ['hopto', () => ({ x: 20.5 })], ['land'],
+    ['until', R => R.breathW('q', 22) > 0.85], ['hopto', () => ({ x: 22.5 })], ['land'], ['until', R => R.breathW('q', 24) > 0.85], ['hopto', () => ({ x: 24.5 })], ['land'], ['hopto', () => ({ x: 26.8 })], ['land'], ['go', 29.5], ['climb', 10]];
+  const L10_F6 = [...L10_F5, ['go', 22.3], ['jumpAt', 21.9], ['land'], ['go', 9.5], ['jump'], ['land'], ['wait', 1.4], ['go', 6.0], ['wait', 1.1], ['go', 13.0], ['go', 18.4], ['jumpAt', 18.6], ['land'],
+    ['go', 22.4], ['wait', 1.2]];
+  // level 9 ('Precision'), floor by floor
+  const L9_F1 = [['go', 7.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.3], ['go', 10.4], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.3],
+    ['go', 13.4], ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.3], ['go', 16.4], ['until', R => R.$('d').phase === 'rise' && R.$('d').phaseK > 0.3], ['go', 19.6],
+    ['go', 20.1], ['jumpAt', 20.3], ['land'], ['go', 29.5], ['climb', 50]];
+  const L9_F2 = [...L9_F1, ['jumpAt', 24.35], ['land'], ['jumpAt', 17.35], ['land'], ['jumpAt', 10.7], ['land'], ['go', 2.5], ['climb', 40]];
+  const L9_F3 = [...L9_F2, ['land'], ['dir', 1], ['holejump', 0], ['land'], ['go', 26.0], ['jumpAt', 26.2], ['land'], ['go', 29.5], ['climb', 30]];
+  const L9_F4 = [...L9_F3, ['go', 20.0], ['jumpAt', 19.8], ['land'], ['go', 15.6], ['jumpAt', 15.4], ['land'], ['go', 10.6], ['jumpAt', 10.2], ['land'], ['go', 2.5], ['climb', 17]];
+  const L9_F5 = [...L9_F4, ['land'], ['go', 3.6], ['until', R => R.breathW('p', 6) > 0.85], ['hopto', () => ({ x: 6.5 })], ['land'], ['until', R => R.breathW('p', 9) > 0.85], ['hopto', () => ({ x: 9.5 })], ['land'],
+    ['until', R => R.breathW('p', 12) > 0.85], ['hopto', () => ({ x: 12.5 })], ['land'], ['until', R => R.breathW('p', 15) > 0.85], ['hopto', () => ({ x: 15.5 })], ['land'],
+    ['until', R => R.breathW('p', 18) > 0.85], ['hopto', () => ({ x: 18.5 })], ['land'], ['until', R => R.breathW('p', 21) > 0.85], ['hopto', () => ({ x: 21.5 })], ['land'],
+    ['until', R => R.breathW('p', 24) > 0.85], ['hopto', () => ({ x: 24.5 })], ['land'], ['hopto', () => ({ x: 26.8 })], ['land'], ['go', 29.5], ['climb', 10]];
+  // level 8 ('Nothing works'), floor by floor
+  const L8_F1 = [['jumpAt', 8.9], ['land'], ['jumpAt', 16.9], ['land'], ['jumpAt', 22.8], ['land'], ['go', 29.5], ['climb', 50]];
+  const L8_F2 = [...L8_F1, ['go', 27.0], ['jumpAt', 26.8], ['land'], ['go', 23.0], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25], ['go', 13.0],
+    ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.25], ['go', 2.5], ['climb', 40]];
+  const L8_F3 = [...L8_F2, ['go', 5.4], ['until', R => R.esc(0).broken], ['wait', 1.3], ['partjump', 0], ['land'], ['until', R => R.esc(0).partAt(1).x < 17.1], ['partjump', 1], ['land'],
+    ['partjump', 2], ['land'], ['jumpAt', 20.0], ['land'], ['go', 23.9], ['jumpAt', 24.1], ['land'], ['go', 29.5], ['climb', 30]];
+  const L8_F4 = [...L8_F3, ['jumpAt', 23.6], ['land'], ['dir', -1], ['sawjump', 0], ['land'], ['jumpAt', 13.6], ['land'], ['go', 2.5], ['climb', 20]];
+  const L8_F5 = [...L8_F4, ['land'], ['jumpAt', 2.6], ['land'], ['go', 6.7], ['hopto', () => ({ x: 9.0 })], ['land'], ['go', 9.7], ['hopto', () => ({ x: 12.0 })], ['land'],
+    ['go', 12.7], ['hopto', () => ({ x: 15.0 })], ['land'], ['go', 15.7], ['hopto', () => ({ x: 18.0 })], ['land'], ['go', 18.5], ['hopto', () => ({ x: 20.8 })], ['land'],
+    ['go', 24.6], ['until', R => R.flag.uGone], ['go', 29.5], ['climb', 10]];
+  const L8_F6 = [...L8_F5, ['go', 15.4], ['wait', 1.1], ['go', 7.4], ['wait', 1.1]];
   // level 7 ('Up the dirty stairs'), floor by floor
   const L7_F1 = [['jumpAt', 6.6], ['land'], ['jumpAt', 13.6], ['land'], ['go', 25.9], ['jumpAt', 26.2], ['land'], ['go', 29.5], ['climb', 50]];
   const L7_F2 = [...L7_F1, ['go', 24.0], ['until', R => R.sawAt(R.flag.burstI).x - 24.0 < 1.45 && R.sawAt(R.flag.burstI).vx < 0], ['jump'], ['land'],
@@ -947,9 +979,9 @@
           '#..............................#',
           '#..............................#',
           '#..............................#',
-          '#...........D..................#',
+          '#...........D.......ZZ.........#',
           '#############################H##',
-          '#............................H.#',
+          '#........................UU..H.#',
           '#............................H.#',
           '#............................H.#',
           '#...................############',
@@ -967,11 +999,11 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H........^^........^^........#',
+          '#.H.....OO.^^........^^........#',
           '#############################H##',
           '#............................H.#',
           '#............................H.#',
-          '#............................H.#',
+          '#........................NN..H.#',
           '#.....................##########',
           '#.....................##########',
           '#.....................##########',
@@ -987,7 +1019,7 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H............................#',
+          '#.H.....................MM.....#',
           '#############################H##',
           '#............................H.#',
           '#............................H.#',
@@ -997,7 +1029,7 @@
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
-          '#.S.....................A....H.#',
+          '#.S..........PP.........A....H.#',
           '##########..######..############'],
         setup(R) {
           { R.when(R.zone(3, 31, 51+5, 51+9.5), () => R.mirror(true)); R.when(R.zone(22.4, 31, 51+5, 51+9.5), () => R.pop('A')); }
@@ -1012,19 +1044,31 @@
           R.saw({ x: 18, y: 21+8.4 }).go([[14.5, 21+8.4], [18, 21+8.4]], 2.8, true); }
           { R.when(R.zone(0, 31, 11+5, 11+9.5), () => { R.dark(false); R.say('Look again.'); }); }
           { let hops = 0;
-          R.every(p => p.y > 1+5 && hops < 2 && R.doorX('D') !== null && R.$('D').phase !== 'hop' && Math.abs(p.x - R.doorX('D')) < 3.2, () => {
+          R.every(p => p.y > 1+5 && p.y < 10.5 && hops < 2 && R.doorX('D') !== null && R.$('D').phase !== 'hop' && Math.abs(p.x - R.doorX('D')) < 3.2, () => {
             hops++;
             if (hops === 1) { R.$('D').hop(4, 1+8, 0.9); R.say('Nope.'); }
-            else { R.$('D').hop(24, 1+8, 0.9); R.say('Too slow.'); }
+            else { R.$('D').hop(24, 1+8, 0.9); R.say('Too slow.'); R.flag.hops2 = true; }
           }); }
+          // the rage layer
+          R.popOnAim('P');
+          R.when(p => p.y > 41 && p.y < 50.5 && p.x <= 28.5, () => R.pop('M'));
+          R.when(p => p.y > 31 && p.y < 34.5 && p.x >= 23.5, () => R.pop('N'));
+          R.popOnAim('O');
+          R.show('U');
+          R.when(p => p.y > 13 && p.y < 15 && p.x >= 23.5, () => { R.fall('U', 0.1); R.after(0.7, () => { R.flag.uGone = true; }); });
+          R.when(p => R.flag.hops2 && p.y > 5 && p.y < 10.5 && p.x >= 18.5, () => R.pop('Z'));
         },
-        bot: [['jumpAt', 8.6], ['land'], ['jumpAt', 16.6], ['land'], ['jumpAt', 22.8], ['land'], ['go', 29.5], ['climb', 51+-1],
-          ['go', 23.0], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25], ['go', 13.0],
-          ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.25], ['go', 2.5], ['climb', 41+-1],
-          ['go', 5.4], ['until', R => R.esc(0).broken], ['wait', 1.3], ['partjump', 0], ['land'], ['until', R => R.esc(0).partAt(1).x < 17.1], ['partjump', 1], ['land'], ['partjump', 2], ['land'], ['jumpAt', 20.0], ['land'], ['go', 29.5], ['climb', 31+-1],
-          ['jumpAt', 23.6], ['land'], ['dir', -1], ['sawjump', 0], ['land'], ['jumpAt', 13.6], ['land'], ['go', 2.5], ['climb', 21+-1],
-          ['land'], ['jumpAt', 2.6], ['land'], ['go', 6.7], ['hopto', () => ({ x: 9.0 })], ['land'], ['go', 9.7], ['hopto', () => ({ x: 12.0 })], ['land'], ['go', 12.7], ['hopto', () => ({ x: 15.0 })], ['land'], ['go', 15.7], ['hopto', () => ({ x: 18.0 })], ['land'], ['go', 18.5], ['hopto', () => ({ x: 20.8 })], ['land'], ['go', 29.5], ['climb', 11+-1],
-          ['go', 15.4], ['wait', 1.1], ['go', 7.4], ['wait', 1.1], ['go', 24.5]] }
+        bot: [...L8_F6, ['go', 19.0], ['jumpAt', 19.2], ['land'], ['go', 24.5]],
+        baits: [
+          { cause: 'spike', bot: [['jumpAt', 9.9], ['land']] },                                                               // jump the first hole late
+          { cause: 'spike', bot: [['jumpAt', 8.9], ['land'], ['jumpAt', 16.9], ['land'], ['go', 29]] },
+          { cause: 'spike', bot: [...L8_F1, ['go', 22]] },                                                                   // off the ladder and on
+          { cause: 'shadow|crush', bot: [...L8_F1, ['go', 27.0], ['jumpAt', 26.8], ['land'], ['go', 18.0], ['wait', 3]] },          // stop between the crushers
+          { cause: 'spike', bot: [...L8_F3.slice(0, -5), ['go', 29.5]] },                                                    // off the parts and on
+          { cause: 'spike', bot: [...L8_F3, ['jumpAt', 23.6], ['land'], ['dir', -1], ['sawjump', 0], ['land'], ['jumpAt', 13.35], ['land']] },   // jump the dark thorns too close
+          { cause: 'spike', bot: [...L8_F5.slice(0, -4), ['go', 29.5]] },                                                    // onto the ledge and on
+          { cause: 'spike', bot: [...L8_F6, ['go', 24.5]] }                                                                  // after the door
+        ] }
     ],
     // ── Stage 9: precision
     [
@@ -1040,8 +1084,8 @@
           '#..............................#',
           '#..............................#',
           '#..D...........................#',
-          '#############################H##',
-          '#............................H.#',
+          '####~~#######################H##',
+          '#..vvvv......................H.#',
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
@@ -1059,7 +1103,7 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H.....Q...........KKKK.......#',
+          '#.H.....Q........TT.KKKK.......#',
           '#############~~##############H##',
           '#............................H.#',
           '#............................H.#',
@@ -1069,7 +1113,7 @@
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
-          '#............................H.#',
+          '#..........................NNH.#',
           '##H#.......................#####',
           '#.H............................#',
           '#.H............................#',
@@ -1079,7 +1123,7 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H.....GG.....FF.....EE.......#',
+          '#.H..LL.GG.....FF.....EE.......#',
           '#############################H##',
           '#.......aa.bb.cc.dd..........H.#',
           '#.......aa.bb.cc.dd..........H.#',
@@ -1089,23 +1133,35 @@
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
-          '#.S..........................H.#',
+          '#.S..................JJ......H.#',
           '################################'],
         setup(R) {
           { const cyc = id => R.$(id).move(0, 5, 0.1, 'in', 'slam').call(() => R.slamFx(id)).wait(0.35, 'hold').move(0, -5, 0.6, 'io', 'rise').wait(1.15, 'top').loop();
-          [['a', 0.8], ['b', 1.35], ['c', 1.9], ['d', 2.45]].forEach(([id, w]) => R.$(id).wait(w, 'w0').call(() => cyc(id))); }
+          R.when(R.at(5.0), () => [['a', 0.25], ['b', 0.8], ['c', 1.35], ['d', 1.9]].forEach(([id, w]) => R.$(id).wait(w, 'w0').call(() => cyc(id)))); }   // (they wake as you come)
           { R.when(R.zone(0, 25.4, 41+5, 41+9.5), () => R.pop('E')); R.when(R.zone(0, 18.4, 41+5, 41+9.5), () => R.pop('F')); R.when(R.zone(0, 11.4, 41+5, 41+9.5), () => R.pop('G')); }
           { R.hole({ x0: 4, x1: 26, y: 31+9, depth: 1, w: 2, speed: 3.8, mode: 'hunt', at: 5 }); }
           { R.show('K'); R.harmless('K'); R.sign(25, 21+8, 'IT’S FINE'); }
           { R.when(R.zone(0, 31, 11+1, 11+9.5), () => { R.breathe('p', { period: 2.0, min: 0.15, ripple: 1.1 }); R.say('Breathe.'); }); }
           { R.ring(16, 1+4.5, 4, 5, 4); }
+          // the rage layer
+          R.when(p => p.y > 51 && p.x >= 19.8, () => R.pop('J'));
+          R.popOnAim('L');
+          R.when(p => p.y > 31 && p.y < 40.5 && p.x >= 25.5, () => R.pop('N'));
+          R.when(p => p.y > 21 && p.y < 30.5 && p.x <= 20.6, () => R.pop('T'));
+          R.when(p => p.y > 11 && p.y < 19.5 && p.x >= 3.0, () => { R.echo(2.4); R.say('Something follows.'); });
+          R.when(p => p.y < 10.5, () => R.echoOff());
         },
-        bot: [['go', 7.4], ['until', R => R.$('a').phase === 'rise' && R.$('a').phaseK > 0.3], ['go', 10.4], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.3], ['go', 13.4], ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.3], ['go', 16.4], ['until', R => R.$('d').phase === 'rise' && R.$('d').phaseK > 0.3], ['go', 19.6], ['go', 29.5], ['climb', 51+-1],
-          ['jumpAt', 24.35], ['land'], ['jumpAt', 17.35], ['land'], ['jumpAt', 10.35], ['land'], ['go', 2.5], ['climb', 41+-1],
-          ['land'], ['dir', 1], ['holejump', 0], ['land'], ['go', 29.5], ['climb', 31+-1],
-          ['go', 15.6], ['jumpAt', 15.4], ['land'], ['go', 10.6], ['jumpAt', 10.2], ['land'], ['go', 2.5], ['climb', 21+-4],
-          ['land'], ['go', 3.6], ['until', R => R.breathW('p', 6) > 0.85], ['hopto', () => ({ x: 6.5 })], ['land'], ['until', R => R.breathW('p', 9) > 0.85], ['hopto', () => ({ x: 9.5 })], ['land'], ['until', R => R.breathW('p', 12) > 0.85], ['hopto', () => ({ x: 12.5 })], ['land'], ['until', R => R.breathW('p', 15) > 0.85], ['hopto', () => ({ x: 15.5 })], ['land'], ['until', R => R.breathW('p', 18) > 0.85], ['hopto', () => ({ x: 18.5 })], ['land'], ['until', R => R.breathW('p', 21) > 0.85], ['hopto', () => ({ x: 21.5 })], ['land'], ['until', R => R.breathW('p', 24) > 0.85], ['hopto', () => ({ x: 24.5 })], ['land'], ['hopto', () => ({ x: 26.8 })], ['land'], ['go', 29.5], ['climb', 11+-1],
-          ['go', 20.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (1+4.5), q.x / 26 - (16)); if (a < 0) a += 2 * Math.PI; return a > 1.22 && a < 1.66; })], ['go', 3.5]] }
+        bot: [...L9_F5, ['go', 20.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (1+4.5), q.x / 26 - (16)); if (a < 0) a += 2 * Math.PI; return a > 0.70 && a < 1.13; })],
+          ['go', 6.6], ['jumpAt', 6.4], ['land'], ['wait', 1]],
+        baits: [
+          { cause: 'crush|spike', bot: [['go', 25]] },                                                                       // walk
+          { cause: 'spike', bot: [...L9_F1.slice(0, -4), ['go', 29.5]] },                                                    // past the crushers and on
+          { cause: 'spike', bot: [...L9_F1, ['jumpAt', 24.35], ['land'], ['jumpAt', 17.35], ['land'], ['jumpAt', 10.35], ['land']] },   // the jumps that worked before
+          { cause: 'spike', bot: [...L9_F2, ['land'], ['dir', 1], ['holejump', 0], ['land'], ['go', 29.5]] },
+          { cause: 'spike', bot: [...L9_F3, ['go', 16]] },                                                                   // it's fine
+          { cause: 'shadow', bot: [...L9_F4, ['land'], ['go', 3.6], ['wait', 4]] },                                          // take a breath
+          { cause: 'fall|spike', bot: [...L9_F5, ['go', 20.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (1+4.5), q.x / 26 - (16)); if (a < 0) a += 2 * Math.PI; return a > 0.70 && a < 1.13; })], ['go', 3.5]] }
+        ] }
     ],
     // ── Stage 10: the devil's mile
     [
@@ -1154,7 +1210,7 @@
           '##H#############################',
           '#.H............................#',
           '#.H............................#',
-          '#.H............................#',
+          '#.H.MM.........................#',
           '#########......................#',
           '#########......................#',
           '#########......................#',
@@ -1176,18 +1232,27 @@
           { R.when(R.zone(3.6, 31, 51+5, 51+9.5), () => { R.chase(5.0, 0); R.say('The last climb.'); });
           R.when(p => p.y < 51+-0.5, () => { R.show('Z'); R.$('Z').move(0, -57, 125, 'lin', 'rise'); R.say('The floor is coming.'); }); }
           { const e = R.escalator({ from: [26, 41+9], to: [8, 41+3], speed: 1.5 });
-          R.when(p => p.ground && p.y > 41+3 && p.y < 41+9.5 && p.x <= 23.2, () => { e.shake(0.3); R.after(0.3, () => { e.stop(); e.spill({ every: 0.95, kinds: 'wgbw', first: 0.1 }); R.say('Out of order.'); }); });
-          R.when(R.zone(0, 12.5, 41+1, 41+9.5), () => e.stopSpill()); }
+          R.when(p => p.ground && p.y > 41+3 && p.y < 41+9.5 && p.x <= 23.2, () => { e.shake(0.3); R.after(0.3, () => { e.stop(); e.spill({ every: 1.1, kinds: 'wgbw', first: 0.6 }); R.say('Out of order.'); }); });
+          R.when(R.zone(0, 14.5, 41+1, 41+9.5), () => e.stopSpill()); }
           { R.ring(16.5, 21+4, 3.5, 2, 7); }
           { R.when(R.zone(16.8, 31, 11+1, 11+9.5), () => R.breathe('q', { period: 1.8, min: 0.15, ripple: 0.9 })); }
-          { R.when(p => p.air && p.x >= 8 && p.x <= 12 && p.y > 1+5 && p.y < 1+9.6, () => { R.$('e').move(0, -7, 1.0, 'io', 'lift').call(() => { R.pop('V'); R.say('Don’t jump.'); }); }); }
+          { R.every(p => p.air && p.x >= 8 && p.x <= 12 && p.y > 1+5 && p.y < 1+9.6, () => { if (R.$('e').phase) return; R.$('e').move(0, -7, 1.0, 'io', 'lift').call(() => { R.pop('V'); R.say('Don’t jump.'); }).wait(2.5, 'top').move(0, 7, 1.0, 'io', 'down'); }); }
+          // the rage layer: the finale
+          R.when(p => p.y > 41 && p.y < 44.5 && p.x <= 7.0, () => R.pop('M'));
+          R.when(p => p.y > 31 && p.y < 39.5 && p.x >= 3.0, () => { R.echo(1.6); R.say('Something follows.'); });
+          R.when(p => p.y > 21 && p.y < 30.5, () => { R.echoOff(); R.dark(true); R.say('Listen.'); });
+          R.when(p => p.y > 11 && p.y < 20.5 && p.x >= 3, () => { R.dark(false); R.wind(-35); R.say('Against the wind.'); });
+          R.when(p => p.y < 15.5 && p.x >= 25.5, () => R.wind(0));                      // (the wind drops at the ledge: the ladder's hard enough)
+          R.when(p => p.y < 3.5 && p.x <= 7.5, () => { R.$('D').hop(24, 9, 1.0); R.say('Down there now.'); R.flag.down = true; });
+          R.when(p => R.flag.down && p.y > 8 && p.x >= 22.0, () => { R.$('D').hop(3, 2, 1.1); R.say('Too slow.'); });
         },
-        bot: [['jumpAt', 6.6], ['land'], ['jumpAt', 13.6], ['land'], ['go', 29.5], ['climb', 51+-1],
-          ['go', 26.6], ['until', (R, P) => P.x <= 23.3], ['until', R => R.esc(0).speed === 0], ['dodge', 7.4], ['go', 2.5], ['climb', 41+-3],
-          ['land'], ['go', 3.6], ['hopto', () => ({ x: 6.0 })], ['land'], ['hopto', () => ({ x: 9.0 })], ['land'], ['hopto', () => ({ x: 12.0 })], ['land'], ['hopto', () => ({ x: 15.0 })], ['land'], ['hopto', () => ({ x: 18.0 })], ['land'], ['hopto', () => ({ x: 21.0 })], ['land'], ['hopto', () => ({ x: 24.0 })], ['land'], ['hopto', () => ({ x: 27.0 })], ['land'], ['go', 29.5], ['climb', 31+-1],
-          ['go', 16.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (21+4), q.x / 26 - (16.5)); if (a < 0) a += 2 * Math.PI; return a > 1.66 && a < 2.27; })], ['climb', 21+-1],
-          ['go', 16.6], ['until', R => R.breathW('q', 18) > 0.85], ['hopto', () => ({ x: 18.5 })], ['land'], ['until', R => R.breathW('q', 20) > 0.85], ['hopto', () => ({ x: 20.5 })], ['land'], ['until', R => R.breathW('q', 22) > 0.85], ['hopto', () => ({ x: 22.5 })], ['land'], ['until', R => R.breathW('q', 24) > 0.85], ['hopto', () => ({ x: 24.5 })], ['land'], ['hopto', () => ({ x: 26.8 })], ['land'], ['go', 29.5], ['climb', 11+-1],
-          ['go', 22.3], ['jumpAt', 21.9], ['land'], ['go', 9.5], ['jump'], ['land'], ['wait', 1.4], ['go', 3.5]] }
+        bot: [...L10_F6, ['go', 22.3], ['jumpAt', 21.9], ['land'], ['go', 9.5], ['until', R => R.$('e').phase === null && R.$('e').oy > -0.5], ['jump'], ['land'], ['wait', 1.4], ['go', 3.5], ['wait', 1]],
+        baits: [
+          { cause: 'fall', bot: [['go', 4.0], ['wait', 3]] },                                                                // don't run
+          { cause: 'spike', bot: [...L10_F1, ['go', 26.6], ['until', (R, P) => P.x <= 23.3], ['until', R => R.esc(0).speed === 0], ['dodge', 7.4], ['go', 3]] },
+          { cause: 'shadow', bot: [...L10_F2, ['land'], ['go', 3.6], ['wait', 3]] },                                         // stop on the swap blocks' doorstep
+          { cause: 'door', bot: [...L10_F6.slice(0, -5), ['go', 17.0], ['jumpAt', 17.3], ['land']] }                         // jump the liar early
+        ] }
     ]
 
   ];
