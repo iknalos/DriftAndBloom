@@ -412,49 +412,92 @@
             ['go', 41.0], ['sawjump', 0], ['land'], ['go', 47.8], ['jumpAt', 48.1], ['land'], ['go', 52.5], ['climb', 5], ['go', 53.8], ['until', R => R.flag.vGone], ['go', 56.3], ['jumpAt', 56.5], ['land']] }   // jump the thorn late
         ] }
     ],
-    // ── Stage 4: door problems
+    // ── Stage 4: door problems (no door is where it says it is)
     [
-      { name: 'Two doors', t: 55,
+      // the sign points up the stairs to a door that bites; the real one runs away when you reach it, and turns up
+      // where the liar was. Back over the pit and the thorn, up the stairs (the top step won't hold you long)
+      { name: 'Two doors', t: 70,
         map: [...fill(6, E),
-          '................Q...............',
-          '..............=====.............',
-          E,
-          '..........===...................',
-          '.S........................C..D..',
+          '.Q..............................',
+          '====............................',
+          '....f...........................',
+          '.....=..........................',
+          '......=.S.................C..D..',
           ...fill(4, '####################aaa#########')],
         setup(R) {
-          R.sign(7, 10, '↑ EXIT');
+          R.sign(10, 10, '↑ EXIT');
+          R.fragile('f', 0.35, 1.5);
           R.when(p => p.x >= 17.8 && p.y > 10.5, () => R.drop('a'));
           R.when(R.at(24.6), () => R.pop('C'));
+          R.when(R.at(27.0), () => { R.$('D').charge(-9); R.say('Wrong door.'); R.after(1.0, () => { R.doorGone('Q'); R.spawnDoor(1, 6); R.say('The sign was right.'); }); });
         },
-        bot: [['jumpAt', 19.8], ['land'], ['jumpAt', 25.0], ['land'], ['go', 29.5]] },
-      { name: 'Going up', t: 55,
+        bot: [['jumpAt', 19.8], ['land'], ['jumpAt', 25.0], ['land'], ['go', 27.6], ['wait', 1.2],
+          ['jumpAt', 27.55], ['land'], ['go', 23.3], ['jumpAt', 23.15], ['land'], ['go', 7.4],
+          ['hopto', () => ({ x: 6.5 })], ['land'], ['hopto', () => ({ x: 5.5 })], ['land'], ['hopto', () => ({ x: 4.5 })], ['land'], ['hopto', () => ({ x: 2.6 })], ['land'], ['go', 1.5]],
+        baits: [
+          { cause: 'door', bot: [['go', 7.4], ['hopto', () => ({ x: 6.5 })], ['land'], ['hopto', () => ({ x: 5.5 })], ['land'], ['hopto', () => ({ x: 4.5 })], ['land'],
+            ['hopto', () => ({ x: 2.6 })], ['land'], ['go', 1.5]] },                                                         // follow the sign
+          { cause: 'fall', bot: [['go', 21]] },                                                                              // walk on
+          { cause: 'spike', bot: [['jumpAt', 19.8], ['land'], ['go', 27]] },
+          { cause: 'fall', bot: [['jumpAt', 19.8], ['land'], ['jumpAt', 25.0], ['land'], ['go', 27.6], ['wait', 1.2], ['jumpAt', 27.55], ['land'], ['go', 19]] }   // back to the stairs
+        ] },
+      // thorns spring on the floor, the lift rises slow then fast (into the ceiling's teeth: get off in time), thorns
+      // answer the jump off, and the door drops down under the ledge, where more thorns wait
+      { name: 'Going up', t: 70,
         map: [G,
           '##################vvvv..........',
           E, E, E,
           '.......................BB...D...',
           ...fill(2, '.......................#########'),
           E, E,
-          '.S..............................',
+          '.S........KK..............LL....',
           ...fill(4, '##################aaaa##########')],
         setup(R) {
-          R.when(R.stand('a'), () => R.$('a').wait(0.25).move(0, -4, 2.2, 'lin', 'slow').move(0, -4.6, 1.4, 'in', 'fast'));
+          R.when(R.at(8.4), () => R.pop('K'));
+          R.when(R.stand('a'), () => R.$('a').wait(0.25).move(0, -4, 2.2, 'lin', 'slow').move(0, -4.9, 1.4, 'in', 'fast'));
           R.when(p => p.air && p.x >= 21.5 && p.x <= 24.6 && p.y < 8, () => R.pop('B'));
+          R.when(p => p.x >= 26.6 && p.y < 6.5, () => { R.$('D').hop(30, 10, 0.9); R.say('Downstairs.'); R.flag.down = true; });
+          R.when(p => R.flag.down && p.x >= 24.0 && p.y > 9, () => R.pop('L'));
         },
-        bot: [['go', 19.8], ['until', R => R.$('a').oy <= -4.9 * T], ['jumpAt', 21.9], ['land'], ['go', 28.5]] },
-      { name: 'Same room. New lies.', t: 65,
+        bot: [['jumpAt', 9.0], ['land'], ['go', 19.8], ['until', R => R.$('a').oy <= -4.9 * 26], ['jumpAt', 21.9], ['land'], ['go', 26.7], ['wait', 1.0],
+          ['jumpAt', 25.5], ['until', (R, p) => p.x <= 22.6], ['dir', 0], ['land'], ['go', 25.0], ['jumpAt', 25.2], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 12]] },                                                                             // walk
+          { cause: 'spike|crush', bot: [['jumpAt', 9.0], ['land'], ['go', 19.8], ['wait', 6]] },                              // ride it to the top
+          { cause: 'spike', bot: [['jumpAt', 9.0], ['land'], ['go', 19.8], ['until', R => R.$('a').oy <= -4.9 * 26], ['jumpAt', 21.9], ['land'], ['go', 26.7], ['wait', 1.0], ['go', 20]] },
+          { cause: 'spike', bot: [['jumpAt', 9.0], ['land'], ['go', 19.8], ['until', R => R.$('a').oy <= -4.9 * 26], ['jumpAt', 21.9], ['land'], ['go', 26.7], ['wait', 1.0],
+            ['jumpAt', 25.5], ['until', (R, p) => p.x <= 22.6], ['dir', 0], ['land'], ['go', 30.5]] }                         // under the ledge to the door
+        ] },
+      // a saw rises out of the floor, the ground drops, a thorn blinks, thorns answer a jump, the door at the end bites
+      // and runs at you (hop it standing, not at the last moment: teeth wait where that jump lands); the real one comes
+      { name: 'Same room. New lies.', t: 70,
         map: [...fill(10, E),
-          '.S......................B.FF..Q.',
+          '.S......................B.FF..PP',
           ...fill(4, '##################aacccc#####ddd')],
         setup(R) {
           R.sign(3, 10, 'SAFE  →');
+          const saw = R.saw({ x: 11.5, y: 11.7, hidden: true });
+          R.when(R.at(8.6), () => saw.go([[11.5, 10.4]], 8));
           R.when(p => p.ground && p.x >= 18 && p.x < 20, () => R.drop('a', 0.05));
           R.$('B').pop().wait(0.9, 'up').hide(0.1).wait(0.9, 'down').loop();
           R.when(p => p.air && p.x >= 22.8 && p.x <= 26.5, () => R.pop('F'));
+          R.spikeDir('P', 'up');
+          R.spawnDoor(30, 10, { fake: true, quiet: true });
           R.when(R.at(26.8), () => { R.$('Q').charge(-8.5); R.after(1.6, () => R.spawnDoor(30, 10)); });
+          R.onAim([30, 11, 31, 11], () => R.pop('P'));
         },
-        bot: [['jumpAt', 17.4], ['land'], ['go', 22.6], ['until', R => R.$('B').phase === 'down' && R.$('B').phaseK < 0.25], ['run', 26.85], ['jump'], ['land'], ['go', 30.5], ['wait', 2.2]] },
-      { name: 'Moving lies', t: 65,
+        bot: [['jumpAt', 10.0], ['land'], ['jumpAt', 17.4], ['land'], ['go', 22.6], ['until', R => R.$('B').phase === 'down' && R.$('B').phaseK < 0.25], ['run', 26.85], ['go', 26.6],
+          ['until', R => R.doorX('Q') !== null && R.doorX('Q') - 26.6 < 1.85], ['jump'], ['land'], ['go', 30.5], ['wait', 2.2]],
+        baits: [
+          { cause: 'saw', bot: [['go', 13]] },                                                                               // walk
+          { cause: 'fall', bot: [['jumpAt', 10.0], ['land'], ['go', 19]] },                                                   // walk on
+          { cause: 'spike', bot: [['jumpAt', 10.0], ['land'], ['jumpAt', 17.4], ['land'], ['go', 22.6], ['until', R => R.$('B').phase === 'down' && R.$('B').phaseK < 0.25], ['jumpAt', 23.3], ['land']] },
+          { cause: 'door', bot: [['jumpAt', 10.0], ['land'], ['jumpAt', 17.4], ['land'], ['go', 22.6], ['until', R => R.$('B').phase === 'down' && R.$('B').phaseK < 0.25], ['run', 26.85], ['wait', 1]] },
+          { cause: 'spike', bot: [['jumpAt', 10.0], ['land'], ['jumpAt', 17.4], ['land'], ['go', 22.6], ['until', R => R.$('B').phase === 'down' && R.$('B').phaseK < 0.25], ['run', 26.85], ['jump'], ['land']] }
+        ] },
+      // platforms that slide and bob, one that drops, a saw that comes up out of the pit while you stand on the bobbing
+      // one (wait for it to sink), a floor that isn't, a thorn, and the door hops back over your head
+      { name: 'Moving lies', t: 75,
         map: [...fill(10, E),
           '.S...........qq...rr.......C.D..',
           '#####pp...............~#########',
@@ -464,16 +507,28 @@
           R.$('q').move(0, -2, 1.1, 'io', 'up').wait(0.3).move(0, 2, 1.1, 'io', 'down').wait(0.9, 'low').loop();
           R.when(R.stand('r'), () => R.drop('r', 0.35));
           R.when(R.at(25.6), () => R.pop('C'));
+          const saw = R.saw({ x: 16.5, y: 13.6, hidden: true });
+          R.when(R.stand('q'), () => R.after(0.05, () => { saw.go([[16.5, 8.6]], 20); R.after(0.8, () => saw.go([[16.5, 13.6]], 20)); R.after(1.1, () => { R.flag.sawDown = true; }); }));
+          R.when(R.at(28.3), () => { R.$('D').hop(24, 10, 0.8); R.say('Behind you.'); });
         },
         bot: [['go', 5.9], ['until', R => R.$('p').phase === 'rwait' && ((R.$('q').phase === 'low' && R.$('q').phaseK < 0.5) || (R.$('q').phase === 'down' && R.$('q').phaseK > 0.6))],
-          ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['until', R => R.$('q').phase === 'low'], ['jumpAt', 14.9], ['land'], ['jumpAt', 19.9], ['land'], ['jumpAt', 26.0], ['land'], ['go', 29.5]] },
-      { name: 'Escalator', t: 70,
+          ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['until', R => R.flag.sawDown && R.$('q').phase === 'low'], ['jumpAt', 14.9], ['land'], ['jumpAt', 19.9], ['land'], ['jumpAt', 26.0], ['land'],
+          ['go', 28.5], ['wait', 1.0], ['jumpAt', 28.4], ['land'], ['go', 24.5], ['wait', 1]],
+        baits: [
+          { cause: 'saw', bot: [['go', 5.9], ['until', R => R.$('p').phase === 'rwait' && ((R.$('q').phase === 'low' && R.$('q').phaseK < 0.5) || (R.$('q').phase === 'down' && R.$('q').phaseK > 0.6))],
+            ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['jumpAt', 14.9], ['land']] },                                      // jump straight on
+          { cause: 'fall', bot: [['go', 5.9], ['until', R => R.$('p').phase === 'rwait' && ((R.$('q').phase === 'low' && R.$('q').phaseK < 0.5) || (R.$('q').phase === 'down' && R.$('q').phaseK > 0.6))],
+            ['dir', 1], ['jump'], ['land'], ['go', 14.3], ['until', R => R.flag.sawDown && R.$('q').phase === 'low'], ['jumpAt', 14.9], ['land'], ['wait', 1]] }   // stop on the next one
+        ] },
+      // the stairs run backwards and throw their parts at you, thorns at the top, the door hops downstairs, and a thorn
+      // guards it there
+      { name: 'Escalator', t: 80,
         map: [
           '................................',
           '................................',
           '................................',
           '................................',
-          '.............................D..',
+          '......................KK.....D..',
           '....................############',
           '....................############',
           '....................############',
@@ -487,46 +542,104 @@
         setup(R) {
           const e = R.escalator({ from: [8, 11], to: [20, 5], speed: 1.4 });
           R.sign(3, 10, 'UP ↗');
-          R.when(p => p.ground && p.x >= 12.5, () => { e.reverse(2.0); R.say('Going down.'); });
+          R.when(p => p.ground && p.x >= 12.5, () => { e.reverse(2.0); R.say('Going down.'); e.spill({ every: 1.1, kinds: 'wbg', first: 0.3, count: 1 }); });
+          R.when(p => p.x >= 17.2, () => e.stopSpill());
+          R.when(p => p.x >= 21.0 && p.y < 5.5, () => R.pop('K'));
           let back = false;
           R.when(R.at(24.5), () => { back = true; R.$('D').hop(2, 10, 1.3); R.say('Wrong floor.'); });
           R.when(p => back && p.x <= 6.8 && p.y > 9, () => R.pop('C'));
         },
-        bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['dodge', 20.6], ['go', 24.7], ['wait', 1.4], ['go', 7.6], ['jumpAt', 6.4], ['land'], ['go', 2.5]] }
+        bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['dodge', 20.6], ['go', 21.1], ['jumpAt', 21.3], ['land'], ['go', 24.7], ['wait', 1.4],
+          ['jumpAt', 24.6], ['land'], ['go', 7.6], ['jumpAt', 6.4], ['land'], ['go', 2.5]],
+        baits: [
+          { cause: 'part|fall', bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['wait', 6]] },                           // ride it down
+          { cause: 'spike', bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['dodge', 20.6], ['go', 24]] },                // walk on at the top
+          { cause: 'spike', bot: [['go', 8.3], ['until', (R, P) => P.x >= 12.4], ['dodge', 20.6], ['go', 21.1], ['jumpAt', 21.3], ['land'], ['go', 24.7], ['wait', 1.4],
+            ['jumpAt', 24.6], ['land'], ['go', 2.5]] }                                                                        // run home
+        ] }
     ],
-    // ── Stage 5: upside down
+    // ── Stage 5: upside down (and down is wherever the room says)
     [
-      { name: 'Head over heels', t: 55,
-        map: [G,
+      // a thorn before the rune; then upside down: a hole in the ceiling, thorns, and a second rune you must not touch,
+      // until the door falls to the floor and that rune is the only way down to it. Thorns wait down there.
+      { name: 'Head over heels', t: 65,
+        map: ['##########aaa###################',
           '##########aaa###################',
-          '.................BB.....D.......',
+          '.................BB..@..D.......',
           ...fill(7, E),
-          '.S....@.........................',
+          '.S..C.@...............KK........',
           ...fill(4, G)],
         setup(R) {
-          R.sign(4, 10, '↑ ?');
+          R.sign(2, 10, '↑ ?');
+          R.when(R.at(2.6), () => R.pop('C'));
           R.when(p => p.flipped && p.x >= 8.6, () => R.drop('a', 0, -1));
           R.when(p => p.flipped && p.x >= 15.3, () => R.pop('B'));
+          R.when(p => p.flipped && p.x >= 22.4, () => { R.$('D').hop(24, 10, 0.8).call(() => R.doorHang('D', false)); R.say('It fell.'); R.flag.fell = true; });
+          R.when(p => R.flag.fell && !p.flipped && p.ground && p.x >= 19.5, () => R.pop('K'));
         },
-        bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.8], ['land'], ['jumpAt', 16.3], ['land'], ['go', 24.5]] },
-      { name: 'Flip flop', t: 55,
+        bot: [['jumpAt', 3.0], ['land'], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.8], ['land'], ['jumpAt', 16.3], ['land'], ['go', 19.7], ['jumpAt', 19.9], ['land'],
+          ['wait', 1.0], ['go', 21.5], ['until', (R, P) => !P.flipped && P.ground], ['jumpAt', 21.6], ['land'], ['go', 24.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 6]] },                                                                              // walk
+          { cause: 'fall', bot: [['jumpAt', 3.0], ['land'], ['until', (R, P) => P.flipped && P.ground], ['go', 13]] },        // walk the ceiling
+          { cause: 'spike', bot: [['jumpAt', 3.0], ['land'], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.8], ['land'], ['go', 19]] },
+          { cause: 'spike', bot: [['jumpAt', 3.0], ['land'], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 9.8], ['land'], ['jumpAt', 16.3], ['land'], ['go', 19.7], ['jumpAt', 19.9], ['land'],
+            ['wait', 1.0], ['go', 21.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 24.5]] }                          // down to the door
+        ] },
+      // jumping turns gravity over. Thorns above and below; a late flip lands on ground that drops; at the end the door
+      // flips up to the ceiling (flip standing still: a running flip lands in teeth)
+      { name: 'Flip flop', t: 65,
         map: [G, G,
-          '..............vvv.......vv......',
+          '..............vvv.......vv....MM',
           ...fill(7, E),
           '.S......^^^.......^^^^.......D..',
-          ...fill(4, G)],
-        setup(R) { R.sign(3, 10, 'JUMP?'); R.when(R.at(4), () => { R.flipJumps(true); R.say('Jumping works differently here.'); }); },
-        bot: [['run', 5.6], ['jump', 0.05], ['run', 12.6], ['jump', 0.05], ['run', 16.6], ['jump', 0.05], ['run', 22.6], ['jump', 0.05], ['go', 29.5]] },
-      { name: 'The sky is the floor', t: 60,
+          ...fill(4, '################gg##############')],
+        setup(R) {
+          R.sign(3, 10, 'JUMP?');
+          R.when(R.at(4), () => { R.flipJumps(true); R.say('Jumping works differently here.'); });
+          R.dropOnAim('g');
+          R.when(p => !p.flipped && p.x >= 27.4, () => { R.$('D').hop(29, 1, 0.5).call(() => R.doorHang('D', true)); R.say('Up there now.'); });
+          R.when(p => p.flipped && p.x >= 28.0, () => R.pop('M'));
+        },
+        bot: [['run', 5.6], ['jump', 0.05], ['run', 10.6], ['jump', 0.05], ['run', 15.2], ['jump', 0.05], ['run', 22.6], ['jump', 0.05], ['go', 27.6], ['wait', 0.8],
+          ['go', 29.5], ['jump', 0.05], ['wait', 1]],
+        baits: [
+          { cause: 'spike', bot: [['go', 9]] },                                                                              // walk
+          { cause: 'fall', bot: [['run', 5.6], ['jump', 0.05], ['run', 12.6], ['jump', 0.05], ['land']] },                     // flip down late
+          { cause: 'spike', bot: [['run', 5.6], ['jump', 0.05], ['run', 10.6], ['jump', 0.05], ['run', 18]] },                 // walk on
+          { cause: 'spike', bot: [['run', 5.6], ['jump', 0.05], ['run', 10.6], ['jump', 0.05], ['run', 15.2], ['jump', 0.05], ['run', 22.6], ['jump', 0.05], ['go', 27.6], ['wait', 0.8],
+            ['run', 28.2], ['jump', 0.05], ['land']] }                                                                       // a running flip at the door
+        ] },
+      // you start on the ceiling. The ceiling drops away, thorns, a fake patch, a pillar shoots up out of the floor to
+      // pin you, one rune throws you onto thorns, the next drops you onto the door you can see: it bites. The real one
+      // hangs at the end of the ceiling.
+      { name: 'The sky is the floor', t: 70,
         map: ['#####bbb########...#############',
           '#####bbb########~~~#############',
-          '.S.........CC..........@...@....',
-          ...fill(7, E),
-          '.......................^^^^.D...',
+          '.S.........CC..........@...@..D.',
+          ...fill(6, E),
+          '....................kk..........',
+          '....................kk.^^^^Q....',
           ...fill(4, G)],
-        setup(R) { R.when(R.at(3.6), () => R.drop('b', 0, -1)); R.when(R.at(9.6), () => R.pop('C')); },
-        bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 22.6, 0.12], ['land'], ['go', 27.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 28.5], ['wait', 1]] },
-      { name: 'Two skies', t: 75,
+        setup(R) {
+          R.when(R.at(3.6), () => R.drop('b', 0, -1));
+          R.when(R.at(9.6), () => R.pop('C'));
+          R.when(p => p.flipped && p.x >= 19.2, () => R.$('k').wait(0.1).move(0, -7, 0.14, 'in', 'up').call(() => R.slamFx('k')).wait(0.5, 'hold').move(0, 7, 0.8, 'io', 'down'));
+        },
+        bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['go', 19.4], ['until', R => R.$('k').phase === null && R.$('k').oy > -0.5],
+          ['jumpAt', 22.6, 0.12], ['land'], ['go', 25.8], ['jumpAt', 26.0], ['land'], ['go', 30.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 6]] },                                                                               // walk
+          { cause: 'spike', bot: [['jumpAt', 4.8], ['land'], ['go', 12]] },
+          { cause: 'fall', bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['go', 18]] },
+          { cause: 'crush', bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['go', 22]] },
+          { cause: 'spike', bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['go', 19.4], ['until', R => R.$('k').phase === null && R.$('k').oy > -0.5], ['go', 24]] },
+          { cause: 'door', bot: [['jumpAt', 4.8], ['land'], ['jumpAt', 10.2], ['land'], ['jumpAt', 15.8], ['land'], ['go', 19.4], ['until', R => R.$('k').phase === null && R.$('k').oy > -0.5],
+            ['jumpAt', 22.6, 0.12], ['land'], ['go', 27.5]] }                                                                 // the door you can see
+        ] },
+      // two floors, two skies: a saw rolls along the ceiling at you (hop it standing), and wherever a rune drops you,
+      // don't drop straight: teeth wait right under each one (run off them)
+      { name: 'Two skies', t: 85,
         map: [
           '##############..################################################',
           '##############..################################################',
@@ -538,18 +651,30 @@
           '................................................................',
           '................................................................',
           '................................................................',
-          '.S....@...^^^^^^^^^^^^^...................@.^^^^^^^^^^^^^....D..',
+          '.S....@...^^^^^^^^^^^^^.LL................@.^^^^^^^^^^^^^MM..D..',
           '##############################..####~~##########################',
           '##############################..####..##########################',
           '##############################..####..##########################',
           '##############################..####..##########################'],
         setup(R) {
           R.when(p => p.flipped && p.x >= 45.6, () => R.pop('K'));
+          const saw = R.saw({ x: 18, y: 2.6, hidden: true });
+          R.when(p => p.flipped && p.x >= 8, () => saw.go([[-3, 2.6]], 5));
+          R.popOnAim('L');
+          R.when(p => !p.flipped && p.x >= 57.5, () => R.pop('M'));
         },
-        bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['jumpAt', 13.3], ['land'], ['go', 25.5], ['until', (R, P) => !P.flipped && P.ground],
-          ['jumpAt', 29.2], ['land'], ['jumpAt', 34.9], ['land'], ['go', 42.5], ['until', (R, P) => P.flipped && P.ground],
-          ['jumpAt', 47.15], ['land'], ['go', 58.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 61.5]] },
-      { name: 'Climb', t: 75,
+        bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['go', 9.0], ['until', R => R.sawAt(0).x - 9.0 < 1.2], ['jump'], ['land'], ['jumpAt', 13.3], ['land'],
+          ['run', 25.5], ['until', (R, P) => !P.flipped && P.ground], ['jumpAt', 29.2], ['land'], ['jumpAt', 34.9], ['land'], ['go', 42.5], ['until', (R, P) => P.flipped && P.ground],
+          ['jumpAt', 47.15], ['land'], ['run', 58.5], ['until', (R, P) => !P.flipped && P.ground], ['go', 61.5]],
+        baits: [
+          { cause: 'saw', bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['go', 9.0], ['wait', 4]] },
+          { cause: 'spike', bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['go', 9.0], ['until', R => R.sawAt(0).x - 9.0 < 1.2], ['jump'], ['land'], ['jumpAt', 13.3], ['land'],
+            ['go', 25.5], ['wait', 2]] },                                                                                    // step off the rune and drop
+          { cause: 'spike', bot: [['go', 6.5], ['until', (R, P) => P.flipped && P.ground], ['go', 9.0], ['until', R => R.sawAt(0).x - 9.0 < 1.2], ['jump'], ['land'], ['jumpAt', 13.3], ['land'],
+            ['run', 25.5], ['until', (R, P) => !P.flipped && P.ground], ['jumpAt', 29.2], ['land'], ['jumpAt', 34.9], ['land'], ['go', 42.5], ['until', (R, P) => P.flipped && P.ground],
+            ['jumpAt', 47.15], ['land'], ['go', 58.5], ['wait', 2]] }
+        ] },
+      { name: 'Climb', t: 85,
         map: [
           '################################',
           '################################',
@@ -560,26 +685,39 @@
           '...........bb...................',
           '...............aa...............',
           '..................############H.',
-          '..............................H.',
+          '..................VV..........H.',
           '..............................H.',
           '..............................H.',
           '..............................H.',
           '........................########',
-          '.....................##.........',
+          '.....................cc.........',
           '..........H#########............',
           '..........H.....................',
           '..........H.....................',
           '..........H.....................',
-          '.S........H.................D...',
+          '.S........H.....KK..........D...',
           '################################',
           '################################'],
         setup(R) {
+          R.show('V');
+          R.when(R.at(13.0), () => R.pop('K'));
           ['a', 'b'].forEach(id => R.fragile(id, 0.3, 2.0));
+          R.fragile('c', 0.35, 2.0);
+          R.when(p => p.x >= 17.0 && p.y > 14 && p.y < 16, () => { R.fall('V'); R.after(0.8, () => { R.flag.vGone = true; }); });
           R.when(p => p.x >= 23.5 && p.y > 17, () => { R.$('D').hop(29, 12, 1.0); R.say('Upstairs.'); });
-          R.when(p => p.x >= 27.4 && p.y < 14, () => { R.$('D').hop(2, 4, 1.3); R.say('Top floor.'); });
+          const saw = R.saw({ x: 32.5, y: 12.4, hidden: true });
+          R.when(p => p.x >= 27.4 && p.y < 14, () => { R.$('D').hop(2, 4, 1.3); R.say('Top floor.'); saw.go([[-3, 12.4]], 5); });
         },
-        bot: [['go', 23.7], ['wait', 1.2], ['go', 10.5], ['climb', 15], ['go', 19.4], ['jumpAt', 19.6], ['land'], ['jumpAt', 22.6], ['land'], ['go', 27.6], ['wait', 1.5],
-          ['go', 30.5], ['climb', 8], ['jumpAt', 18.3], ['land'], ['jumpAt', 15.2], ['land'], ['jumpAt', 11.2], ['land'], ['go', 2.5]] }
+        bot: [['jumpAt', 15.2], ['land'], ['go', 23.7], ['wait', 1.2], ['go', 19.0], ['jumpAt', 18.8], ['land'], ['go', 10.5], ['climb', 15], ['go', 17.2], ['until', R => R.flag.vGone],
+          ['go', 19.4], ['jumpAt', 19.6], ['land'], ['jumpAt', 22.6], ['land'], ['go', 27.6], ['until', R => R.sawAt(0).x - 27.6 < 1.2], ['jump'], ['land'], ['wait', 0.6],
+          ['go', 30.5], ['climb', 8], ['jumpAt', 18.3], ['land'], ['jumpAt', 15.2], ['land'], ['jumpAt', 11.3], ['land'], ['go', 2.5]],
+        baits: [
+          { cause: 'spike', bot: [['go', 17]] },                                                                             // walk
+          { cause: 'spike', bot: [['jumpAt', 15.2], ['land'], ['go', 23.7], ['wait', 1.2], ['go', 10.5]] },                   // walk back
+          { cause: 'spike', bot: [['jumpAt', 15.2], ['land'], ['go', 23.7], ['wait', 1.2], ['go', 19.0], ['jumpAt', 18.8], ['land'], ['go', 10.5], ['climb', 15], ['go', 19.4]] },
+          { cause: 'saw', bot: [['jumpAt', 15.2], ['land'], ['go', 23.7], ['wait', 1.2], ['go', 19.0], ['jumpAt', 18.8], ['land'], ['go', 10.5], ['climb', 15], ['go', 17.2], ['until', R => R.flag.vGone],
+            ['go', 19.4], ['jumpAt', 19.6], ['land'], ['jumpAt', 22.6], ['land'], ['go', 27.6], ['wait', 3]] }
+        ] }
     ],
     // ── Stage 6: no help
     [
@@ -1294,6 +1432,8 @@
         attach(sid, bid) { r.spikes[sid].attach = r.bodies[bid]; },
         saw(o) { const s = makeSaw(o.x * T, o.y * T, 's' + r.saws.length); if (o.r) s.r = o.r * T; if (o.hidden) s.hidden = true; r.saws.push(s); return chain(s); },
         spawnDoor(x, y, o) { o = o || {}; const d = mover({ id: o.fake ? 'Q' : 'D', x: (x + 0.5) * T, y: o.hang ? y * T : (y + 1) * T, hang: !!o.hang, fake: !!o.fake, alive: true, alpha: 0, ride: null, vx: 0 }); r.doors.push(d); if (!o.quiet) { sfx('lp_door', { vol: 0.6 }); burst(d.x, d.y - 18, 12); } return d; },
+        doorHang(id, hang) { const d = r.doors.find(q => q.id === (id || 'D') && q.alive); if (d) d.hang = !!hang; },
+        doorGone(id) { const d = r.doors.find(q => q.id === id && q.alive); if (d) { d.alive = false; burst(d.x + d.ox, d.y + d.oy - 18, 12); } },
         doorX(id) { const d = r.doors.find(q => q.id === (id || 'D') && q.alive); return d ? (d.x + d.ox) / T : null; },
         harmless(id) { if (r.spikes[id]) r.spikes[id].harmless = true; },
         shadow() { return r.echo && r.echo.on ? { x: r.echo.x / T, y: r.echo.y / T } : null; },
@@ -1407,7 +1547,7 @@
       bot.i = 0; bot.t = 0; bot.dir = 0; bot.hold = 0; bot.press = false; bot.init = false;
     }
     function loadRoom(i, keepDeaths) {
-      ri = i; R = build(rooms[ri]); spawn(); camera(0, true);
+      ri = i; R = build(rooms[ri]); spawn(); camera(0, true); acc = 0; jpLatch = false;
       if (!keepDeaths) { roomDeaths = 0; introT = 0; }
       bakeRoom();
     }
@@ -1600,6 +1740,10 @@
     }
     const pview = () => ({ x: P.x / T, y: P.y / T, air: !P.ground, ground: P.ground, flipped: R.gdir < 0, vx: P.vx, on: P.on, still: P.still || 0, tookOff: P.tookOff > 0 });
 
+    // physics in fixed 1/120 s ticks whatever the frame rate, so every jump lands the same on every phone (the jump
+    // press is held over to the next tick)
+    const STEP = 1 / 120;
+    let acc = 0, jpLatch = false;
     function update(dt, I) {
       if (R && R.rebake) { R.rebake = false; bakeRoom(); }
       if (P) camera(dt);
@@ -1610,6 +1754,11 @@
       if (nextAfterFade && fade >= 1) { const f = nextAfterFade; nextAfterFade = null; f(); fadeDir = -1; }
       timeLeft -= dt * env.clock;
       if (timeLeft <= 0) { timeLeft = 0; done = true; env.lose('Time’s up'); return; }
+      if (I.pressed && I.pressed.jump) jpLatch = true;
+      acc = Math.min(acc + dt, 0.1);
+      while (acc >= STEP - 1e-9 && !done) { acc -= STEP; tick(STEP, I); }
+    }
+    function tick(dt, I) {
       if (P.dead) {
         deadT += dt; stepWorld(dt);
         if (deadT > 0.62) {
@@ -1631,7 +1780,8 @@
       }
       // input (or the test autopilot)
       bot.on = !!window.__liarBot;
-      let L = I.left, Rt = I.right, jp = !!(I.pressed.jump), jh = !!(I.held.jump);
+      let L = I.left, Rt = I.right, jp = jpLatch, jh = !!(I.held.jump);
+      jpLatch = false;
       if (bot.on) { const b = botInput(dt); L = b.left; Rt = b.right; jp = b.jumpP; jh = b.jumpH; }
       let dir = (Rt ? 1 : 0) - (L ? 1 : 0);
       if (R.mirror) dir = -dir;
