@@ -44,6 +44,26 @@
 
   // ── the rooms, stage by stage ───────────────────────────────────────────
   const fill = (n, s) => Array(n).fill(s);
+  // level 7 ('Up the dirty stairs'), floor by floor
+  const L7_F1 = [['jumpAt', 6.6], ['land'], ['jumpAt', 13.6], ['land'], ['go', 25.9], ['jumpAt', 26.2], ['land'], ['go', 29.5], ['climb', 50]];
+  const L7_F2 = [...L7_F1, ['go', 24.0], ['until', R => R.sawAt(R.flag.burstI).x - 24.0 < 1.45 && R.sawAt(R.flag.burstI).vx < 0], ['jump'], ['land'],
+    ['until', R => R.saws[0].vx > 0 && R.saws[0].x / 26 < 18.5], ['dir', -1], ['sawjump', 0], ['land'],
+    ['go', 15.4], ['until', R => R.saws[1].vx > 0 && R.saws[1].x / 26 < 8.5], ['dir', -1], ['sawjump', 1], ['land'], ['go', 2.5], ['climb', 40]];
+  const L7_F3 = [...L7_F2, ['jumpAt', 6.6], ['land'], ['hold', 3.0], ['go', 12.4], ['until', (R, P) => P.air], ['until', (R, P) => P.y < 31+2.8], ['dir', 1], ['land'],
+    ['go', 20.9], ['jumpAt', 21.1], ['land'], ['go', 29.5], ['climb', 30]];
+  const L7_F4 = [...L7_F3, ['go', 23.4], ['until', R => R.breathW('s', 21) > 0.85], ['hopto', () => ({ x: 21.5 })], ['land'], ['until', R => R.breathW('s', 19) > 0.85], ['hopto', () => ({ x: 19.5 })], ['land'],
+    ['until', R => R.breathW('s', 17) > 0.85], ['hopto', () => ({ x: 17.5 })], ['land'], ['until', R => R.breathW('s', 15) > 0.85], ['hopto', () => ({ x: 15.5 })], ['land'],
+    ['until', R => R.breathW('s', 13) > 0.85], ['hopto', () => ({ x: 13.5 })], ['land'], ['hopto', () => ({ x: 11.0 })], ['land'], ['go', 10.0], ['jumpAt', 9.8], ['land'], ['go', 2.5], ['climb', 20]];
+  const L7_F5 = [...L7_F4, ['go', 16.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (11+4), q.x / 26 - 16.5); if (a < 0) a += 2 * Math.PI; return a > 1.66 && a < 2.27; })], ['climb', 10]];
+  // level 6 ('The long way up'): the solution floor by floor (bait routes reuse the start of it)
+  const L6_F1 = [['jumpAt', 7.6], ['land'], ['go', 11.6], ['until', R => !R.spikeUp('W')], ['jumpAt', 15.6], ['land'], ['jumpAt', 20.0], ['land'], ['go', 29.5], ['climb', 49]];
+  const L6_F2 = [...L6_F1, ['go', 27.0], ['jumpAt', 26.8], ['land'], ['go', 23.0], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25], ['go', 15.0],
+    ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.25], ['go', 10.8], ['jumpAt', 10.4], ['land'], ['go', 2.5], ['climb', 39]];
+  const L6_F3 = [...L6_F2, ['go', 5.3], ['until', (R, P) => P.x >= 8.6], ['until', R => R.esc(0).speed === 0], ['dodge', 23.6], ['jumpAt', 24.2], ['land'], ['go', 29.5], ['climb', 29]];
+  const L6_F4 = [...L6_F3, ['jumpAt', 24.6], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 10.6], ['land'], ['go', 2.5], ['climb', 17]];
+  const L6_F5 = [...L6_F4, ['jumpAt', 3.8], ['land'], ['jumpAt', 7.8], ['land'], ['jumpAt', 11.8], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 19.8], ['land'], ['jumpAt', 23.8], ['land'],
+    ['go', 26.5], ['until', R => R.$('q').phase === 'rise' && R.$('q').phaseK > 0.4], ['go', 29.5], ['climb', 9]];
+  const L6_F6 = [...L6_F5, ['go', 18.3], ['jumpAt', 17.9], ['land'], ['dir', 0], ['until', (R, P) => P.x - (R.spikeX('B') + 2) < 1.4], ['dir', -1], ['jump'], ['land']];
   const STAGES = [null,
     // ── Stage 1: the lie begins (every step has an answer waiting)
     [
@@ -724,7 +744,7 @@
       { name: 'The long way up', t: 140, tall: true,
         map: [
           '################################',
-          '#..............................#',
+          '#...................VV.........#',
           '#..............................#',
           '#..............................#',
           '#..............................#',
@@ -733,9 +753,9 @@
           '#..............................#',
           '#...D....BB.....Q..............#',
           '#############################H##',
-          '#............................H.#',
-          '#............................H.#',
-          '#............................H.#',
+          '#..........................qqH.#',
+          '#..........................qqH.#',
+          '#..........................qqH.#',
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
@@ -751,11 +771,11 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H.....^^.....^^.....^^.......#',
+          '#.H.....^^..OO.^^.....^^.......#',
           '#############################H##',
           '#............................H.#',
           '#............................H.#',
-          '#............................H.#',
+          '#........................NN..H.#',
           '#......................#########',
           '#......................#########',
           '#......................#########',
@@ -771,8 +791,9 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#.H............................#',
-          '#############################H##',
+          '#.H.....................MM.....#',
+          '########ee###################H##',
+          '#...........WWW..............H.#',
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
@@ -780,8 +801,7 @@
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
-          '#............................H.#',
-          '#.S..................A.......H.#',
+          '#.S.........PP.......A.......H.#',
           '#########..#####..######aaa#####'],
         setup(R) {
           { R.when(R.zone(19.6, 31, 50+5, 50+9), () => R.pop('A')); R.dropOnAim('a', { jumpOnly: true }); }
@@ -795,14 +815,29 @@
           ['f', 'g', 'j', 'k', 'n'].forEach(id => R.fragile(id, 0.4, 2.0));
           R.when(R.zone(26, 31, 10+1, 10+7), () => R.wind(0)); }
           { R.show('B'); const hb = R.hunt('B', 2.0, 6, 22); hb.stop(); R.when(R.zone(0, 15, 1+0, 1+8.5), () => { hb.go(); R.say('Run.'); }); }
+          // the rage layer: every floor gets another answer waiting
+          R.popOnAim('P'); R.show('W');
+          R.when(p => p.y > 50 && p.x >= 11.4, () => R.fall('W', 0.15));
+          R.when(p => p.y > 40 && p.y < 49.5 && p.x <= 28.5, () => R.pop('M'));
+          R.when(p => p.y > 40 && p.y < 49.5 && p.x <= 10.6, () => R.drop('e', 0.12));
+          R.when(p => p.y > 30 && p.y < 33.5 && p.x >= 23.0, () => R.pop('N'));
+          R.popOnAim('O');
+          R.when(p => p.y > 14 && p.y < 17 && p.x >= 26.0, () => R.$('q').wait(0.15).move(0, 3, 0.1, 'in', 'slam').call(() => R.slamFx('q')).wait(0.5, 'hold').move(0, -3, 0.7, 'io', 'rise'));
+          R.when(p => p.y < 9.5 && p.x <= 9.0, () => { R.$('D').hop(28, 8, 1.0); R.say('This way.'); R.flag.dhop = true; });
+          R.show('V');
+          R.when(p => R.flag.dhop && p.y < 9.5 && p.x >= 18.5, () => { R.fall('V', 0.1); R.after(0.8, () => { R.flag.vGone = true; }); });
         },
-        bot: [['jumpAt', 7.6], ['land'], ['jumpAt', 15.6], ['land'], ['jumpAt', 20.0], ['land'], ['go', 29.5], ['climb', 50+-1],
-          ['go', 23.0], ['until', R => R.$('b').phase === 'rise' && R.$('b').phaseK > 0.25], ['go', 15.0],
-          ['until', R => R.$('c').phase === 'rise' && R.$('c').phaseK > 0.25], ['go', 2.5], ['climb', 40+-1],
-          ['go', 5.3], ['until', (R, P) => P.x >= 8.6], ['until', R => R.esc(0).speed === 0], ['dodge', 23.6], ['go', 29.5], ['climb', 30+-1],
-          ['jumpAt', 24.6], ['land'], ['jumpAt', 17.6], ['land'], ['jumpAt', 10.6], ['land'], ['go', 2.5], ['climb', 20+-3],
-          ['jumpAt', 3.8], ['land'], ['jumpAt', 7.8], ['land'], ['jumpAt', 11.8], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 19.8], ['land'], ['jumpAt', 23.8], ['land'], ['go', 29.5], ['climb', 10+-1],
-          ['go', 18.3], ['jumpAt', 17.9], ['land'], ['dir', 0], ['until', (R, P) => P.x - (R.spikeX('B') + 2) < 1.4], ['dir', -1], ['jump'], ['land'], ['go', 4.5]] }
+        bot: [...L6_F6, ['go', 4.5], ['wait', 1.0], ['go', 5.0], ['until', R => R.spikeX('B') <= 6.1], ['jumpAt', 5.05], ['land'], ['go', 14.4], ['jumpAt', 14.6], ['land'],
+          ['go', 19.0], ['until', R => R.flag.vGone], ['go', 28.5]],
+        baits: [
+          { cause: 'spike', bot: [['jumpAt', 8.8], ['land']] },                                                               // jump the first hole late
+          { cause: 'spike', bot: [['jumpAt', 7.6], ['land'], ['go', 14]] },                                                    // walk under the stalactites
+          { cause: 'spike', bot: [...L6_F1, ['go', 22]] },                                                                   // off the ladder and on
+          { cause: 'spike', bot: [...L6_F3.slice(0, -4), ['go', 29.5]] },                                                    // off the stairs and on
+          { cause: 'spike', bot: [...L6_F3, ['jumpAt', 24.6], ['land'], ['jumpAt', 17.0], ['land']] },                        // jump the dark thorns too close
+          { cause: 'crush', bot: [...L6_F4, ['jumpAt', 3.8], ['land'], ['jumpAt', 7.8], ['land'], ['jumpAt', 11.8], ['land'], ['jumpAt', 15.8], ['land'], ['jumpAt', 19.8], ['land'], ['jumpAt', 23.8], ['land'], ['go', 29.5]] },
+          { cause: 'spike', bot: [...L6_F6, ['go', 4.5], ['wait', 1.0], ['go', 5.0], ['until', R => R.spikeX('B') <= 6.1], ['jumpAt', 5.05], ['land'], ['go', 14.4], ['jumpAt', 14.6], ['land'], ['go', 28.5]] }
+        ] }
     ],
     // ── Stage 7: it plays dirty
     [
@@ -810,14 +845,14 @@
         map: [
           '################################',
           '#..................VVVV........#',
-          '#...........................D..#',
+          '#...........................Q..#',
           '#......................#########',
           '#......................#########',
           '#......................#########',
           '#......................#########',
           '#......................#########',
           '#......................#########',
-          '#......................#########',
+          '#..D.....YY............#########',
           '################H##eeee#########',
           '#...............H..............#',
           '#...............H..............#',
@@ -831,7 +866,7 @@
           '##H#############################',
           '#.H............................#',
           '#.H............................#',
-          '#.H............................#',
+          '#.H....PP......................#',
           '#############..................#',
           '#############s.................#',
           '#############s.s...............#',
@@ -841,7 +876,7 @@
           '#############################H##',
           '#............................H.#',
           '#............................H.#',
-          '#............................H.#',
+          '#.....................NN.....H.#',
           '#............###################',
           '#............###################',
           '#..............................#',
@@ -858,7 +893,7 @@
           '#.H............................#',
           '#.H............................#',
           '#.H............................#',
-          '#############################H##',
+          '############ggg##############H##',
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
@@ -867,7 +902,7 @@
           '#............................H.#',
           '#............................H.#',
           '#............................H.#',
-          '#.S..........................H.#',
+          '#.S........................KKH.#',
           '#%%%%%%%..%%%%%..%%%%%%%%#######'],
         setup(R) {
           { R.when(R.zone(3.6, 31, 51+5, 51+9.5), () => { R.chase(5.0, 0); R.say('Run.'); }); }
@@ -877,14 +912,27 @@
           { R.when(R.zone(0, 23.5, 21+1, 21+9.5), () => { R.breathe('s', { period: 1.8, min: 0.15, ripple: 0.9 }); R.say('Mind your step.'); }); }
           { R.ring(16.5, 11+4, 3.5, 2, 7); }
           { R.when(p => p.air && p.x >= 19 && p.x <= 23 && p.y > 1+5 && p.y < 1+9.6, () => { R.$('e').move(0, -7, 1.0, 'io', 'lift').call(() => { R.pop('V'); R.say('Don’t jump.'); }); }); }
+          // the rage layer
+          R.when(p => p.y > 51 && p.x >= 24.0, () => R.pop('K'));
+          const burst = R.saw({ x: 31.4, y: 41+8.4, hidden: true }); R.flag.burstI = R.saws.length - 1;
+          R.when(p => p.y > 41 && p.y < 50.5 && p.x <= 28.5, () => burst.go([[0.6, 41+8.4]], 7));      // (into the far wall)
+          R.when(p => p.ground && p.still >= 0.8 && p.y > 41 && p.y < 50.5 && p.x >= 11.6 && p.x <= 15.0, () => R.drop('g'));
+          R.when(p => p.y > 31 && p.y < 34.5 && p.x >= 20.0, () => R.pop('N'));
+          R.when(p => p.y > 21 && p.y < 24.5 && p.x <= 10.5, () => R.pop('P'));
+          R.when(p => p.y > 5 && p.y < 10.5 && p.x <= 12.0, () => R.pop('Y'));
         },
-        bot: [['jumpAt', 6.6], ['land'], ['jumpAt', 13.6], ['land'], ['go', 29.5], ['climb', 51+-1],
-          ['go', 24.0], ['until', R => R.saws[0].vx > 0 && R.saws[0].x / 26 < 18.5], ['dir', -1], ['sawjump', 0], ['land'],
-          ['go', 14.0], ['until', R => R.saws[1].vx > 0 && R.saws[1].x / 26 < 8.5], ['dir', -1], ['sawjump', 1], ['land'], ['go', 2.5], ['climb', 41+-1],
-          ['jumpAt', 6.6], ['land'], ['hold', 3.0], ['go', 12.4], ['until', (R, P) => P.air], ['until', (R, P) => P.y < 31+2.8], ['dir', 1], ['land'], ['go', 29.5], ['climb', 31+-1],
-          ['go', 23.4], ['until', R => R.breathW('s', 21) > 0.85], ['hopto', () => ({ x: 21.5 })], ['land'], ['until', R => R.breathW('s', 19) > 0.85], ['hopto', () => ({ x: 19.5 })], ['land'], ['until', R => R.breathW('s', 17) > 0.85], ['hopto', () => ({ x: 17.5 })], ['land'], ['until', R => R.breathW('s', 15) > 0.85], ['hopto', () => ({ x: 15.5 })], ['land'], ['until', R => R.breathW('s', 13) > 0.85], ['hopto', () => ({ x: 13.5 })], ['land'], ['hopto', () => ({ x: 11.0 })], ['land'], ['go', 2.5], ['climb', 21+-1],
-          ['go', 16.5], ['until', R => R.saws.filter(q => String(q.id).startsWith('ring')).some(q => { let a = Math.atan2(q.y / 26 - (11+4), q.x / 26 - 16.5); if (a < 0) a += 2 * Math.PI; return a > 1.66 && a < 2.27; })], ['climb', 11+-1],
-          ['go', 20.5], ['jump'], ['land'], ['wait', 1.4], ['go', 28.5]] }
+        bot: [...L7_F5, ['go', 12.0], ['jumpAt', 11.8], ['land'], ['go', 3.5]],
+        baits: [
+          { cause: 'fall', bot: [['go', 4.0], ['wait', 3]] },                                                                // don't run
+          { cause: 'spike', bot: [['jumpAt', 6.6], ['land'], ['jumpAt', 13.6], ['land'], ['go', 29.5]] },                       // run straight for the ladder
+          { cause: 'saw', bot: [...L7_F1, ['go', 24.0], ['wait', 4]] },                                                      // look at the saws first
+          { cause: 'fall', bot: [...L7_F1, ['go', 24.0], ['until', R => R.sawAt(R.flag.burstI).x - 24.0 < 1.45 && R.sawAt(R.flag.burstI).vx < 0], ['jump'], ['land'],
+            ['until', R => R.saws[0].vx > 0 && R.saws[0].x / 26 < 18.5], ['dir', -1], ['sawjump', 0], ['land'], ['go', 13.4], ['wait', 1.6]] },   // wait for the saw there
+          { cause: 'spike', bot: [...L7_F2, ['jumpAt', 6.6], ['land'], ['hold', 3.0], ['go', 12.4], ['until', (R, P) => P.air], ['until', (R, P) => P.y < 31+2.8], ['dir', 1], ['land'], ['go', 26]] },
+          { cause: 'spike', bot: [...L7_F4.slice(0, -5), ['go', 3]] },                                                       // off the stairs and on
+          { cause: 'door', bot: [...L7_F5, ['go', 20.5], ['jump'], ['land'], ['wait', 1.4], ['go', 28.5]] },                 // ride up to the door you can see
+          { cause: 'spike', bot: [...L7_F5, ['go', 3.5]] }                                                                   // walk to the real one
+        ] }
     ],
     // ── Stage 8: nothing works
     [
